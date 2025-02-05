@@ -1,3 +1,18 @@
+# Requiredness and Optionality in TypeSpec
+
+This proposal suggests three new expressions:
+
+1. A new symbol, `!`, to mark properties as _explicitly required_.
+2. A new decorator, `@required`, to mark properties as required in specific contexts.
+3. A new decorator, `@optional`, to mark properties as optional in specific contexts.
+
+## Goals
+
+1. Give developers a way to write shared TypeSpec that is usable across "default optional" and "default required" protocols.
+2. Provide more control over requiredness/optionality based on context.
+    1. Find a general solution to [the `@patch` problem](#patch).
+3. Promote comprehension and maintainability by aligning with existing systems.
+
 # Background
 
 Model properties in TypeSpec can either be [optional][optional-properties] or not.
@@ -149,6 +164,7 @@ Let's call OpenAPI and JSON schema **"default required" emitters**, and GraphQL 
 
 The second problem is that optionality and requiredness are defined at the model level, but they may need to change based on the context in which the model is used.
 
+<a name="patch"></a>
 The primary existing example of this is the way that `@typespec/http` handles `PATCH` operations.
 
 When the `@patch` decorator is applied to an operation, a [new "view" of that model](https://typespec.io/docs/language-basics/visibility/#_top) is created with two primary behaviors:
@@ -166,21 +182,6 @@ The latter is unique to `PATCH`. It has been [discussed previously](https://gith
 As recently as Feb 4, 2025, we're still looking for a way to [make this behavior more explicit](https://github.com/microsoft/typespec/discussions/5759#discussioncomment-12057390).
 
 **There is no current way for a TypeSpec developer to specify optionality/requiredness based on context.**
-
-# Proposal
-
-The proposed solution consists of three new expressions:
-
-1. A new symbol, `!`, to mark properties as _explicitly required_.
-2. A new decorator, `@required`, to mark properties as required in specific contexts.
-3. A new decorator, `@optional`, to mark properties as optional in specific contexts.
-
-## Goals
-
-1. Give developers a way to write shared TypeSpec that is usable across "default optional" and "default required" protocols.
-2. Provide more control over requiredness/optionality based on context.
-    1. Find a general solution to the `@patch` problem.
-3. Promote comprehension and maintainability by aligning with existing systems.
 
 
 ## Implementation
@@ -445,30 +446,6 @@ This creates a ternary system for model properties:
 It is up to emitters to make a protocol-specific decision about how to treat properties in the default state.
 
 Properties made explicitly required or explicitly optional should always be treated as such, regardless of the emitter used.
-
-# Use Cases
-
-<a name="patch"></a>
-## PATCH
-
-In REST APIs, it is common to have `PATCH` endpoints that only update the properties given in the request body, and leave the rest of the properties unchanged. In this case, it is more natural to have all properties optional by default, and require the user to explicitly specify which properties are required.
-
-### `TypeSpec.Http.@patch`
-
-When using the `@patch` decorator, the `Http` library will make all the properties optional, regardless of whether they are marked with `?`.
-
-When the `@patch` decorator is applied to an operation, a [new "view" of that model](https://typespec.io/docs/language-basics/visibility/#_top) is created with two primary behaviors:
-
-1. Only properties with the `update` visibility are included in the model. This is consistent with the rules of [automatic visibility][automatic-visibility], and is roughly equivalent to applying the `@withLifecycleUpdate` decorator (or `@withVisibility(Lifecycle.update)`) to a model to create the update "view".
-2. All properties are made optional. This behavior is [implicit based on the visibility of the properties](https://github.com/microsoft/typespec/pull/1345), and is not configurable.
-
-The behavior of other HTTP method decorators (`@get`, `@post`, et al) can be likened to `@parameterVisibility` and `@returnTypeVisibility`, (e.g. `@get` is equivalent to those two decorators used with the `Lifecycle.read` visibility), but there is no such equivalence for `@patch` due to the second behavior.
-
-The latter has been [discussed previously](https://github.com/microsoft/typespec/issues/2150#issuecomment-1622215786), with one of the suggestions being
-
-> Add some decorator to explicitly say that the input properties are made optional or not. This can be combined with (1) or (2) or status quo as an override.
-
-As recently as Feb 4, 2025, we're still looking for a way to [make this behavior more explicit](https://github.com/microsoft/typespec/discussions/5759#discussioncomment-12057390).
 
 # Considerations
 
