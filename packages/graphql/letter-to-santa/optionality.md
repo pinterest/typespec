@@ -113,13 +113,13 @@ export interface User {
 
 ## Visibility
 
-TypeScript has a robust [visibility system][visibility-system] that allows developers to specify which properties are visible in which contexts.
+TypeSpec has a robust [visibility system][visibility-system] that allows developers to specify which properties are visible in which contexts.
 
 The visibility system handles **presence** and **absence** of properties. In the terminology of the visibility system, these are referred to as **visible** and **invisible**.
 
 Model properties can have default visibility as defined by the [`@defaultVisibility`][defaultVisibility] and [`@withDefaultKeyVisibility`][withDefaultKeyVisibility] decorators.
 
-Visibility is entirely contextual. The notion of a property being visibile or invisible at a "model level"  is simply whether or not the property exists on the model.
+Visibility is entirely contextual. The notion of a property being visibile or invisible at a "model level"  is simply whether the property exists on the model.
 
 The visibility context is specified using [visibility modifiers][visibility-modifiers].
 A model property is assigned a set of visibility modifiers through a combination of decorators.
@@ -134,18 +134,16 @@ There are two main problems we are looking to solve:
 
 ### Explicit Optionality/Requiredness
 
-When the `?` modifier is absent, we will say the property has "default optionality".
-
-As we saw above, the optionality/requiredness of property with default optionality is determined by the emitter.
+When the `?` modifier is absent, we will say the property has "default optionality".  As we saw above, the optionality/requiredness of a property with default optionality is determined by the emitter.
 
 Protobuf, for example, treats these fields as equivalent to optional fields. OpenAPI and JSON schema treat them as required.
 
 GraphQL, which uses nullable/non-nullable to represent optional/required, treats all fields as nullable unless they are explicitly marked as non-nullable.
 A GraphQL emitter will treat all properties with default optionality as nullable.
 
-Let's call OpenAPI and JSON schema "default required" emitters, and GraphQL a "default optional" emitter.
+Let's call OpenAPI and JSON schema **"default required" emitters**, and GraphQL a **"default optional" emitter**.
 
-**While we have a way to tell "default required" emitters that a property is optional, we do not have a way to tell "default optional" emitters that a property is required.**
+**While we have a way to tell "default required" emitters that a property is _optional_, we do not have a way to tell "default optional" emitters that a property is _required_.**
 
 ### Contextual Optionality/Requiredness
 
@@ -167,6 +165,8 @@ The latter is unique to `PATCH`. It has been [discussed previously](https://gith
  
 As recently as Feb 4, 2025, we're still looking for a way to [make this behavior more explicit](https://github.com/microsoft/typespec/discussions/5759#discussioncomment-12057390).
 
+**There is no current way for a TypeSpec developer to specify optionality/requiredness based on context.**
+
 # Proposal
 
 The proposed solution consists of three new expressions:
@@ -177,170 +177,88 @@ The proposed solution consists of three new expressions:
 
 ## Goals
 
-1. Give developers a way to write TypeSpec that is usable across "default optional" and "default required" protocols.
+1. Give developers a way to write shared TypeSpec that is usable across "default optional" and "default required" protocols.
 2. Provide more control over requiredness/optionality based on context.
     1. Find a general solution to the `@patch` problem.
 3. Promote comprehension and maintainability by aligning with existing systems.
 
-The goal is to make the concepts of optionality and visibility — represent two parallel systems.
 
-|           | Default expression                               | Contextual expression                         |
-|-----------|--------------------------------------------------|-----------------------------------------------|
-| Visible   | _implied by the existence of the model property_ | `@visibility(<list of visibility modifiers>)` |
-| Invisible | _implied by the absence of the model property_   | `@invisible(<list of visibility modifiers>)`  |
-| Required  | with `!` modifier                                | `@required(<list of visibility modifiers>)`   |
-| Optional  | with `?` modifier                                | `@optional(<list of visibility modifiers>)`   |
+## Implementation
 
+### `!` symbol
 
-|                             | Visibility                                                       | Requiredness                                  |
-|-----------------------------|------------------------------------------------------------------|-----------------------------------------------|
-| modelProperty               | @visibility<br>@removeVisibility<br>@invisible                   | @required<br>@optional                        |
-| all of a model’s properties | @withDefaultKeyVisibility                                        | N/A (or @defaultOptional)?                    |
-| transform a model           | @withVisibility<br>@withVisibilityFilter<br>@withLifecycleUpdate | @withOptionalProperties                       |
-| operation                   | @parameterVisibility<br>@returnTypeVisibility                    | @parameterVisibility<br>@returnTypeVisibility |
+The `!` symbol is used to mark a property as _explicitly required_.
 
-
-
-This proposal is to introduce a new symbol, `!`, into the TypeSpec language. This symbol would mark properties as _explicitly required_. This would allow developers to specify that a property is required in all contexts, including those where it would otherwise be optional.
-
-This creates a ternary system for model properties:
-- required (with `!`)
-- default (without `?` or `!`)
-- optional (with `?`)
-
-It is up to emitters to make a protocol-specific decision about how to treat properties in the default state.
-
-Properties made explicitly required or explicitly optional should always be treated as such, regardless of the emitter used.
-
-# Use Cases
-
-<a name="patch"></a>
-## PATCH
-
-In REST APIs, it is common to have `PATCH` endpoints that only update the properties given in the request body, and leave the rest of the properties unchanged. In this case, it is more natural to have all properties optional by default, and require the user to explicitly specify which properties are required.
-
-### `TypeSpec.Http.@patch`
-
-When using the `@patch` decorator, the `Http` library will make all the properties optional, regardless of whether they are marked with `?`.
-
-When the `@patch` decorator is applied to an operation, a [new "view" of that model](https://typespec.io/docs/language-basics/visibility/#_top) is created with two primary behaviors:
-
-1. Only properties with the `update` visibility are included in the model. This is consistent with the rules of [automatic visibility](https://typespec.io/docs/libraries/http/operations/#automatic-visibility), and is roughly equivalent to applying the `@withLifecycleUpdate` decorator (or `@withVisibility(Lifecycle.update)`) to a model to create the update "view".
-2. All properties are made optional. This behavior is [implicit based on the visibility of the properties](https://github.com/microsoft/typespec/pull/1345), and is not configurable.
-
-The behavior of other HTTP method decorators (`@get`, `@post`, et al) can be likened to `@parameterVisibility` and `@returnTypeVisibility`, (e.g. `@get` is equivalent to those two decorators used with the `Lifecycle.read` visibility), but there is no such equivalence for `@patch` due to the second behavior.
-
-The latter has been [discussed previously](https://github.com/microsoft/typespec/issues/2150#issuecomment-1622215786), with one of the suggestions being
-
-> Add some decorator to explicitly say that the input properties are made optional or not. This can be combined with (1) or (2) or status quo as an override.
-
-As recently as Feb 4, 2025, we're still looking for a way to [make this behavior more explicit](https://github.com/microsoft/typespec/discussions/5759#discussioncomment-12057390).
-
-# Considerations
-
-## How is this different from visibility?
-
-Requiredness is a different concept from visibility. Visibility is about which properties _can_ appear in a view, while requiredness is about what properties _will_ appear in a view. A property with `Lifecycle.read` visibility is included in the read view, but it is not necessarily required to be present in all instances of that view.
-
-The precedent has been set with the `@patch` decorator that visibility context can affect optionality.
-
-## Does requiredness make sense on a model level?
-
-Models in TypeSpec can mean different things.
-While in OpenAPI they are typically only used to define the shape of a request or response body (indeed, there is [an option][omit-unreachable-types] not to emit any models unless they are part of an operation), in other protocols like JSON schema there is no notion of operations, and so models must be context-free.
-
-## Is this protocol-specific?
-
-We've already encountered the concepts of "default required" emitters and "default optional" emitters, suggesting that the emitter (and by extension, the protocol) has some role to play in determining the requiredness of a property.
-
-To that end, perhaps it should be the emitter that provides mechanisms to explicitly specify the requiredness of a property, in a way that only affects that emitter.
-
-However, this discourages the creation of protocol-agnostic API definitions, which is a [key feature of TypeSpec](https://typespec.io/data-validation/).
-If the model definition is used to create a GraphQL API, a RESTful API (described by OpenAPI), and a set of JSON schemas, it should be possible to specify the requiredness of a property, both contextual and context-free, in a way that yields a consistent representation in all protocols.
-Generated code for each protocol can then be consistent with the model definition.
-
-If instead a protocol-specific decorator is used, there will be a discrepancy in behavior among different systems handling the same data.
-
-## What are the implications for current TypeSpec emitters?
-
-Existing "default required" emitters will see no change from the `!` symbol.
-They already treat all properties without the `?` symbol as required, and a property cannot be given the `!` symbol without removing the `?` symbol.
-
-# Alternatives Considered
-
-### `@required` decorator instead of `!`
-
-From [discussion of a `@usage` decorator](https://github.com/microsoft/typespec/issues/4486), this general principle is suggested:
-
-> I think a general thing we want for typespec is have the ability to use some decorator to specify some syntax sugar like `@default` or `@optional`, etc. So i believe it would be safer to start with a decorator and move to a syntax later if it is widely used.
-
-In this scenario, however, a decorator does create the possibility of conflict. A property can be marked with both the decorator and the `?` symbol, e.g. `@required name?: string`. This would need to produce a validation error in the decorator.
-
-Since the TypeSpec language does not allow for either the `?` or `!` character [to be used in a property name](https://typespec.io/docs/language-basics/identifiers/), the parser can be modified such that using both (`!?` or `?!`) is a syntax error, just as `??` is today.
-This would prevent the possibility of a conflict between the two.
-
-In addition, it seems awkward to use one system to indicate one side of a binary (`?` for optional) and a different system for the other (`@required` for required). Developers might rightly question why we don't have an `@optional` decorator instead of `?`, or something like `@requiredness(bool)`.
-
-Finally, we want to avoid confusion with the proposed `@required` and `@optional` decorators that are context-specific.
-
-### Implement GraphQL emitter with the existing concepts
-
-By default, [all types in GraphQL are nullable][graphql-nullable-default].
-This means that all fields are optional unless they are explicitly marked as non-nullable using a trailing exclamation mark (e.g. `name: String!`).
-This is the opposite of "default required" emitters like OpenAPI and JSON schema, where all fields are required unless they are explicitly marked as optional.
-
-In order to implement a "default optional" emitter with existing concepts, there are a few options:
-
-1. Require the TSP developer to use the `?` symbol by default. This would require adding `?` to every field in every model, which could be tedious and error-prone. Additionally, this affects the output in "default required" emitters. To avoid this, developers would need to maintain multiple protocol-specific versions of the same model.
-1. Use `| null` to mark fields as nullable. Similar to the previous option, this is tedious and affects the definition of the model itself. In GraphQL, there is no notion of a field being "optional", and the semantic notion of the `?` symbol provides the best match to GraphQL nullable.
-1. Implement emitter-specific behavior. This is discussed below in "Is this protocol-specific?".
-1. This proposal, which we think avoids the drawbacks of the other options. Developers are expected to use the `!` symbol on fields which are required in all contexts and protocols, and the GraphQL emitter will treat these fields as non-nullable.
-
-
-<a name="required-for-action"></a>
-## `@requiredFor<Action>` decorators
-
-As mentioned by @garethj-msft in [this issue](https://github.com/microsoft/typespec/issues/1583), a `@requiredForCreate` decorator is used when describing Microsoft Graph APIs.
-
-In his words:
-
-> For `@requiredForCreate`, that's on all properties which are required any time a resource is created, either by `POST` to collection, `PUT` to single slot, or by any mutation of a sub-resource via the above, or by `PATCH`ing the parent resource with a new child resource, or `PATCH` for upsert.
-> Any property without that can be omitted in a _creation_ scenario.
-
-This approach provides a way to specify requiredness _based on the action being performed_. This is a different concept than the proposed `!` or even the `@required` decorator, as it is not about the property itself, but about the context in which it is used.
-
-If we were to extend this pattern, one imagines a series of `@requiredFor<Action>` decorators.
-
-For example, in the [`PATCH` use case](#patch), a `@requiredForUpdate` decorator could be used to mark properties as required when updating a resource. This would not affect the requiredness of the field in actions where it is not defined by a decorator, which would continue to be defined by the [presence or absence of the `?` symbol](#default-optional).
+It is specified in the same manner as the `?` symbol to [mark a property as optional][optional-properties].
 
 ```typespec
 model Dog {
-  @requiredForDelete
-  @requiredForUpdate id?: int64; // This will be required when deleting or updating a Dog, and optional otherwise
-  
-  name: string; // This will be required in all contexts
-  address?: string; // This will be optional in all contexts
-  @requiredForCreate age: number; // This will be required when creating a Dog, but optional when updating
+  address!: string;
 }
 ```
 
-This approach would allow for more fine-grained control over requiredness, but it would also introduce more complexity and require more decorators to be defined.
+It is _not_ possible to mark a property as both explicitly required and explicitly optional.
 
-It also creates a [conflict between visibility and requiredness](#visibility-requiredness-conflict), which will be discussed more below (the concept is the same).
-
-<a name="required-visibility-decorator"></a>
-## `@required(visibility)` decorator
-
-A more flexible version of the `@requiredFor<Action>` decorator would be a `@required()` decorator that takes a [visibility class](https://typespec.io/docs/language-basics/visibility/#visibility-classes) as an argument.
+### `@required` decorator
 
 ```typespec
-model Dog {
-  @required(Lifecycle.Update, Lifecycle.Delete) id?: int64;
-  name: string; // This will be required in all contexts
-  address?: string; // This will be optional in all contexts
-  @required(Lifecycle.Create) age: number; // This will be required when creating a Dog, but optional when updating
-}
+@required(...contexts: EnumMember[])
 ```
+
+The `@required` decorator is used to mark a property as required with given [context modifiers](#context-modifier).
+It takes a list of context modifiers as arguments and sets them as _contextual requiredness_ on the property.
+For example:
+
+```typespec
+@required(Lifecycle.Create, Lifecycle.Read)
+name: string;
+```
+
+The behavior of the `@required` decorator mirrors that of the `@visibility` decorator. Specifically:
+
+If contextual requiredness has already been set explicitly on a property, the `@required` decorator ADDS its own context modifiers to the currently-active modifiers.
+It does not replace the existing modifiers.
+For example:
+
+```typespec
+@required(Lifecycle.Create)
+@required(Lifecycle.Read)
+name: string;
+```
+
+In this example, the `name` property has both the `Create` and `Read` context modifiers enabled, but not the `Update` context modifier.
+The `@required` decorator starts from an empty set of modifiers and adds the `Create` modifier, then adds the `Read` modifier.
+
+### `@optional` decorator
+
+```typespec
+@optional(...contexts: EnumMember[])
+```
+
+The `@optional` decorator is used to mark a property as optional with given [context modifiers](#context-modifier).
+It takes a list of context modifiers as arguments and sets them as _contextual optionality_ on the property.
+For example:
+
+```typespec
+@optional(Lifecycle.Create, Lifecycle.Read)
+name: string;
+```
+
+The behavior of the `@optional` decorator mirrors that of the `@invisible` decorator. Specifically:
+
+This decorator removes all active requiredness modifiers from the property within the given visibility class, making it invisible to any context that selects for visibility modifiers within that class.
+
+
+For example:
+
+```typespec
+@required(Lifecycle.Create)
+@required(Lifecycle.Read)
+name: string;
+```
+
+In this example, the `name` property has both the `Create` and `Read` context modifiers enabled, but not the `Update` context modifier.
+The `@required` decorator starts from an empty set of modifiers and adds the `Create` modifier, then adds the `Read` modifier.
 
 <a name="visibility-requiredness-conflict"></a>
 ### Visibility and requiredness conflict
@@ -420,6 +338,290 @@ Is that a bad thing? Specific protocols already "map" certain behaviors to visib
 
 See https://github.com/microsoft/typespec/issues/4486:
 > We should be able to map visibility to input or output so those get applied automatically
+
+
+### Terminology updates
+
+To make these systems easily comprehensible by developers, we also propose the following modifications to TypeSpec terminology, throughout code and documentation:
+
+1. <a name="context-modifier"></a>"visibility modifier" will be renamed "context modifier"
+2. "visibility class" will be renamed "context class"
+3. (possibly) "visibility" will be renamed "contextual visibility", mirroring "contextual requiredness".
+
+
+### Automatic requiredness
+
+We can now take the concept of [automatic visibility][automatic-visibility] and use a parallel concept of automatic requiredness to describe the concept of "default required" and "default optional" emitters.
+
+For instance, we can describe the `Http` library as applying the follow automatic requiredness to fields not annotated with `?` or `!`:
+
+| Name               | Required in             | Optional in     |
+|--------------------|-------------------------|-----------------|
+| `Lifecycle.Read`   | Any response            |                 |
+| `Lifecycle.Query`  | `GET` or `HEAD` request |                 |
+| `Lifecycle.Create` | `POST` or `PUT` request |                 |
+| `Lifecycle.Update` | `PUT` request           | `PATCH` request |
+| `Lifecycle.Delete` | `DELETE` request        |                 |
+
+
+### Replacing legacy `@parameterVisibility` behavior
+
+From [the docs on `@parameterVisibility`][parameterVisibility]:
+
+> WARNING: If no arguments are provided to this decorator, … the HTTP library will disable the feature of `@patch` operations that causes the properties of the request body to become effectively optional.
+> Some specifications have used this configuration in the past to describe exact PATCH bodies, but using this decorator with no arguments in that manner is not recommended.
+> The legacy behavior of `@parameterVisibility` with no arguments is preserved for backwards compatibility pending a future review and possible deprecation.
+
+This behavior can be replaced with the new `@required` decorator, which is more explicit and less likely to be used incorrectly.
+
+If we have defined:
+```typespec
+model User {
+  name: string;
+  email?: string;
+}
+```
+
+The existing behavior is that
+```typespec
+@patch op update(User): User;
+```
+
+produces (name and email fields optional)
+
+while
+```typespec
+@parameterVisibility
+@patch op update(User): User;
+```
+produces (name required, email optional)
+
+
+The new hotness would be achieved by instead annotating the `User.name` property
+```typespec
+@required(Lifecycle.Update) name: string;
+// or
+name!: string;
+```
+to produce the same result (name required, email optional)
+
+### Code implementation (high-level)
+
+- introduce `optionality.ts` as a parallel system to `visibility.ts` within `@typespec/compiler`
+- add the `@required` and `@optional` decorators to `@typespec/compiler` (aka the standard library decorators)
+- add the `!` symbol to the TypeSpec language parser
+- modify libraries and emitters to respect the new system
+  - e.g. [`MetadataInfo.isOptional()`][metadatainfo-isoptional] in `@typespec/http`
+
+
+—————————————————————————————
+
+The goal is to make the concepts of optionality and visibility — represent two parallel systems.
+
+|           | Default expression                               | Contextual expression                         |
+|-----------|--------------------------------------------------|-----------------------------------------------|
+| Visible   | _implied by the existence of the model property_ | `@visibility(<list of visibility modifiers>)` |
+| Invisible | _implied by the absence of the model property_   | `@invisible(<list of visibility modifiers>)`  |
+| Required  | with `!` modifier                                | `@required(<list of visibility modifiers>)`   |
+| Optional  | with `?` modifier                                | `@optional(<list of visibility modifiers>)`   |
+
+
+|                             | Visibility                                                       | Requiredness                                  |
+|-----------------------------|------------------------------------------------------------------|-----------------------------------------------|
+| modelProperty               | @visibility<br>@removeVisibility<br>@invisible                   | @required<br>@optional                        |
+| all of a model’s properties | @withDefaultKeyVisibility                                        | N/A (or @defaultOptional)?                    |
+| transform a model           | @withVisibility<br>@withVisibilityFilter<br>@withLifecycleUpdate | @withOptionalProperties                       |
+| operation                   | @parameterVisibility<br>@returnTypeVisibility                    | @parameterVisibility<br>@returnTypeVisibility |
+
+
+
+This proposal is to introduce a new symbol, `!`, into the TypeSpec language. This symbol would mark properties as _explicitly required_. This would allow developers to specify that a property is required in all contexts, including those where it would otherwise be optional.
+
+This creates a ternary system for model properties:
+- required (with `!`)
+- default (without `?` or `!`)
+- optional (with `?`)
+
+It is up to emitters to make a protocol-specific decision about how to treat properties in the default state.
+
+Properties made explicitly required or explicitly optional should always be treated as such, regardless of the emitter used.
+
+# Use Cases
+
+<a name="patch"></a>
+## PATCH
+
+In REST APIs, it is common to have `PATCH` endpoints that only update the properties given in the request body, and leave the rest of the properties unchanged. In this case, it is more natural to have all properties optional by default, and require the user to explicitly specify which properties are required.
+
+### `TypeSpec.Http.@patch`
+
+When using the `@patch` decorator, the `Http` library will make all the properties optional, regardless of whether they are marked with `?`.
+
+When the `@patch` decorator is applied to an operation, a [new "view" of that model](https://typespec.io/docs/language-basics/visibility/#_top) is created with two primary behaviors:
+
+1. Only properties with the `update` visibility are included in the model. This is consistent with the rules of [automatic visibility][automatic-visibility], and is roughly equivalent to applying the `@withLifecycleUpdate` decorator (or `@withVisibility(Lifecycle.update)`) to a model to create the update "view".
+2. All properties are made optional. This behavior is [implicit based on the visibility of the properties](https://github.com/microsoft/typespec/pull/1345), and is not configurable.
+
+The behavior of other HTTP method decorators (`@get`, `@post`, et al) can be likened to `@parameterVisibility` and `@returnTypeVisibility`, (e.g. `@get` is equivalent to those two decorators used with the `Lifecycle.read` visibility), but there is no such equivalence for `@patch` due to the second behavior.
+
+The latter has been [discussed previously](https://github.com/microsoft/typespec/issues/2150#issuecomment-1622215786), with one of the suggestions being
+
+> Add some decorator to explicitly say that the input properties are made optional or not. This can be combined with (1) or (2) or status quo as an override.
+
+As recently as Feb 4, 2025, we're still looking for a way to [make this behavior more explicit](https://github.com/microsoft/typespec/discussions/5759#discussioncomment-12057390).
+
+# Considerations
+
+## How is this different from visibility?
+
+Requiredness is a different concept from visibility. Visibility is about which properties _can_ appear in a view, while requiredness is about what properties _will_ appear in a view. A property with `Lifecycle.read` visibility is included in the read view, but it is not necessarily required to be present in all instances of that view.
+
+The precedent has been set with the `@patch` decorator that visibility context can affect optionality.
+
+## Does requiredness make sense on a model level?
+
+Models in TypeSpec can mean different things.
+While in OpenAPI they are typically only used to define the shape of a request or response body (indeed, there is [an option][omit-unreachable-types] not to emit any models unless they are part of an operation), in other protocols like JSON schema there is no notion of operations, and so models must be context-free.
+
+## Is this protocol-specific?
+
+We've already encountered the concepts of "default required" emitters and "default optional" emitters, suggesting that the emitter (and by extension, the protocol) has some role to play in determining the requiredness of a property.
+
+To that end, perhaps it should be the emitter that provides mechanisms to explicitly specify the requiredness of a property, in a way that only affects that emitter.
+
+However, this discourages the creation of protocol-agnostic API definitions, which is a [key feature of TypeSpec](https://typespec.io/data-validation/).
+If the model definition is used to create a GraphQL API, a RESTful API (described by OpenAPI), and a set of JSON schemas, it should be possible to specify the requiredness of a property, both contextual and context-free, in a way that yields a consistent representation in all protocols.
+Generated code for each protocol can then be consistent with the model definition.
+
+If instead a protocol-specific decorator is used, there will be a discrepancy in behavior among different systems handling the same data.
+
+## What about the `@removeVisibility` decorator?
+
+The visibility system provides an [`@removeVisibility` decorator][removeVisibility] that basically serves as a "reset" for a given visibility class:
+
+> If the visibility modifiers for a visibility class have not been initialized, this decorator will use the default visibility modifiers for the visibility class as the default modifier set.
+
+This decorator does not affect requiredness, since these are the modifiers stored in the `visibilityStore`, which requiredness will not share.
+
+That means to have an equivalent functionality for requiredness, we would need a decorator that resets the context modifiers of a context class as they relate to requiredness.
+
+This could be a new decorator — something like `@defaultRequiredness` or `@defaultOptionality` — to indicate a "reset" to the default requiredness behavior.
+We'd probably want to avoid `@removeRequiredness` or `@removeOptionality` since these suggest that the properties are being explicitly set to optional or required, respectively.
+
+Another option would be a decorator that handles both, e.g. `@defaultContextModifiers`:
+
+```typespec
+enum ContextSystem {
+  Visibility,
+  Requiredness,
+}
+
+@defaultContextModifiers(system: valueof ContextSystem, ...visibilities: valueof EnumMember[])
+```
+
+
+## What about the `@invisible` decorator?
+
+The [`@invisible` decorator][invisible] is similar; however instead of setting the default visibility modifiers for the property, it explicitly clears out all visibility modifiers.
+
+In the context of requiredness, removing all context modifiers means that requiredness is determined explicitly on the model property by `?` or `!`, or neither.
+
+As above, this could be a new decorator (e.g. `@clearRequiredness` or `@explicitRequiredness`), or it could be combined with the `@invisible` decorator:
+
+```typespec
+@clearContext(system: valueof ContextSystem, contextClass: Enum)
+```
+
+## What about other visibility-related decorators?
+
+There are additional decorators related to the visibility system:
+
+#### [`@withDefaultKeyVisibility`][withDefaultKeyVisibility]
+
+This seems like syntactic sugar for common patterns. We can extend this to requiredness if and when the need arises.
+
+#### Model visibility modifiers
+
+- [`@parameterVisibility`][parameterVisibility]
+- [`@returnTypeVisibility`][returnTypeVisibility]
+- [`@withVisibility`][withVisibility]
+- [`@withVisibilityFilter`][withVisibilityFilter]
+
+These are useful for our purposes. Specifying the visibility filter for a model (which all of these effectively do) is really specifying the context modifiers for the model.
+The context modifiers will also set the requiredness of the properties within, depending on the context modifiers applied with `@required` and `@optional`. So we do not need to create new equivalent decorators.
+
+We might want to rename these to swap "context" in where "visibility" appears, but it seems unlikely to cause confusion as-is.
+
+- [`@withLifecycleUpdate`][withLifecycleUpdate]
+
+The thing that appears to make this distinct from `@withVisibility(Lifecycle.update)` is that when recursing through nested properties, properties that are visible on update _or_ create are kept.
+It's not clear that this special case is as important for requiredness.
+
+- [`@withUpdateableProperties`][withUpdateableProperties]
+
+Unclear how this is different from `@withVisibility(Lifecycle.update)`.
+
+#### [`@defaultVisibility`][defaultVisibility]
+
+Useful as-is. This one might be more important to rename to `@defaultModifier` or similar, since it is not just about visibility. 
+
+
+## What are the implications for current TypeSpec emitters?
+
+Existing "default required" emitters will see no change from the `!` symbol.
+They already treat all properties without the `?` symbol as required, and a property cannot be given the `!` symbol without removing the `?` symbol.
+
+# Alternatives Considered
+
+### decorator instead of `!`
+
+From [discussion of a `@usage` decorator](https://github.com/microsoft/typespec/issues/4486), this general principle is suggested:
+
+> I think a general thing we want for typespec is have the ability to use some decorator to specify some syntax sugar like `@default` or `@optional`, etc. So i believe it would be safer to start with a decorator and move to a syntax later if it is widely used.
+
+In this scenario, however, a decorator does create the possibility of conflict. A property can be marked with both the decorator and the `?` symbol, e.g. `@required name?: string`. This would need to produce a validation error in the decorator.
+
+Since the TypeSpec language does not allow for either the `?` or `!` character [to be used in a property name][identifiers], the parser can be modified such that using both (`!?` or `?!`) is a syntax error, just as `??` is today.
+This would prevent the possibility of a conflict between the two.
+
+In addition, it seems awkward to use one system to indicate one side of a binary (`?` for optional) and a different system for the other (`@required` for required). Developers might rightly question why we don't have an `@optional` decorator instead of `?`, or something like `@requiredness(bool)`.
+
+Finally, we want to avoid confusion with the proposed `@required` and `@optional` decorators that are context-specific.
+
+### Implement GraphQL emitter with the existing concepts
+
+By default, [all types in GraphQL are nullable][graphql-nullable-default].
+This means that all fields are optional unless they are explicitly marked as non-nullable using a trailing exclamation mark (e.g. `name: String!`).
+This is the opposite of "default required" emitters like OpenAPI and JSON schema, where all fields are required unless they are explicitly marked as optional.
+
+In order to implement a "default optional" emitter with existing concepts, there are a few options:
+
+1. Require the TSP developer to use the `?` symbol by default. This would require adding `?` to every field in every model, which could be tedious and error-prone. Additionally, this affects the output in "default required" emitters. To avoid this, developers would need to maintain multiple protocol-specific versions of the same model.
+2. Use `| null` to mark fields as nullable. Similar to the previous option, this is tedious and affects the definition of the model itself. In GraphQL, there is no notion of a field being "optional", and the semantic notion of the `?` symbol provides the best match to GraphQL nullable.
+3. Implement emitter-specific behavior. This is discussed below in "Is this protocol-specific?".
+4. This proposal, which we think avoids the drawbacks of the other options. Developers are expected to use the `!` symbol on fields which are required in all contexts and protocols, and the GraphQL emitter will treat these fields as non-nullable.
+
+
+## `@requiredFor<Action>` decorators
+
+As mentioned by @garethj-msft in [this issue](https://github.com/microsoft/typespec/issues/1583), a `@requiredForCreate` decorator is used when describing Microsoft Graph APIs.
+
+In his words:
+
+> For `@requiredForCreate`, that's on all properties which are required any time a resource is created, either by `POST` to collection, `PUT` to single slot, or by any mutation of a sub-resource via the above, or by `PATCH`ing the parent resource with a new child resource, or `PATCH` for upsert.
+> Any property without that can be omitted in a _creation_ scenario.
+
+This approach provides a way to specify requiredness _based on the action being performed_. This is a different concept than the proposed `!` or even the `@required` decorator, as it is not about the property itself, but about the context in which it is used.
+
+Replicating this approach in the proposed system would require a new decorator for each action, e.g. `@requiredForCreate`, `@requiredForUpdate`, etc.
+
+Using the context modifiers instead to specify the action seems a much more flexible and extensible system.
+
+This approach would allow for more fine-grained control over requiredness, but it would also introduce more complexity and require more decorators to be defined.
+
+It also creates a [conflict between visibility and requiredness](#visibility-requiredness-conflict), which will be discussed more below (the concept is the same).
+
+
 
 
 
@@ -688,3 +890,15 @@ input UserUpdateInput {
 [defaultVisibility]: https://typespec.io/docs/standard-library/built-in-decorators/#@defaultVisibility
 [withDefaultKeyVisibility]: https://typespec.io/docs/standard-library/built-in-decorators/#@withDefaultKeyVisibility
 [graphql-nullable-default]: https://spec.graphql.org/October2021/#sec-Non-Null
+[automatic-visibility]: https://typespec.io/docs/libraries/http/operations/#automatic-visibility
+[metadatainfo-isoptional]: https://typespec.io/docs/libraries/http/reference/js-api/interfaces/metadatainfo/#isoptional
+[parameterVisibility]: https://typespec.io/docs/standard-library/built-in-decorators/#@parameterVisibility
+[invisible]: https://typespec.io/docs/standard-library/built-in-decorators/#@invisible
+[removeVisibility]: https://typespec.io/docs/standard-library/built-in-decorators/#@removeVisibility
+[withVisibility]: https://typespec.io/docs/standard-library/built-in-decorators/#@withVisibility
+[withVisibilityFilter]: https://typespec.io/docs/standard-library/built-in-decorators/#@withVisibilityFilter
+[withLifecycleUpdate]: https://typespec.io/docs/standard-library/built-in-decorators/#@withLifecycleUpdate
+[returnTypeVisibility]: https://typespec.io/docs/standard-library/built-in-decorators/#@returnTypeVisibility
+[omit-unreachable-types]: https://typespec.io/docs/emitters/openapi3/reference/emitter/#omit-unreachable-types
+[withUpdateableProperties]: https://typespec.io/docs/standard-library/built-in-decorators/#@withUpdateableProperties
+[identifiers]: https://typespec.io/docs/language-basics/identifiers/
