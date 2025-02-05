@@ -1,10 +1,11 @@
 # Requiredness and Optionality in TypeSpec
 
-This proposal suggests three new expressions:
+This proposal suggests four new expressions:
 
 1. A new symbol, `!`, to mark properties as _explicitly required_.
 2. A new decorator, `@required`, to mark properties as required in specific contexts.
 3. A new decorator, `@optional`, to mark properties as optional in specific contexts.
+4. A new decorator, `@defaultRequiredness`, to remove contextual requiredness behavior in specific contexts.
 
 ## Goals
 
@@ -200,11 +201,28 @@ model Dog {
 
 It is _not_ possible to mark a property as both explicitly required and explicitly optional.
 
-### `@required` decorator
+### `@required`, `@optional`, `@defaultRequiredness` decorators
+
+These decorators are used to control a property's optionality/requiredness in specific contexts.
+
+The behavior of these decorators mirror that of the `@visibility`/`@removeVisibility` decorators.
+
+The difference is that while a context modifier has two possible states within the visibility system (present or absent), it has three possible states in the requiredness system:
+- absent
+- required
+- optional
+
+Visibility provides a means to specify the present state with `@visibility` and the absent state with `@removeVisibility`.
+
+Requiredness provides a means to specify the required state with `@required`, the optional state with `@optional`, and the absent state with `@defaultRequiredness`.
+
+#### `@required` decorator
 
 ```typespec
-@required(...contexts: EnumMember[])
+@required(...contextModifiers: EnumMember[])
 ```
+
+<details><summary>Specific behavior</summary>
 
 The `@required` decorator is used to mark a property as required with given [context modifiers](#context-modifier).
 It takes a list of context modifiers as arguments and sets them as _contextual requiredness_ on the property.
@@ -217,8 +235,7 @@ name: string;
 
 The behavior of the `@required` decorator mirrors that of the `@visibility` decorator. Specifically:
 
-If contextual requiredness has already been set explicitly on a property, the `@required` decorator ADDS its own context modifiers to the currently-active modifiers.
-It does not replace the existing modifiers.
+If contextual requiredness has already been set explicitly on a property, the `@required` decorator sets requiredness only its own context modifiers (it does not affect currently-active modifiers)
 For example:
 
 ```typespec
@@ -227,14 +244,18 @@ For example:
 name: string;
 ```
 
-In this example, the `name` property has both the `Create` and `Read` context modifiers enabled, but not the `Update` context modifier.
+In this example, the `name` property has both the `Create` and `Read` context modifiers set to required, but not the `Update` context modifier.
 The `@required` decorator starts from an empty set of modifiers and adds the `Create` modifier, then adds the `Read` modifier.
+
+</details>
 
 ### `@optional` decorator
 
 ```typespec
-@optional(...contexts: EnumMember[])
+@optional(...contextModifiers: EnumMember[])
 ```
+
+<details><summary>Specific behavior</summary>
 
 The `@optional` decorator is used to mark a property as optional with given [context modifiers](#context-modifier).
 It takes a list of context modifiers as arguments and sets them as _contextual optionality_ on the property.
@@ -245,21 +266,69 @@ For example:
 name: string;
 ```
 
-The behavior of the `@optional` decorator mirrors that of the `@invisible` decorator. Specifically:
+The behavior of the `@optional` decorator also mirrors that of the `@visibility` decorator. Specifically:
 
-This decorator removes all active requiredness modifiers from the property within the given visibility class, making it invisible to any context that selects for visibility modifiers within that class.
-
-
+If contextual requiredness has already been set explicitly on a property, the `@optional` decorator sets optionality only its own context modifiers (it does not affect currently-active modifiers).
 For example:
 
 ```typespec
-@required(Lifecycle.Create)
-@required(Lifecycle.Read)
+@optional(Lifecycle.Create)
+@optional(Lifecycle.Read)
 name: string;
 ```
 
-In this example, the `name` property has both the `Create` and `Read` context modifiers enabled, but not the `Update` context modifier.
-The `@required` decorator starts from an empty set of modifiers and adds the `Create` modifier, then adds the `Read` modifier.
+In this example, the `name` property has both the `Create` and `Read` context modifiers set to optional, but not the `Update` context modifier.
+The `@optional` decorator starts from an empty set of modifiers and adds the `Create` modifier, then adds the `Read` modifier.
+
+</details>
+
+### `@defaultRequiredness` decorator
+
+```typespec
+@defaultRequiredness(...contextModifiers: EnumMember[])
+```
+
+The visibility system provides a [`@removeVisibility` decorator][removeVisibility] that basically serves as a way to "undo" a `@visibility` decorator.
+Similarly, `@defaultRequiredness` can "undo" `@required` or `@optional` without explicitly setting requiredness to the inverse.
+
+We'd probably want to avoid `@removeRequiredness` or `@removeOptionality` since these suggest that the properties are being explicitly set to optional or required, respectively.
+
+Another option would be a decorator that handles both visibility and requiredness, e.g. `@removeContextModifiers`:
+
+```typespec
+enum ContextSystem {
+  Visibility,
+  Requiredness,
+}
+
+@removeContextModifiers(system: valueof ContextSystem, ...contextModifiers: valueof EnumMember[])
+```
+
+### Decorator conflict
+
+If a property is marked with multiple requiredness decorators in the same context, the most-recently-specified decorator "wins".
+
+This matches the existing behavior of the `@visibility` and `@removeVisibility` decorators.
+
+```typespec
+model User {
+  @optional(Lifecycle.Create)
+  @required(Lifecycle.Create)
+  @removeVisibility(Lifecycle.Create)
+  name: string; // This will be optional on Create
+  
+  @required(Lifecycle.Create)
+  @optional(Lifecycle.Create)
+  @removeVisibility(Lifecycle.Create)
+  email?: string; // This will be required on Create
+  
+  @removeVisibility(Lifecycle.Create)
+  @required(Lifecycle.Create)
+  @optional(Lifecycle.Create)
+  address?: string; // This will have default requiredness on create (in this case, optional)
+}
+```
+
 
 <a name="visibility-requiredness-conflict"></a>
 ### Visibility and requiredness conflict
@@ -471,30 +540,6 @@ If the model definition is used to create a GraphQL API, a RESTful API (describe
 Generated code for each protocol can then be consistent with the model definition.
 
 If instead a protocol-specific decorator is used, there will be a discrepancy in behavior among different systems handling the same data.
-
-## What about the `@removeVisibility` decorator?
-
-The visibility system provides an [`@removeVisibility` decorator][removeVisibility] that basically serves as a "reset" for a given visibility class:
-
-> If the visibility modifiers for a visibility class have not been initialized, this decorator will use the default visibility modifiers for the visibility class as the default modifier set.
-
-This decorator does not affect requiredness, since these are the modifiers stored in the `visibilityStore`, which requiredness will not share.
-
-That means to have an equivalent functionality for requiredness, we would need a decorator that resets the context modifiers of a context class as they relate to requiredness.
-
-This could be a new decorator — something like `@defaultRequiredness` or `@defaultOptionality` — to indicate a "reset" to the default requiredness behavior.
-We'd probably want to avoid `@removeRequiredness` or `@removeOptionality` since these suggest that the properties are being explicitly set to optional or required, respectively.
-
-Another option would be a decorator that handles both, e.g. `@defaultContextModifiers`:
-
-```typespec
-enum ContextSystem {
-  Visibility,
-  Requiredness,
-}
-
-@defaultContextModifiers(system: valueof ContextSystem, ...visibilities: valueof EnumMember[])
-```
 
 
 ## What about the `@invisible` decorator?
