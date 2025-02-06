@@ -187,6 +187,15 @@ As recently as Feb 4, 2025, we're still looking for a way to [make this behavior
 
 ## Implementation
 
+<a name="terminology"></a>
+## Terminology
+
+To speak more clearly about the concepts of visibility and requiredness, we will refer to the following in the rest of the document.
+
+1. <a name="context-modifier"></a>"visibility modifier" is called "context modifier"
+2. "visibility class" is called "context class"
+3. (possibly) "visibility" will be renamed "contextual visibility", mirroring "contextual requiredness".
+
 ### `!` symbol
 
 The `!` symbol is used to mark a property as _explicitly required_.
@@ -410,15 +419,6 @@ See https://github.com/microsoft/typespec/issues/4486:
 > We should be able to map visibility to input or output so those get applied automatically
 
 
-### Terminology updates
-
-To make these systems easily comprehensible by developers, we also propose the following modifications to TypeSpec terminology, throughout code and documentation:
-
-1. <a name="context-modifier"></a>"visibility modifier" will be renamed "context modifier"
-2. "visibility class" will be renamed "context class"
-3. (possibly) "visibility" will be renamed "contextual visibility", mirroring "contextual requiredness".
-
-
 ### Automatic requiredness
 
 We can now take the concept of [automatic visibility][automatic-visibility] and use a parallel concept of automatic requiredness to describe the concept of "default required" and "default optional" emitters.
@@ -475,6 +475,10 @@ name!: string;
 ```
 to produce the same result (name required, email optional)
 
+### Reconciling visibility and requiredness
+
+
+
 ### Code implementation (high-level)
 
 - introduce `optionality.ts` as a parallel system to `visibility.ts` within `@typespec/compiler`
@@ -484,37 +488,14 @@ to produce the same result (name required, email optional)
   - e.g. [`MetadataInfo.isOptional()`][metadatainfo-isoptional] in `@typespec/http`
 
 
-—————————————————————————————
+## Terminology updates
 
-The goal is to make the concepts of optionality and visibility — represent two parallel systems.
+Finally, to make these systems more comprehensible to developers, we suggest making the [aforementioned terminology changes](#terminology) throughout TypeSpec code and documentation:
 
-|           | Default expression                               | Contextual expression                         |
-|-----------|--------------------------------------------------|-----------------------------------------------|
-| Visible   | _implied by the existence of the model property_ | `@visibility(<list of visibility modifiers>)` |
-| Invisible | _implied by the absence of the model property_   | `@invisible(<list of visibility modifiers>)`  |
-| Required  | with `!` modifier                                | `@required(<list of visibility modifiers>)`   |
-| Optional  | with `?` modifier                                | `@optional(<list of visibility modifiers>)`   |
+1. <a name="context-modifier"></a>"visibility modifier" will be renamed "context modifier"
+2. "visibility class" will be renamed "context class"
+3. (possibly) "visibility" will be renamed "contextual visibility", mirroring "contextual requiredness".
 
-
-|                             | Visibility                                                       | Requiredness                                  |
-|-----------------------------|------------------------------------------------------------------|-----------------------------------------------|
-| modelProperty               | @visibility<br>@removeVisibility<br>@invisible                   | @required<br>@optional                        |
-| all of a model’s properties | @withDefaultKeyVisibility                                        | N/A (or @defaultOptional)?                    |
-| transform a model           | @withVisibility<br>@withVisibilityFilter<br>@withLifecycleUpdate | @withOptionalProperties                       |
-| operation                   | @parameterVisibility<br>@returnTypeVisibility                    | @parameterVisibility<br>@returnTypeVisibility |
-
-
-
-This proposal is to introduce a new symbol, `!`, into the TypeSpec language. This symbol would mark properties as _explicitly required_. This would allow developers to specify that a property is required in all contexts, including those where it would otherwise be optional.
-
-This creates a ternary system for model properties:
-- required (with `!`)
-- default (without `?` or `!`)
-- optional (with `?`)
-
-It is up to emitters to make a protocol-specific decision about how to treat properties in the default state.
-
-Properties made explicitly required or explicitly optional should always be treated as such, regardless of the emitter used.
 
 # Considerations
 
@@ -593,6 +574,331 @@ Useful as-is. This one might be more important to rename to `@defaultModifier` o
 Existing "default required" emitters will see no change from the `!` symbol.
 They already treat all properties without the `?` symbol as required, and a property cannot be given the `!` symbol without removing the `?` symbol.
 
+# Real-world use cases
+
+## Pinterest `customer_list` API
+
+The [Pinterest `customer_list` API][pinterest-customer-list] has two properties that make it difficult to express with current TypeSpec:
+1. It has a `PATCH` operation with required fields.
+2. The `name` property is required when creating the model, but optional when reading it.
+
+As mentioned above, the `@patch` decorator in the `@typespec/http` library currently makes all properties optional.
+
+[RFC 5789][rfc-5789] does not specify what the patch document must look like. Indeed, the RFC states
+
+> there is no single default patch document format that implementations are required to support.
+
+It is common to use [JSON Patch][rfc-6902], especially with APIs that are RESTful, described by OpenAPI, and/or use the `application/json` content-type.
+Thus the `@patch` decorator's behavior is a reasonable default.
+
+However, TypeSpec should be able to describe APIs as they are, not just how they ought to be.
+
+Currently, it would have to be defined in TypeSpec using the legacy behavior of the [`@parameterVisibility` decorator][parameterVisibility], which is not recommended.
+
+It is also currently not possible to use visibility on `CustomerList` because of the `name` property: a property that is required when creating the model but optional on response.
+There is no way to describe this with a single model property, and no "special" behavior or decorator behavior that can describe this use case.
+While an argument could be made that this is a strange thing to have in an API, it is what it is and we want to be able to describe that in TypeSpec.
+
+<details open><summary>Current TypeSpec</summary>
+
+```typespec
+enum UserListType {
+  EMAIL,
+  IDFA,
+  MAID,
+  LR_ID,
+  DLX_ID,
+  HASHED_PINNER_ID,
+}
+
+enum UserListOperationType {
+  ADD,
+  REMOVE,
+}
+
+// All of the properties in the response model are optional
+model CustomerList {
+  name?: string;
+  records?: string;
+  ...
+}
+
+model CustomerListCreate {
+  name: string;
+  records: string;
+  list_type?: UserListType = UserListType.EMAIL;
+}
+
+model CustomerListUpdate {
+  records: string;
+  operation_type: UserListOperationType;
+}
+
+@route("/customer_lists")
+interface customer_lists {
+  @post op create(@body customer_list: CustomerList): CustomerList;
+  
+  @route("/{customer_list_id}")
+  @get op get(@path customer_list_id: string): CustomerList;
+  
+  @route("/{customer_list_id}")
+  @parameterVisibility // using the no arguments "hack"
+  @patch op update(@path customer_list_id: string, @body customer_list: CustomerList): CustomerList;
+}
+```
+
+</details>
+
+Given this proposal, we could instead define it as
+
+<details open><summary>Proposed TypeSpec</summary>
+
+```typespec
+model CustomerList {
+  @visibility(Lifecycle.Read) id?: string; // only in the response, and optional
+  @visibility(Lifecycle.Read, Lifecycle.Create) @required(Lifecycle.Create) name?: string; //optional in response, required on create
+  @visibility(Lifecycle.Create, Lifecycle.Update) records!: string; // required in create and update
+  @visibility(Lifecycle.Create) list_type?: UserListType = UserListType.EMAIL; //optional on create
+  @visibility(Lifecycle.Update) operation_type!: UserListOperationType;
+}
+
+@route("/customer_lists")
+interface customer_lists {
+  @post op create(@body customer_list: CustomerList): CustomerList;
+  
+  @route("/{customer_list_id}")
+  @get op get(@path customer_list_id: string): CustomerList;
+  
+  @route("/{customer_list_id}")
+  @parameterVisibility // using the no arguments "hack"
+  @patch op update(@path customer_list_id: string, @body customer_list: CustomerList): CustomerList;
+}
+```
+
+</details>
+
+<details><summary>For reference: The OpenAPI schema that currently describes this API</summary>
+
+```yaml
+paths:
+  /ad_accounts/{ad_account_id}/customer_lists:
+    post:
+      description: "..."
+      operationId: customer_lists/create
+      security:
+      - pinterest_oauth2:
+        - ads:write
+      parameters:
+      - $ref: '#/components/parameters/path_ad_account_id'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerListRequest'
+        description: Parameters to get Customer lists info
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerList'
+          description: Success
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Unexpected error
+      summary: Create customer lists
+      tags:
+      - customer_lists
+
+  /ad_accounts/{ad_account_id}/customer_lists/{customer_list_id}:
+    get:
+      summary: Get customer list
+      description: Gets a specific customer list given the customer list ID.
+      operationId: customer_lists/get
+      security:
+      - pinterest_oauth2:
+        - ads:read
+      - client_credentials:
+        - ads:read
+      parameters:
+      - $ref: '#/components/parameters/path_ad_account_id'
+      - $ref: '#/components/parameters/path_customer_list_id'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerList'
+          description: Success
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      tags:
+      - customer_lists
+    patch:
+      description: "..."
+      operationId: customer_lists/update
+      security:
+      - pinterest_oauth2:
+        - ads:write
+      parameters:
+      - $ref: '#/components/parameters/path_ad_account_id'
+      - $ref: '#/components/parameters/path_customer_list_id'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerListUpdateRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerList'
+          description: Success
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Unexpected error
+      summary: Update customer list
+      tags:
+      - customer_lists
+
+components:
+  CustomerList:
+    properties:
+      ad_account_id:
+        description: Associated ad account ID.
+        example: "549756359984"
+        title: ad_account_id
+        type: string
+      created_time:
+        description: Creation time. Unix timestamp in seconds.
+        example: 1452208622
+        title: created_time
+        type: number
+      id:
+        description: Customer list ID.
+        example: "643"
+        title: id
+        type: string
+      name:
+        description: Customer list name.
+        example: "The Glengarry Glen Ross leads"
+        title: name
+        type: string
+      num_batches:
+        description: Total number of list updates.  List creation counts as one
+          batch. Each <a href="/docs/redoc/#operation/ads_v3_customer_list_add_handler_PUT">Append</a>
+          or <a href="/docs/redoc/#operation/ads_v3_customer_list_remove_handler_PUT">Remove
+          API</a> call counts as another. List creation via the Ads Manager UI could
+          result in more than one batch since the UI breaks up large lists.
+        example: 2
+        title: num_batches
+        type: number
+      num_removed_user_records:
+        description: Number of removed user records. In a <a href="/docs/redoc/#operation/ads_v3_customer_list_remove_handler_PUT">Remove
+          API</a> call, this counter increases even if the user is not found in
+          the list.
+        example: 0
+        title: num_removed_user_records
+        type: number
+      num_uploaded_user_records:
+        description: Number of uploaded user records. In an <a href="/docs/redoc/#operation/ads_v3_customer_list_add_handler_PUT">Append
+          API</a> call, this counter increases even if the uploaded user is already
+          in the list.
+        example: 11
+        title: num_uploaded_user_records
+        type: number
+      status:
+        description: Customer list status. TOO_SMALL - the list has less than 100
+          Pinterest users.
+        enum:
+        - PROCESSING
+        - READY
+        - TOO_SMALL
+        - UPLOADING
+        example: "PROCESSING"
+        title: status
+        type: string
+      type:
+        description: Always "customerlist".
+        example: "customerlist"
+        title: type
+        type: string
+      updated_time:
+        description: Last update time. Unix timestamp in seconds.
+        example: 1461269616
+        title: updated_time
+        type: number
+      exceptions:
+        description: Customer list errors
+        title: exceptions
+        type: object
+    title: CustomerList
+    type: object
+
+  CustomerListRequest:
+    properties:
+      name:
+        description: Customer list name.
+        example: "The Glengarry Glen Ross leads"
+        title: name
+        type: string
+      records:
+        description: Records list. Can be any combination of emails, MAIDs, or IDFAs.
+          Emails must be lowercase and can be plain text or hashed using SHA1, SHA256,
+          or MD5. MAIDs and IDFAs must be hashed with SHA1, SHA256, or MD5.
+        example: "email1@pinterest.com,email2@pinterest.com,..<more records>"
+        title: records
+        type: string
+      list_type:
+        allOf:
+        - $ref: '../customer_list/user_list_type.yaml#/UserListType'
+        default: "EMAIL"
+        title: list_type
+        type: string
+    required:
+    - name
+    - records
+    title: CustomerListCreate
+    type: object
+
+  CustomerListUpdateRequest:
+    properties:
+      records:
+        description: Records list. Can be any combination of emails, MAIDs, or IDFAs.
+          Emails must be lowercase and can be plain text or hashed using SHA1, SHA256,
+          or MD5. MAIDs and IDFAs must be hashed with SHA1, SHA256, or MD5.
+        example: "email2@pinterest.com,email6@pinterest.com,"
+        title: records
+        type: string
+      operation_type:
+        allOf:
+        - $ref: '../customer_list/user_list_operation_type.yaml#/UserListOperationType'
+        title: operation_type
+        type: string
+    required:
+    - operation_type
+    - records
+    title: CustomerListUpdate
+    type: object
+
+
+```
+
+</details>
+
 # Alternatives Considered
 
 ### decorator instead of `!`
@@ -642,9 +948,6 @@ Using the context modifiers instead to specify the action seems a much more flex
 This approach would allow for more fine-grained control over requiredness, but it would also introduce more complexity and require more decorators to be defined.
 
 It also creates a [conflict between visibility and requiredness](#visibility-requiredness-conflict), which will be discussed more below (the concept is the same).
-
-
-
 
 
 ## Use custom visibility for GraphQL
@@ -924,3 +1227,6 @@ input UserUpdateInput {
 [omit-unreachable-types]: https://typespec.io/docs/emitters/openapi3/reference/emitter/#omit-unreachable-types
 [withUpdateableProperties]: https://typespec.io/docs/standard-library/built-in-decorators/#@withUpdateableProperties
 [identifiers]: https://typespec.io/docs/language-basics/identifiers/
+[rfc-5789]: https://datatracker.ietf.org/doc/html/rfc5789
+[rfc-6902]: https://datatracker.ietf.org/doc/html/rfc6902
+[pinterest-customer-list]: https://developers.pinterest.com/docs/api/v5/customer_lists-update
