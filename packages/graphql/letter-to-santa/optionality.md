@@ -196,7 +196,7 @@ To speak more clearly about the concepts of visibility and requiredness, we will
 2. "visibility class" is called "context class"
 3. (possibly) "visibility" will be renamed "contextual visibility", mirroring "contextual requiredness".
 
-### `!` symbol
+## `!` symbol
 
 The `!` symbol is used to mark a property as _explicitly required_.
 
@@ -210,7 +210,7 @@ model Dog {
 
 It is _not_ possible to mark a property as both explicitly required and explicitly optional.
 
-### `@required`, `@optional`, `@defaultRequiredness` decorators
+## `@required`, `@optional`, `@defaultRequiredness` decorators
 
 These decorators are used to control a property's optionality/requiredness in specific contexts.
 
@@ -225,7 +225,7 @@ Visibility provides a means to specify the present state with `@visibility` and 
 
 Requiredness provides a means to specify the required state with `@required`, the optional state with `@optional`, and the absent state with `@defaultRequiredness`.
 
-#### `@required` decorator
+### `@required` decorator
 
 ```typespec
 @required(...contextModifiers: EnumMember[])
@@ -313,6 +313,20 @@ enum ContextSystem {
 @removeContextModifiers(system: valueof ContextSystem, ...contextModifiers: valueof EnumMember[])
 ```
 
+## Effect on emitters
+
+The effect of these specifiers will be different between "default required" and "default optional" emitters, as this table demonstrates:
+
+|                                                                                                                                                           | Protocol-agnostic | Required by default (e.g. OAI)                                         | Optional by default (e.g. GraphQL)                                     |
+|-----------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------|------------------------------------------------------------------------|------------------------------------------------------------------------|
+| `@visibility(Lifecycle.Update, Lifecycle.Create, Vis.Foo)`<br/>`@required(Lifecycle.Create)`<br/>`@optional(Lifecycle.Update)`<br/>`password: password;`  | **Undefined**     | Required on `Create`.<br/>Optional on `Update`.<br/>Required on `Foo`. | Required on `Create`.<br/>Optional on `Update`.<br/>Optional on `Foo`. |
+| `@visibility(Lifecycle.Update, Lifecycle.Create, Vis.Foo)`<br/>`@required(Lifecycle.Create)`<br/>`@optional(Lifecycle.Update)`<br/>`password?: password;` | **Optional**      | Required on `Create`.<br/>Optional on `Update`.<br/>Optional on `Foo`. | Required on `Create`.<br/>Optional on `Update`.<br/>Optional on `Foo`. |
+| `@visibility(Lifecycle.Update, Lifecycle.Create, Vis.Foo)`<br/>`@required(Lifecycle.Create)`<br/>`@optional(Lifecycle.Update)`<br/>`password!: password;` | **Required**      | Required on `Create`.<br/>Optional on `Update`.<br/>Required on `Foo`. | Required on `Create`.<br/>Optional on `Update`.<br/>Required on `Foo`. |
+
+
+
+## Considerations
+
 ### Decorator conflict
 
 If a property is marked with multiple requiredness decorators in the same context, the most-recently-specified decorator "wins".
@@ -341,7 +355,7 @@ model User {
 
 <a name="visibility-requiredness-conflict"></a>
 ### Visibility and requiredness conflict
-This introduces a bit more of an explicit relationship between requiredness and visibility. For a given lifecycle, there are now six possibilities:
+This proposal introduces a bit more of an explicit relationship between requiredness and visibility. For a given lifecycle, there are now six possibilities:
 - visible and default requiredness
 - visible and required
 - visible and optional
@@ -365,59 +379,6 @@ or it could be silently ignored, e.g.
   // is equivalent to (in the context of Create)
   @invisible(Lifecycle.Create) id: int64;
 ```
-
-<a name="extend-the-visibility-decorator-with-requiredness"></a>
-## Extend the `@visibility` decorator with requiredness
-
-The signature of `@visibility` is
-```typespec
-extern dec visibility(target: ModelProperty, ...visibilities: valueof (string | EnumMember)[]);
-```
-
-Since it uses a [rest parameter](https://typespec.io/docs/extending-typespec/create-decorators/#rest-parameters) already, we cannot add a second parameter to it without a breaking change.
-
-However, let's pretend that we can and explore the implications:
-
-```typespec
-extern dec visibility(target: ModelProperty, visibilities: valueof (string | EnumMember)[], required?: boolean = null);
-```
-
-In this scenario, we can specify the requiredness alongside the visibility. This eliminates the issue of conflict described above, since we make this change only to `@visibility` and not to `@invisible`.
-
-This gives the `?` a more defined role as "fallback requiredness"; i.e. if not given a requiredness with a `@visibility` decorator, the requiredness is determined by the presence or absence of the `?` symbol.
-
-```typespec
-  // visible and required on create and update, invisible otherwise
-  @visibility(#[Lifecycle.Create, Lifecycle.Update], true) password: string;
-  // is equivalent to
-  @visibility(#[Lifecycle.Create, Lifecycle.Update], true) password?: string;
-  
-  // visible and optional on create and update, invisible otherwise
-  @visibility(#[Lifecycle.Create, Lifecycle.Update], false) password: string;
-  // is equivalent to
-  @visibility(#[Lifecycle.Create, Lifecycle.Update], false) password?: string;
-  // is equivalent to
-  @visibility(#[Lifecycle.Create, Lifecycle.Update]) password?: string;
-
-  // visible and default requiredness on create and update, invisible otherwise
-  @visibility(#[Lifecycle.Create, Lifecycle.Update]) password: string;
-```
-
-If we want to have an implementation compatible with the current `@visibility` decorator, we could introduce a new set of visibilities, e.g.
-```typespec
-enum Optionality {
-  Required,
-  Optional,
-}
-```
-
-Which replaces the `true` or `false` boolean in the above examples with `Optionality.Required` or `Optionality.Optional`. These can simply be added to the existing rest parameter of `@visibility`. But it does make the `Optionality` enum "special", in that it implies a different behavior from any other visibility enum. Other visibility enums are used to match a model property's visibility to an operation's visibility.
-
-Is that a bad thing? Specific protocols already "map" certain behaviors to visibilities. And there's already an implication built in to TypeSpec that `Create`/`Update` are "input" visibilities and `Read` is an "output" visibility.
-
-See https://github.com/microsoft/typespec/issues/4486:
-> We should be able to map visibility to input or output so those get applied automatically
-
 
 ### Automatic requiredness
 
@@ -477,15 +438,25 @@ to produce the same result (name required, email optional)
 
 ### Reconciling visibility and requiredness
 
+All of this taken together, we can start to see a parallel structure emerge between visibility and requiredness.
 
+Visibility can be specified absent of context, or given a context modifier. So can requiredness.
 
-### Code implementation (high-level)
+| State     | Contextless expression                         | Contextual expression                         |
+|-----------|------------------------------------------------|-----------------------------------------------|
+| Visible   | implied by the existence of the model property | `@visibility(<list of visibility modifiers>)` |
+| Invisible | implied by the absence of the model property   | `@invisible(<list of visibility modifiers>)`  |
+| Required  | with `!` modifier                              | `@required(<list of context modifiers>)`      |
+| Optional  | with `?` modifier                              | `@optional(<list of context modifiers>)`      |
 
-- introduce `optionality.ts` as a parallel system to `visibility.ts` within `@typespec/compiler`
-- add the `@required` and `@optional` decorators to `@typespec/compiler` (aka the standard library decorators)
-- add the `!` symbol to the TypeSpec language parser
-- modify libraries and emitters to respect the new system
-  - e.g. [`MetadataInfo.isOptional()`][metadatainfo-isoptional] in `@typespec/http`
+We can also see how the sets of decorators follow somewhat of a parallel pattern. Visibility and requiredness define their own, roughly equivalent decorators to apply their concept to model properties. But they can leverage the same decorators when applied to models and operations (where for requiredness, we have simply changed the name of the existing decorator).
+
+|       as applied to…        |                                 Visibility                                 |                                         Requiredness                                          |
+|:---------------------------:|:--------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------------:|
+|      a model property       |            `@visibility`<br>`@invisible`<br>`@removeVisibility`            |                     `@required`<br>`@optional`<br>`@defaultRequiredness`                      |
+| all of a model’s properties |                        `@withDefaultKeyVisibility`                         |                                 N/A (or `@defaultOptional`)?                                  |
+|      transform a model      | `@withVisibility`<br>`@withVisibilityFilter`<br>`@withLifecycleUpdate`<br>`@withUpdateableProperties` | `@withContext`<br>`@withContextFilter`<br>`@withLifecycleUpdate`<br>`@withOptionalProperties` |
+|          operation          |             `@parameterVisibility`<br>`@returnTypeVisibility`              |                          `@parameterContext`<br>`@returnTypeContext`                          |
 
 
 ## Terminology updates
@@ -566,7 +537,7 @@ Unclear how this is different from `@withVisibility(Lifecycle.update)`.
 
 #### [`@defaultVisibility`][defaultVisibility]
 
-Useful as-is. This one might be more important to rename to `@defaultModifier` or similar, since it is not just about visibility. 
+Useful as-is. This one might be more important to rename to `@defaultContextModifier` or similar, since it is not just about visibility. 
 
 
 ## What are the implications for current TypeSpec emitters?
@@ -656,9 +627,14 @@ Given this proposal, we could instead define it as
 ```typespec
 model CustomerList {
   @visibility(Lifecycle.Read) id?: string; // only in the response, and optional
-  @visibility(Lifecycle.Read, Lifecycle.Create) @required(Lifecycle.Create) name?: string; //optional in response, required on create
+  
+  @visibility(Lifecycle.Read, Lifecycle.Create)
+  @required(Lifecycle.Create) name?: string; //optional in response, required on create
+  
   @visibility(Lifecycle.Create, Lifecycle.Update) records!: string; // required in create and update
+  
   @visibility(Lifecycle.Create) list_type?: UserListType = UserListType.EMAIL; //optional on create
+
   @visibility(Lifecycle.Update) operation_type!: UserListOperationType;
 }
 
@@ -670,7 +646,6 @@ interface customer_lists {
   @get op get(@path customer_list_id: string): CustomerList;
   
   @route("/{customer_list_id}")
-  @parameterVisibility // using the no arguments "hack"
   @patch op update(@path customer_list_id: string, @body customer_list: CustomerList): CustomerList;
 }
 ```
@@ -901,7 +876,7 @@ components:
 
 # Alternatives Considered
 
-### decorator instead of `!`
+## decorator instead of `!`
 
 From [discussion of a `@usage` decorator](https://github.com/microsoft/typespec/issues/4486), this general principle is suggested:
 
@@ -916,7 +891,88 @@ In addition, it seems awkward to use one system to indicate one side of a binary
 
 Finally, we want to avoid confusion with the proposed `@required` and `@optional` decorators that are context-specific.
 
-### Implement GraphQL emitter with the existing concepts
+<a name="extend-the-visibility-decorator-with-requiredness"></a>
+## Extend the `@visibility` decorator with requiredness
+
+The signature of `@visibility` is
+```typespec
+extern dec visibility(target: ModelProperty, ...visibilities: valueof (string | EnumMember)[]);
+```
+
+Since it uses a [rest parameter][rest-parameter] already, we cannot add a second parameter to it without a breaking change.
+
+However, let's pretend that we can and explore the implications:
+
+```typespec
+extern dec visibility(target: ModelProperty, visibilities: valueof (string | EnumMember)[], required?: boolean = null);
+```
+
+In this scenario, we can specify the requiredness alongside the visibility.
+
+```typespec
+  // visible and required on create and update, invisible otherwise
+  @visibility(#[Lifecycle.Create, Lifecycle.Update], true) password: string;
+  // is equivalent to
+  @visibility(#[Lifecycle.Create, Lifecycle.Update], true) password?: string;
+  
+  // visible and optional on create and update, invisible otherwise
+  @visibility(#[Lifecycle.Create, Lifecycle.Update], false) password: string;
+  // is equivalent to
+  @visibility(#[Lifecycle.Create, Lifecycle.Update], false) password?: string;
+  // is equivalent to
+  @visibility(#[Lifecycle.Create, Lifecycle.Update]) password?: string;
+
+  // visible and default requiredness on create and update, invisible otherwise
+  @visibility(#[Lifecycle.Create, Lifecycle.Update]) password: string;
+```
+
+If we want to have an implementation compatible with the current `@visibility` decorator, we could introduce a new visibility class, e.g.
+```typespec
+enum Optionality {
+  Required,
+  Optional,
+}
+```
+
+Which replaces the `true` or `false` boolean in the above examples with `Optionality.Required` or `Optionality.Optional`.
+These can simply be added to the existing rest parameter of `@visibility`.
+But it does make the `Optionality` enum "special", in that it implies a different behavior from any other visibility class.
+
+The trouble with both of these options is that it introduces a need to split up visibility modifiers that would otherwise be specified with a single decorator.
+
+```typespec
+model User {
+  @visibility(#[Lifecycle.Create], true)
+  @visibility(#[Lifecycle.Update], false)
+  @visibility(#[Lifecycle.Read])
+  name: string;
+}
+
+// or
+
+model User {
+  @visibility(Lifecycle.Create, Optionality.Required)
+  @visibility(Lifecycle.Update, Optionality.Optional)
+  @visibility(Lifecycle.Read)
+  name: string;
+}
+```
+
+This is difficult to parse. It's not clear on first inspection which `@visibility` decorators affect only visibility, and which affect both visibility _and_ requiredness.
+Additionally, it is far easier to accidentally impact visibility when changing requiredness, or requiredness when changing visibility, since the concepts are mixed into the same statement.
+
+In contrast, this proposal makes things more obvious and intuitive:
+
+```typespec
+model User {
+  @visibility(Lifecycle.Create, Lifecycle.Update, Lifecycle.Read)
+  @required(Lifecycle.Create)
+  @optional(Lifecycle.Update)
+  name: string;
+}
+```
+
+## Implement GraphQL emitter with the existing concepts
 
 By default, [all types in GraphQL are nullable][graphql-nullable-default].
 This means that all fields are optional unless they are explicitly marked as non-nullable using a trailing exclamation mark (e.g. `name: String!`).
@@ -952,7 +1008,9 @@ It also creates a [conflict between visibility and requiredness](#visibility-req
 
 ## Use custom visibility for GraphQL
 
-If this is a GraphQL problem, we can find a GraphQL solution:
+If this is a GraphQL problem, surely we can find a GraphQL solution?
+
+For example, a `@nonNullable` decorator:
 
 ```typespec
 namespace TypeSpec.GraphQL;
@@ -963,15 +1021,28 @@ enum Nullability {
 }
 
 model User {
-  @visibility(Lifecycle.Read, Nullability.NonNullable) id: string;
-  @visibility(Lifecycle.Update, Nullability.Nullable)
-  @visibility(Lifecycle.Read, Lifecycle.Create, Nullability.NonNullable)
+  @nonNullable(Lifecycle.Read)
+  @visibility(Lifecycle.Read) id: string;
+  
+  @visibility(Lifecycle.Update, Lifecycle.Read, Lifecycle.Create)
+  @@nonNullable(Lifecycle.Read, Lifecycle.Create)
   name: string;
-  @visibility(Lifecycle.Update, Nullability.Nullable)
-  @visibility(Lifecycle.Create, Nullability.NonNullable)
+  
+  @visibility(Lifecycle.Update, Lifecycle.Create)
+  @nonNullable(Lifecycle.Create)
   password: string;
 }
+
+@query op user(id: string): User; // assuming that Lifecycle.Read visibility is applied to responses
+
+@parameterVisibility(Lifecycle.Create)
+@mutation op createUser(input: User): User;
+
+@parameterVisibility(Lifecycle.Update)
+@mutation op updateUser(input: User): User;
 ```
+
+could produce
 
 ```graphql
 input UserCreateInput {
@@ -981,229 +1052,64 @@ input UserCreateInput {
 
 input UserUpdateInput {
   name: String
-  password: String!
+  password: String
 }
 
 type User {
   id: String!
   name: String
 }
+
+type Query {
+  user(id: String!): User
+}
+
+type Mutation {
+  createUser(input: UserCreateInput): User
+  updateUser(input: UserUpdateInput): User
+}
 ```
 
-or what about with `in/out/inout`?
+The trouble with this approach is that it does nothing for the cross-protocol use case.
+
+What we have described here should also apply to an OpenAPI output:
+- a user's `id` is always present and non-null in a response
+- a user's `name` is required on create, and will always have a value in the response
+- a user's `password` is required on create, and will never be in a response
+- a user can be updated with any set of one or more properties
+
+There is nothing GraphQL-specific about these definitions; they speak only to the use of the model in different contexts.
+
+It's also awkward that we need two decorators to specify that `id` should always be present/non-null in a response, when `!` can convey this much more succintly.
+
+## Can a usage decorator solve this problem?
+
+It [has been proposed][usage-decorator] that some system could be used to specify whether models and/or properties are meant to be used in input, output, or both.
+
+In theory this could allow specifying one requiredness on input, and another on output, by providing two different properties with different usages.
+
+This seems not only to be verbose, but also doesn't address the issue of requiredness in a single context.
+We've looked at examples where requiredness differs between input contexts, e.g. create and update.
+
+Instead, the usage system would complement the requiredness system, as a way to provide more assurance that a property is described correctly.
+
+e.g.
 
 ```typespec
 inout model User {
-  @visibility(Nullability.NonNullable) out id: string;
-  @visibility(Nullability.Nullable) inout name: string;
+  @visibility(Lifecycle.Read) out id!: string;
   
-  @visibility(Lifecycle.Update, Nullability.Nullable)
-  @visibility(Lifecycle.Create, Nullability.NonNullable)
-  in password: password;
+  @visibility(Lifecycle.Read, Lifecycle.Create, Lifecycle.Update)
+  @optional(Lifecycle.Update) inout name!: string;
+  
+  @visibility(Lifecycle.Create, Lifecycle.Update)
+  @required(Lifecycle.Create) in password: string;
 }
 ```
 
-```graphql
-input UserCreateInput {
-  name: String
-  password: String!
-}
-
-input UserUpdateInput {
-  name: String
-  password: String!
-}
-
-type User {
-  id: String!
-  name: String
-}
-```
-
-or just with implied `in/out` by visibility?
-
-```typespec
-model User {
-  @visibility(Lifecycle.Read, Nullability.NonNullable) id: string; // visibile and non-null only on output
-  @visibility(Nullability.Nullable) name: string; // visible and nullable everywhere
-  
-  @visibility(Lifecycle.Update, Nullability.Nullable) // nullable on update
-  @visibility(Lifecycle.Create, Nullability.NonNullable) // non-null (required) on create
-  password: password;
-}
-```
-
-```graphql
-input UserCreateInput {
-  name: String
-  password: String!
-}
-
-input UserUpdateInput {
-  name: String
-  password: String
-}
-
-type User {
-  id: String!
-  name: String
-}
-```
-
-let's extend this further to all protocols — call it `Requiredness` instead:
-
-```typespec
-namespace TypeSpec;
-
-enum Optionality {
-  Required,
-  Optional,
-}
-
-model User {
-  @visibility(Lifecycle.Read, Optionality.Required) id: string; // visibile and always present only on output
-  @visibility(Optionality.Optional) name: string; // visible and optional everywhere
-  
-  @visibility(Lifecycle.Update, Optionality.Nullable) // optional on update
-  @visibility(Lifecycle.Create, Optionality.Required) // required on create
-  password: password;
-}
-```
-
-but we still have `?` — so what does that do?
-
-```typespec
-model User {
-  @visibility(Lifecycle.Read, Optionality.Required) id: string; // visibile and always present only on output
-  //equivalent to
-  @visibility(Lifecycle.Read) id!: string;
-  
-  @visibility(Optionality.Optional) name: string; // visible and optional everywhere
-  //equivalent to
-  name?: string;
-  
-  @visibility(Lifecycle.Update, Optionality.Nullable) // optional on update
-  @visibility(Lifecycle.Create, Optionality.Required) // required on create
-  password: password;
-  // cannot be expressed with `?` or `!`
-  // either we ignore it 
-}
-```
-
-
-In GraphQL, on input:
-non-null means required (must provide a non-null value)
-nullable means optional (cannot specify an explicit null value)
-
-on output:
-non-null means non-null (aka `| null` is not allowed)
-nullable means nullable (aka `| null`)
-
-
-
-```typespec
-model User {
-  @visibility(Lifecycle.Read) id: string; // visibile and non-null only on output
-  
-  @visibility(Lifecycle.Update) // nullable on update
-  @visibility(Lifecycle.Create) // non-null (required) on create
-  password: password;
-}
-```
-
-```graphql
-input UserCreateInput {
-  name: String
-  password: String!
-}
-
-input UserUpdateInput {
-  name: String
-  password: String
-}
-
-type User {
-  id: String!
-  name: String
-}
-```
-
-
-What about this? mutations are operations. queries are not operations (for the sake of argument).
-> Other visibility enums are used to match a model property's visibility to an operation's visibility.
-
-
-```typespec
-model User {
-  @visibility(Lifecycle.Read) id: string; // visibile and non-null only on output
-  
-  name?: string; // visible and nullable everywhere
-  
-  @visibility(Lifecycle.Update) // nullable on update
-  @visibility(Lifecycle.Create) // non-null (required) on create
-  password: password;
-  
-  // or
-  @visibility(Lifecycle.Update, Lifecycle.Create, Lifecycle.Foo)
-  @required(Lifecycle.Create) // in GraphQL, this means non-null on create (nullable elsewhere). In OpenAPI, it's a no-op.
-  @optional(Lifecycle.Update) // in GraphQL, this is a no-op. In OpenAPI, it's optional on update (required elsewhere).
-  password: password;
-  
-  vs.
-  
-  @visibility(Lifecycle.Update, Lifecycle.Create)
-  @required(Lifecycle.Create) // in GraphQL, this means non-null on create (nullable elsewhere). In OpenAPI, it means required on create.
-  @optional(Lifecycle.Update) // in GraphQL, this is a no-op. In OpenAPI, it's also a no-op.
-  password?: password;
-  
-  vs.
-  
-  @visibility(Lifecycle.Update, Lifecycle.Create)
-  @required(Lifecycle.Create) // in GraphQL, this is a no-op. In OpenAPI, it's also a no-op.
-  @optional(Lifecycle.Update) // in GraphQL, this means nullable on update (non-null elsewhere). In OpenAPI, it means optional on update (required elsewhere).
-  password!: password;
-}
-
-interface Mutation {
-  @visibility(Lifecycle.Update) updateUser(User): User;
-  @visibility(Lifecycle.Create) createUser(User): User;
-}
-```
-
-creates
-
-```graphql
-type Mutation {
-  updateUser(input: UserUpdateInput): User
-  createUser(input: UserCreateInput): User
-}
-
-# has everything with Read visibility
-type User {
-  id: String!
-  name: String
-}
-
-# has everything with Create visibility
-input UserCreateInput {
-  name: String
-  password: String!
-}
-
-# has everything with Update visibility
-input UserUpdateInput {
-  name: String
-  password: String
-}
-```
-
-
-
-|                                                                                                                                                           | Protocol-agnostic | Required by default (e.g. OAI)                                   | Optional by default (e.g. GraphQL)                               |
-|-----------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------|------------------------------------------------------------------|------------------------------------------------------------------|
-| `@visibility(Lifecycle.Update, Lifecycle.Create, Vis.Foo)`<br/>`@required(Lifecycle.Create)`<br/>`@optional(Lifecycle.Update)`<br/>`password: password;`  | **Undefined**     | Required on `Create`.<br/>Optional on `Update`.<br/>Required on `Foo`. | Required on `Create`.<br/>Optional on `Update`.<br/>Optional on `Foo`. |
-| `@visibility(Lifecycle.Update, Lifecycle.Create, Vis.Foo)`<br/>`@required(Lifecycle.Create)`<br/>`@optional(Lifecycle.Update)`<br/>`password?: password;` | **Optional**      | Required on `Create`.<br/>Optional on `Update`.<br/>Optional on `Foo`. | Required on `Create`.<br/>Optional on `Update`.<br/>Optional on `Foo`. |
-| `@visibility(Lifecycle.Update, Lifecycle.Create, Vis.Foo)`<br/>`@required(Lifecycle.Create)`<br/>`@optional(Lifecycle.Update)`<br/>`password!: password;` | **Required**      | Required on `Create`.<br/>Optional on `Update`.<br/>Required on `Foo`. | Required on `Create`.<br/>Optional on `Update`.<br/>Required on `Foo`. |
+gives us additional opportunities to flag code smells, which might include
+- a property defined as `@required(Lifecycle.Create)` but is only an `out` property
+- a property defined as `@optional(Lifecycle.Read)` but is only an `in` property
 
 
 [optional-properties]: https://typespec.io/docs/language-basics/models/#optional-properties
@@ -1230,3 +1136,5 @@ input UserUpdateInput {
 [rfc-5789]: https://datatracker.ietf.org/doc/html/rfc5789
 [rfc-6902]: https://datatracker.ietf.org/doc/html/rfc6902
 [pinterest-customer-list]: https://developers.pinterest.com/docs/api/v5/customer_lists-update
+[usage-decorator]: https://github.com/microsoft/typespec/issues/4486
+[rest-parameter]: https://typespec.io/docs/extending-typespec/create-decorators/#rest-parameters
