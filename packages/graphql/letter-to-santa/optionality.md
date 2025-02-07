@@ -907,6 +907,301 @@ components:
 
 </details>
 
+## "TeamMember" in Buildkite GraphQL API
+
+The [Buildkite GraphQL API][buildkite-graphql-api] contains a few ways of interacting with team members that we'll look at below.
+
+First, the definition of a [`TeamMember`][TeamMember]:
+
+<details open><summary><code>TeamMember</code></summary>
+
+```graphql
+"""An member of a team"""
+type TeamMember implements Node {
+  """The time when the team member was added"""
+  createdAt: DateTime!
+
+  """The user that added this team member"""
+  createdBy: User
+  id: ID!
+
+  """The organization member associated with this team member"""
+  organizationMember: OrganizationMember
+  permissions: TeamMemberPermissions!
+
+  """The users role within the team"""
+  role: TeamMemberRole!
+
+  """The team associated with this team member"""
+  team: Team
+
+  """The user associated with this team member"""
+  user: User
+
+  """The public UUID for this team member"""
+  uuid: ID!
+}
+```
+</details>
+
+The queries and mutations that deal with `TeamMember`s follow a fairly predictable pattern:
+[`teamMemberCreate()`][teamMemberCreate], [`teamMemberDelete()`][teamMemberDelete], [`teamMemberUpdate()`][teamMemberUpdate], and appearing as a connection on the `Team` object.
+
+<details><summary>See the full query and mutation definitions</summary>
+
+```graphql
+"""The query root for this schema"""
+type Query {
+  """Find a team"""
+  team(
+    """The slug of the team, prefixed with its organization. i.e. `acme-inc/awesome-team`"""
+    slug: ID!
+  ): Team
+}
+
+"""The root for mutations in this schema"""
+type Mutation {
+  """Add a user to a team."""
+  teamMemberCreate(
+    """Parameters for TeamMemberCreate"""
+    input: TeamMemberCreateInput!
+  ): TeamMemberCreatePayload
+
+  """Remove a user from a team."""
+  teamMemberDelete(
+    """Parameters for TeamMemberDelete"""
+    input: TeamMemberDeleteInput!
+  ): TeamMemberDeletePayload
+
+  """Update a user's role in a team."""
+  teamMemberUpdate(
+    """Parameters for TeamMemberUpdate"""
+    input: TeamMemberUpdateInput!
+  ): TeamMemberUpdatePayload
+}
+```
+</details>
+
+and they each define their own GraphQL input and object types for input and payload:
+[`TeamMemberCreateInput`][TeamMemberCreateInput], [`TeamMemberUpdateInput`][TeamMemberUpdateInput], [`TeamMemberDeleteInput`][TeamMemberDeleteInput]
+
+<details><summary>Input and Payload types</summary>
+
+```graphql
+input TeamMemberCreateInput {
+  teamID: ID!
+  userID: ID!
+
+  """If no role is specified, the team member will be assigned the team's default role."""
+  role: TeamMemberRole
+}
+
+input TeamMemberUpdateInput {
+  id: ID!
+  role: TeamMemberRole!
+}
+
+input TeamMemberDeleteInput {
+  id: ID!
+}
+```
+</details>
+
+<details><summary>See the definition of <code>Team</code></summary>
+
+```graphql
+"""An organization team"""
+type Team implements Node {
+  """The time when this team was created"""
+  createdAt: DateTime!
+
+  """The user that created this team"""
+  createdBy: User
+
+  """New organization members will be granted this role on this team"""
+  defaultMemberRole: TeamMemberRole!
+
+  """A description of the team"""
+  description: String
+  id: ID!
+
+  """Add new organization members to this team by default"""
+  isDefaultTeam: Boolean!
+
+  """Users that are part of this team"""
+  members(
+    first: Int
+    after: String
+    last: Int
+    before: String
+
+    """Search team members named like the given query case insensitively"""
+    search: String
+
+    """Search team members by their role"""
+    role: [TeamMemberRole!]
+
+    """Order the members returned"""
+    order: TeamMemberOrder = RECENTLY_CREATED
+  ): TeamMemberConnection
+
+  """Whether or not team members can create new pipelines in this team"""
+  membersCanCreatePipelines: Boolean!
+
+  """Whether or not team members can delete pipelines in this team"""
+  membersCanDeletePipelines: Boolean! @deprecated(reason: "This property has been removed without replacement")
+
+  """The name of the team"""
+  name: String!
+
+  """The organization that this team is a part of"""
+  organization: Organization
+  permissions: TeamPermissions!
+
+  """Pipelines associated with this team"""
+  pipelines(
+    first: Int
+    after: String
+    last: Int
+    before: String
+
+    """Search pipelines named like the given query case insensitively"""
+    search: String
+
+    """Order the pipelines returned"""
+    order: TeamPipelineOrder = RECENTLY_CREATED
+  ): TeamPipelineConnection
+
+  """The privacy setting for this team"""
+  privacy: TeamPrivacy!
+
+  """Registries associated with this team"""
+  registries(
+    first: Int
+    after: String
+    last: Int
+    before: String
+
+    """Order the registries returned"""
+    order: TeamRegistryOrder = RECENTLY_CREATED
+  ): TeamRegistryConnection
+
+  """The slug of the team"""
+  slug: String!
+
+  """Suites associated with this team"""
+  suites(
+    first: Int
+    after: String
+    last: Int
+    before: String
+
+    """Order the suites returned"""
+    order: TeamSuiteOrder = RECENTLY_CREATED
+  ): TeamSuiteConnection
+
+  """The public UUID for this team"""
+  uuid: ID!
+}
+```
+
+</details>
+
+Here's how we might try to implement this in TypeSpec today:
+(using concepts from the [GraphQL Emitter Design proposal][graphql-emitter-design])
+
+<details open><summary>Current TypeSpec: ideally</summary>
+
+```typespec
+model TeamMember {
+  @visibility(Lifecycle.Read) createdAt: utcDateTime;
+  @visibility(Lifecycle.Read) createdBy?: User;
+  @visibility(Lifecycle.Delete, Lifecycle.Read) id: string;
+  @visibility(Lifecycle.Read) organizationMember?: OrganizationMember;
+  @visibility(Lifecycle.Read) permissions: TeamMemberPermissions;
+  @visibility(Lifecycle.Create, Lifecycle.Read, Lifecycle.Update) role: TeamMemberRole;
+  @visibility(Lifecycle.Read) team?: Team;
+  @visibility(Lifecycle.Create) team_id!: string;
+  @visibility(Lifecycle.Read) user? User;
+  @visibility(Lifecycle.Create) user_id!: string;
+  @visibility(Lifecycle.Read) uuid!: string;
+}
+
+@operationFields(members)
+model Team {
+  id: string;
+  ...
+}
+
+model TeamSearch {
+  search?: string;
+  role: TeamMemberRole[];
+  order: TeamMemberOrder = RECENTLY_CREATED;
+}
+
+@connection op members(...TeamSearch): TeamMember[];
+
+@parameterVisibility(Lifecycle.Create)
+@mutation teamMemberCreate(input: TeamMember): TeamMember;
+
+@parameterVisibility(Lifecycle.Update)
+@mutation teamMemberUpdate(input: TeamMember): TeamMember;
+
+@parameterVisibility(Lifecycle.Delete)
+@mutation teamMemberDelete(input: TeamMember): TeamMember;
+```
+
+</details>
+
+However, there's a problem — `role` should be optional on create, but required on update and read.
+The TypeSpec above will make it required everywhere.
+To get around this we need to define a separate model:
+
+```typespec
+
+@withVisibility(Lifecycle.Create)
+model TeamMemberCreate {
+  ...TeamMember;
+  role?: TeamMemberRole;
+}
+```
+
+but… we can't even do this because TypeScript will complain about the duplicate `role` property.
+Instead, we would need to copy all the properties, or copy all the properties except `role` and define it separately in a `TeamMemberRead` model.
+
+All of this seems confusing and somewhat arbitrary. For instance, should I create `TeamMemberUpdate` and `TeamMemberDelete` models, instead or in addition?
+Which properties need to go on which models?
+
+We'd like to describe the type system of our API, but instead we're creating arbitrary types to work around limitations in expressiveness.
+
+With this proposal, we could instead do:
+
+<details open><summary>Proposed TypeSpec</summary>
+
+```typespec
+model TeamMember {
+  @visibility(Lifecycle.Read) createdAt!: utcDateTime;
+  @visibility(Lifecycle.Read) createdBy?: User;
+  @visibility(Lifecycle.Delete, Lifecycle.Read) id!: string;
+  @visibility(Lifecycle.Read) organizationMember?: OrganizationMember;
+  @visibility(Lifecycle.Read) permissions!: TeamMemberPermissions;
+  
+  @optional(Lifecycle.Create)
+  @visibility(Lifecycle.Create, Lifecycle.Read, Lifecycle.Update)
+  role!: TeamMemberRole;
+  
+  @visibility(Lifecycle.Read) team?: Team;
+  @visibility(Lifecycle.Create) team_id: string;
+  @visibility(Lifecycle.Read) user? User;
+  @visibility(Lifecycle.Create) user_id: string;
+  @visibility(Lifecycle.Read) uuid: string;
+}
+```
+
+</details>
+
+without breaking up the model.
+
 # Alternatives Considered
 
 ## decorator instead of `!`
@@ -1179,3 +1474,12 @@ gives us additional opportunities to flag code smells, which might include
 [pinterest-customer-list]: https://developers.pinterest.com/docs/api/v5/customer_lists-update
 [usage-decorator]: https://github.com/microsoft/typespec/issues/4486
 [rest-parameter]: https://typespec.io/docs/extending-typespec/create-decorators/#rest-parameters
+[graphql-emitter-design]: https://github.com/microsoft/typespec/issues/4933
+[TeamMember]: https://buildkite.com/docs/apis/graphql/schemas/object/teammember
+[TeamMemberCreateInput]: https://buildkite.com/docs/apis/graphql/schemas/input-object/teammembercreateinput
+[TeamMemberUpdateInput]: https://buildkite.com/docs/apis/graphql/schemas/input-object/teammemberupdateinput
+[TeamMemberDeleteInput]: https://buildkite.com/docs/apis/graphql/schemas/input-object/teammemberdeleteinput
+[teamMemberCreate]: https://buildkite.com/docs/apis/graphql/schemas/mutation/teammembercreate
+[teamMemberUpdate]: https://buildkite.com/docs/apis/graphql/schemas/mutation/teammemberupdate
+[teamMemberDelete]: https://buildkite.com/docs/apis/graphql/schemas/mutation/teammemberdelete
+[buildkite-graphql-api]: https://buildkite.com/docs/apis/graphql-api
