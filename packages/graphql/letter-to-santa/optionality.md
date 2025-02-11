@@ -204,7 +204,8 @@ To speak more clearly about the concepts of visibility and requiredness, we will
 
 1. <a name="context-modifier"></a>"visibility modifier" is called "context modifier"
 2. "visibility class" is called "context class"
-3. (possibly) "visibility" will be renamed "contextual visibility", mirroring "contextual requiredness".
+3. "visibility filter" is called "context filter"
+4. (possibly) "visibility" will be renamed "contextual visibility", mirroring "contextual requiredness".
 
 ## `!` symbol
 
@@ -567,6 +568,59 @@ Unclear how this is different from `@withVisibility(Lifecycle.update)`.
 
 ### [`@defaultVisibility`][defaultVisibility]
 
+This may or may not be something that we want to extend to requiredness.
+
+While the concept applies equally, it may not be the case that the default context modifiers for a context class should be the same when applied to requiredness as when applied to visibility.
+
+To go back to the [HTTP PATCH](#patch) example, properties on a model should probably be visible in `PATCH` operations by default.
+However, we also want them to be optional by default.
+
+The `Lifecycle` context class is essentially defined like this today:
+
+```typespec
+@defaultVisibility(Lifecycle.Read, Lifecycle.Create, Lifecycle.Update, Lifecycle.Delete, Lifecycle.Query)
+enum Lifecycle {
+   Read,
+   Create,
+   Update,
+   Delete,
+   Query,
+}
+```
+
+We would not want properties in all of those lifecycle states to be required by default, nor optional by default.
+
+So we would not want to do something like
+
+```typespec
+@defaultContextModifier(Lifecycle.Read, Lifecycle.Create, Lifecycle.Update, Lifecycle.Delete, Lifecycle.Query)
+enum Lifecycle {
+   Read,
+   Create,
+   Update,
+   Delete,
+   Query,
+}
+```
+
+as what context modifiers should be default depends on what transformation should be applied in that context.
+
+It may make sense instead to do this with separate decorator:
+
+```typespec
+@defaultVisibility(Lifecycle.Read, Lifecycle.Create, Lifecycle.Update, Lifecycle.Delete, Lifecycle.Query)
+@defaultRequired(Lifecycle.Read)
+@defaultOptional(Lifecycle.Update)
+enum Lifecycle {
+   Read,
+   Create,
+   Update,
+   Delete,
+   Query,
+}
+```
+
+
 Useful as-is. This one might be more important to rename to `@defaultContextModifier` or similar, since it is not just about visibility. 
 
 <br>
@@ -575,6 +629,44 @@ Useful as-is. This one might be more important to rename to `@defaultContextModi
 
 Existing "default required" emitters will see no change from the `!` symbol.
 They already treat all properties without the `?` symbol as required, and a property cannot be given the `!` symbol without removing the `?` symbol.
+
+
+<br>
+
+# TypeSpec Context Engine
+
+What we arrive at, should we implement this proposal, is a generic "context" system defined in TypeSpec.
+Its key components are:
+
+- **Context modifiers**, which are used to specify contexts in which to apply a transformation
+- **Context classes**, which are used to group related context modifiers
+- **Contextal transformations**, which apply a specific behavior to a target when the current context matches the context modifiers of the transformation
+
+Visibility, optionality, and requiredness can all be seen now as "contextual transformations".
+
+As an implementation, TypeSpec would provide a generic "context engine" that can understand the current context, the applied context modifiers, and applied context filters (currently "visibility filters"), and produce a boolean result for each transformation that indicates whether it should apply.
+
+```mermaid
+flowchart TD
+    A[Current Context] --> D
+    State[State provided by program] --> A
+    State --> G
+    B[Target's Properties] --> C
+    B --> F
+    C[Applied Context Modifiers] --> D
+    F[Applied Context Filters] --> D
+    G[Default Context Modifiers] --> D
+    D[Context Engine] -- should apply? --> V
+    D -- should apply? --> R
+    D -- should apply? --> O
+    subgraph transformations
+        V[Visibility]
+        R[Requiredness]
+        O[Optionality]
+    end
+```
+
+Such a model can be extended to fit future use cases for contextual transformations, though we will not speculate on what those might be.
 
 <br>
 
