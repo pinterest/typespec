@@ -630,6 +630,18 @@ Useful as-is. This one might be more important to rename to `@defaultContextModi
 Existing "default required" emitters will see no change from the `!` symbol.
 They already treat all properties without the `?` symbol as required, and a property cannot be given the `!` symbol without removing the `?` symbol.
 
+In other words, in the context of any "default required" emitter, these are equivalent:
+
+```typespec
+model Dog {
+  address: string;
+}
+
+model Dog {
+  address!: string;
+}
+```
+
 
 <br>
 
