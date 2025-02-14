@@ -1,7 +1,8 @@
 # GraphQL Emitter Design
 
-Authors: [Angel Vargas](mailto:angelvargas@pinterest.com), [Steve Rice (He Him)](mailto:srice@pinterest.com), [Swati Kumar](mailto:swatikumar@pinterest.com)
-Last updated: Oct 31, 2024
+Authors: @AngelEVargas, @swatkatz, @steverice
+
+Last updated: Feb 13, 2025
 
 ## Motivation
 From the TypeSpec docs:
@@ -18,14 +19,14 @@ Refer to [4604](https://github.com/microsoft/typespec/discussions/4604)
 
 ## GraphQL spec and validation rules
 
-| GraphQL Validation Rule | Emitter Compliance Guidelines |
-| ----- | ----- |
-| All types within a GraphQL schema must have unique names. No two provided types may have the same name. No provided type may have a name which conflicts with any built in types (including Scalar and Introspection types). | All anonymous types in TSP will need a default name (something like namespace \+ parent\_type \+ field\_name). If a type in TSP results in multiple types in the output, each output type should be unique by having a prefix or suffix (something like type \+ “Interface”) |
+| GraphQL Validation Rule                                                                                                                                                                                                                                                                                                     | Emitter Compliance Guidelines                                                                                                                                                                                                                                                                                                            |
+|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| All types within a GraphQL schema must have unique names. No two provided types may have the same name. No provided type may have a name which conflicts with any built in types (including Scalar and Introspection types).                                                                                                | All anonymous types in TSP will need a default name (something like namespace \+ parent\_type \+ field\_name). If a type in TSP results in multiple types in the output, each output type should be unique by having a prefix or suffix (something like type \+ “Interface”)                                                             |
 | All types and directives defined within a schema must not have a name which begins with “\_\_” (two underscores), as this is used exclusively by GraphQL’s introspection system. GraphQL Identifiers have [this validation](https://spec.graphql.org/October2021/#sec-Names) (names can only start with an `_` or `letter`) | TSP has a [wider set of valid names](https://typespec.io/docs/language-basics/identifiers/) so we’ll throw an emitter validation error for invalid GraphQL names. The developer can use the [upcoming `invisibility` decorator](https://github.com/microsoft/typespec/pull/4825/files) to define another field with a GraphQL valid name |
-| The **query** root operation type must be provided and must be an Object type. | If the resulting GraphQL schema has no query type, create a dummy query type with no fields |
-| Custom scalars should provide a `@specifiedBy` directive or the `specifiedByURL` introspection field that must link to a human readable specification of data format, serialization, and coercion rules for the scalar | Use existing open source specification for custom scalars that already provide these details and use the `@specifiedBy` directive in the schema to point to them |
-| Object Types and Input Types are two completely different types in GraphQL | See object type and input types for more details |
-| An object type must define one or more fields | Throw an error if we encounter an empty object  |
+| The **query** root operation type must be provided and must be an Object type.                                                                                                                                                                                                                                              | If the resulting GraphQL schema has no query type, create a dummy query type with no fields                                                                                                                                                                                                                                              |
+| Custom scalars should provide a `@specifiedBy` directive or the `specifiedByURL` introspection field that must link to a human readable specification of data format, serialization, and coercion rules for the scalar                                                                                                      | Use existing open source specification for custom scalars that already provide these details and use the `@specifiedBy` directive in the schema to point to them                                                                                                                                                                         |
+| Object Types and Input Types are two completely different types in GraphQL                                                                                                                                                                                                                                                  | See object type and input types for more details                                                                                                                                                                                                                                                                                         |
+| An object type must define one or more fields                                                                                                                                                                                                                                                                               | Throw an error if we encounter an empty object                                                                                                                                                                                                                                                                                           |
 
 ## Basic emitter building blocks
 
@@ -90,14 +91,17 @@ Use the `UsageFlags` to identify the `input` and `output` types for GraphQL.
 
 When creating an operation that returns models, all directly or indirectly referenced models, should be emitted as valid GraphQL output types.
 
-### Mapping
+#### Mapping
 
-| TypeSpec | GraphQL | Notes |
-| :---- | :---- | :---- |
-| Model.name | Object.name | See Naming conventions |
-| Model.properties | Object.fields |  |
+| TypeSpec           | GraphQL         | Notes                  |
+|:-------------------|:----------------|:-----------------------|
+| `Model.name`       | `Object.name`   | See Naming conventions |
+| `Model.properties` | `Object.fields` |                        |
 
 ### Examples
+
+
+
 <table>
   <tr>
     <th>TypeSpec</th>
@@ -105,82 +109,112 @@ When creating an operation that returns models, all directly or indirectly refer
   </tr>
   <tr>
     <td>
-      <pre><code>@doc("Simple output model")
+
+```typespec
+/** Simple output model */
 model Image {
   id: int32,
   url: str,
 }
-@doc("Operation")
+
+/** Operation */
 op getImage(
   id: int32,
   size: str,
-): Image;</code></pre>
-    </td>
+): Image;
+```
+
+</td>
     <td>
-      <pre><code>type Image {
+
+```graphql
+type Image {
   id: Int!
   url: String!
 }
 type Query {
   getImage(id: Int!, size:String!): Image!
-}</code></pre>
-    </td>
+}
+```
+
+</td>
   </tr>
   <tr>
     <td>
-      <pre><code>@doc("empty output model")
+
+```typespec
+/** empty output model */
 model Image {}
-@doc("Operation with empty model")
-op getImage(id: int32, size: str): Image;</code></pre>
-    </td>
+/** Operation with empty model */
+op getImage(id: int32, size: str): Image;
+```
+
+</td>
     <td>
-      <pre><code>type Query {
-  getImage(id: Int!, size: String!)
-}</code></pre>
-    </td>
+
+<p>This results in an error</p>
+
+</td>
   </tr>
   <tr>
     <td>
-      <pre><code>@doc("empty model as a field")
+
+```typespec
+/** empty model as a field */
 model Image {}
-@doc("regular model")
+/** regular model */
 model User {
   image: Image;
 }
-op getUser(id: int): User;</code></pre>
-    </td>
+op getUser(id: int): User;
+```
+
+</td>
     <td>
-      <pre><code>scalar Any
+
+```graphql
+scalar Any
 type User {
   image: Any
 }
 type Query {
   getUser(id: Int!): User!
-}</code></pre>
-    </td>
+}
+
+```
+
+</td>
   </tr>
   <tr>
     <td>
-      <pre><code>@doc("? vs null output model")
+
+```typespec
+/** ? vs null output model */
 model Image {
   id?: int32
   url: str | null;
 }
-@doc("operation")
+/** operation */
 op getImage(
   id: int32,
   size: str,
-): Image;</code></pre>
-    </td>
+): Image;
+```
+
+</td>
     <td>
-      <pre><code>type Image {
+
+```graphql
+type Image {
   id: Int
   url: String
 }
 type Query {
   getImage(id: Int!, size:String!): Image!
-}</code></pre>
-      Based on <a href="https://spec.graphql.org/draft/#sec-Value-Completion">result coercion rules</a> if `url` is non-null, then `null` or `undefined` will raise an error. So, we need to mark `url` as not required in GraphQL.
+}
+```
+
+Based on <a href="https://spec.graphql.org/draft/#sec-Value-Completion">result coercion rules</a> if `url` is non-null, then `null` or `undefined` will raise an error. So, we need to mark `url` as not required in GraphQL.
     </td>
   </tr>
 </table>
@@ -197,23 +231,23 @@ Use the `UsageFlags.INPUT` to determine if a TSP `model` is an `input` type. The
 * `Input` types may not be defined as an [unbroken chain of Non-Null singular fields](https://spec.graphql.org/October2021/#sec-Input-Objects.Circular-References) as shown below
 
 
-```
+```typespec
 # This is invalid
 
 input Example {
-	self: Example!
-	name: String
+  self: Example!
+  name: String
 }
 
 # This is also invalid
 input First {
-	second: Second!
-	name: String
+  second: Second!
+  name: String
 }
 
 input Second {
-	first: First!
-	value: String
+  first: First!
+  value: String
 }
 ```
 
@@ -231,12 +265,12 @@ To emit a valid GraphQL and still represent the schema defined in TypeSpec, the 
   - **🔴 Design decision:** In order to provide a different definition of the same field so that the GraphQL type can be represented more accurately, we will use the [upcoming visibility redesign to provide an alternative definition](https://discord.com/channels/1247582902930116749/1250119513681301514/1300865256679276655), see the examples to see what that could look like.
 - If the `model` contains an unbroken chain of non-null singular fields, throw an error and fail the emitter process
 
-Mapping
+#### Mapping
 
-| TypeSpec | GraphQL | Notes |
-| :---- | :---- | :---- |
-| Model.name | Object.name | See Naming conventions |
-| Model.properties | Object.fields |  |
+| TypeSpec           | GraphQL         | Notes                  |
+|:-------------------|:----------------|:-----------------------|
+| `Model.name`       | `Object.name`   | See Naming conventions |
+| `Model.properties` | `Object.fields` |                        |
 
 ### Examples
 <table>
@@ -246,22 +280,28 @@ Mapping
     </tr>
     <tr>
       <td>
-        <pre><code>@doc("Valid Input Model")
+
+```typespec
+/** Valid Input Model */
 model UserData {
   name: string;
   email?: string;
   age: int | null;
 }
-@doc("created user")
+/** created user */
 model User {
   ... UserData
   id: int32;
 }
 @mutation
-op createUser(userData: UserData): User</code></pre>
-      </td>
+op createUser(userData: UserData): User
+```
+
+</td>
       <td>
-        <pre><code>input UserDataInput {
+
+```graphql
+input UserDataInput {
   name: String!
   email: String
   age: Int
@@ -274,19 +314,23 @@ type User {
 }
 type Mutation {
   createUser(userData: UserDataInput!): User!
-}</code></pre>
-      </td>
+}
+```
+
+</td>
     </tr>
     <tr>
       <td>
-        <pre><code>@doc("invalid input model")
+
+```typespec
+/** invalid input model */
 model UserData {
   pet?: Pet;
   name: string;
   email?: string;
   age: int | null;
 }
-@doc("created user")
+/** created user */
 model User {
   ... UserData
   id: int32;
@@ -296,11 +340,15 @@ union Pet {
   cat: Cat
 }
 @mutation
-op createUser(userData: UserData): User</code></pre>
-      </td>
+op createUser(userData: UserData): User
+```
+
+</td>
       <td>
         <p>Translate the invalid input to Any</p>
-        <pre><code>scalar Any
+
+```typespec
+scalar Any
 input UserDataInput {
   pet: Any
   name: String!
@@ -317,18 +365,22 @@ type User {
 union Pet = Dog | Cat
 type Mutation {
   createUser(userData: UserDataInput!): User!
-}</code></pre>
-      </td>
+}
+```
+
+</td>
     </tr>
     <tr>
       <td>
-        <pre><code>@doc("common fields")
+
+```typespec
+/** common fields */
 model UserFields {
   name: string;
   email?: string;
   age: int | null;
 }
-@doc("invalid input model")
+/** invalid input model */
 model UserData {
   pet?: Pet;
   ... UserFields
@@ -344,7 +396,7 @@ union UserInputPerProtocol {
   @invisible(GraphQLVis)
   UserData,
 }
-@doc("created user")
+/** created user */
 model User {
   ... UserData
   id: int32;
@@ -354,10 +406,14 @@ union Pet {
   cat: Cat
 }
 @mutation
-op createUser(userData: UserInputPerProtocol): User</code></pre>
-      </td>
+op createUser(userData: UserInputPerProtocol): User
+```
+
+</td>
       <td>
-        <pre><code>input UserDataGqlInput {
+
+```graphql
+input UserDataGqlInput {
   dog: Dog
   cat: Cat
   name: String!
@@ -374,12 +430,16 @@ type User {
 union Pet = Dog | Cat
 type Mutation {
   createUser(userData: UserDataGqlInput!): User!
-}</code></pre>
-      </td>
+}
+```
+
+</td>
     </tr>
     <tr>
       <td>
-        <pre><code>model UserData {
+
+```typespec
+model UserData {
   identity: Identity;
   numFollowers: int;
   profession: Profession
@@ -395,8 +455,10 @@ model Identity {
 model User {
   id: string;
 }
-op createUser(userData: UserData): User</code></pre>
-      </td>
+op createUser(userData: UserData): User
+```
+
+</td>
       <td>
         <p>Throw an error in emitter validation</p>
       </td>
@@ -425,47 +487,47 @@ The ID scalar type represents an unique identifier, as defined [here](https://sp
 ### Design Proposal
 
 The emitter will use the mappings provided below to map TypeSpec to GraphQL scalars, trying to emit as a built-in scalar when possible.
-For the custom scalars, if the TypeSpec documentation mentions a specification, that will be used for the @specifiedBy directive.  If not provided, we will use a link to the TypeSpec documentation: [https://typespec.io/docs/standard-library/built-in-data-types/](https://typespec.io/docs/standard-library/built-in-data-types/)
+For the custom scalars, if the TypeSpec documentation mentions a specification, that will be used for the @specifiedBy directive. If not provided, we will use a link to the TypeSpec documentation: [https://typespec.io/docs/standard-library/built-in-data-types/](https://typespec.io/docs/standard-library/built-in-data-types/)
 Encodings provided by the @encode decorator in TSP code would also be considered to build the proper custom scalar.
-We are proposing a new TypeSpec native decorator @specifiedBy over scalars to allow developers to provide their own references.  If provided, the emitter will use the information to generate the GraphQL directive.
+We are proposing a new TypeSpec native decorator @specifiedBy over scalars to allow developers to provide their own references. If provided, the emitter will use the information to generate the GraphQL directive.
 To handle the ID type, the emitters library will include a TypeSpec scalar:
 
-```
-@doc("GraphQL ID")
+```typespec
+/** GraphQL ID") */
 scalar ID extends string;
 ```
 
 **Type Mappings to GraphQL Built-In Scalars**
 
-| TypeSpec | GraphQL | Notes |
-| :---- | :---- | :---- |
-| string | String |  |
-| boolean | Boolean |  |
-| int32 int16 int8 safeint uint32 uint16 uint8 | Int | [GraphQL Int is a 32-bit Integer](https://spec.graphql.org/October2021/#sec-Int) Alternatively, we can define a Scalar for every specific TypeSpec type  |
-| float float32 float64 | Float | [GraphQL Float is double-precision](https://spec.graphql.org/October2021/#sec-Float) Alternatively, we can define a Scalar for every specific TypeSpec type |
+| TypeSpec                                                   | GraphQL   | Notes                                                                                                                                                       |
+|:-----------------------------------------------------------|:----------|:------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `string`                                                   | `String`  |                                                                                                                                                             |
+| `boolean`                                                  | `Boolean` |                                                                                                                                                             |
+| `int32` `int16` `int8` `safeint` `uint32` `uint16` `uint8` | `Int`     | [GraphQL Int is a 32-bit Integer](https://spec.graphql.org/October2021/#sec-Int) Alternatively, we can define a Scalar for every specific TypeSpec type     |
+| `float` `float32` `float64`                                | `Float`   | [GraphQL Float is double-precision](https://spec.graphql.org/October2021/#sec-Float) Alternatively, we can define a Scalar for every specific TypeSpec type |
 
 **Type Mappings to GraphQL custom Scalars**
 
-| TypeSpec | encoding | GraphQL | Primitive | specifiedBy |
-| :---- | :---- | :---- | :---- | :---- |
-| integer int64 |  | scalar BigInt | String |  |
-| numeric |  | scalar Numeric | String |  |
-| decimaldecimal128 |  | scalar BigDecimal | String |  |
-| bytes | base64 | scalar Bytes | String | [https://datatracker.ietf.org/doc/html/rfc4648](https://datatracker.ietf.org/doc/html/rfc4648) |
-|  | base64url | scalar BytesUrl | String | [https://datatracker.ietf.org/doc/html/rfc4648\#section-5](https://datatracker.ietf.org/doc/html/rfc4648#section-5) |
-| utcDateTime | rfc3339 | scalar UTCDateTime | String | [https://datatracker.ietf.org/doc/html/rfc3339](https://datatracker.ietf.org/doc/html/rfc3339) |
-|  | rfc7231 | scalar UTCDateTimeHuman | String | [https://datatracker.ietf.org/doc/html/rfc7231](https://datatracker.ietf.org/doc/html/rfc7231) |
-|  | unixTimestamp | scalar UTCDateTimeUnix | Int |  |
-| offsetDateTime | rfc3339 | scalar OffsetDateTime | String | [https://datatracker.ietf.org/doc/html/rfc3339](https://datatracker.ietf.org/doc/html/rfc3339) |
-|  | rfc7231 | scalar OffsetDateTimeHuman | String | [https://datatracker.ietf.org/doc/html/rfc7231](https://datatracker.ietf.org/doc/html/rfc7231) |
-|  | unixTimestamp | scalar OffsetDateTimeUnix | Int |  |
-| unixTimestamp32 |  | scalar OffsetDateTimeUnix | Int |  |
-| duration | ISO8601 | scalar Duration | String | [https://www.iso.org/obp/ui/\#iso:std:iso:8601:-1:ed-1:v1:en](https://www.iso.org/obp/ui/#iso:std:iso:8601:-1:ed-1:v1:en) |
-|  | seconds | scalar DurationSeconds | Float |  |
-| plainDate |  | scalar PlainDate | String |  |
-| plainTime |  | scalar PlainTime | String |  |
-| url |  | scalar URL | String | [https://url.spec.whatwg.org/](https://url.spec.whatwg.org/) |
-| unknown |  | scalar Any | String |  |
+| TypeSpec               | encoding        | GraphQL                      | Primitive | specifiedBy                                                                   |
+|:-----------------------|:----------------|:-----------------------------|:----------|:------------------------------------------------------------------------------|
+| `integer` `int64`      |                 | `scalar BigInt`              | `String`  |                                                                               |
+| `numeric`              |                 | `scalar Numeric`             | `String`  |                                                                               |
+| `decimal` `decimal128` |                 | `scalar BigDecimal`          | `String`  |                                                                               |
+| `bytes`                | `base64`        | `scalar Bytes`               | `String`  | [RFC4648](https://datatracker.ietf.org/doc/html/rfc4648)                      |
+|                        | `base64url`     | `scalar BytesUrl`            | `String`  | [RFC4648](https://datatracker.ietf.org/doc/html/rfc4648#section-5)            |
+| `utcDateTime`          | `rfc3339`       | `scalar UTCDateTime`         | `String`  | [RFC3339](https://datatracker.ietf.org/doc/html/rfc3339)                      |
+|                        | `rfc7231`       | `scalar UTCDateTimeHuman`    | `String`  | [RFC7231](https://datatracker.ietf.org/doc/html/rfc7231)                      |
+|                        | `unixTimestamp` | `scalar UTCDateTimeUnix`     | `Int`     |                                                                               |
+| `offsetDateTime`       | `rfc3339`       | `scalar OffsetDateTime`      | `String`  | [RFC3339](https://datatracker.ietf.org/doc/html/rfc3339)                      |
+|                        | `rfc7231`       | `scalar OffsetDateTimeHuman` | `String`  | [RFC7231](https://datatracker.ietf.org/doc/html/rfc7231)                      |
+|                        | `unixTimestamp` | `scalar OffsetDateTimeUnix`  | `Int`     |                                                                               |
+| `unixTimestamp32`      |                 | `scalar OffsetDateTimeUnix`  | `Int`     |                                                                               |
+| `duration`             | `ISO8601`       | `scalar Duration`            | `String`  | [ISO 8601-1:2019](https://www.iso.org/obp/ui/#iso:std:iso:8601:-1:ed-1:v1:en) |
+|                        | `seconds`       | `scalar DurationSeconds`     | `Float`   |                                                                               |
+| `plainDate`            |                 | `scalar PlainDate`           | `String`  |                                                                               |
+| `plainTime`            |                 | `scalar PlainTime`           | `String`  |                                                                               |
+| `url`                  |                 | `scalar URL`                 | `String`  | [URL living standard](https://url.spec.whatwg.org/)                           |
+| `unknown`              |                 | `scalar Any`                 | `String`  |                                                                               |
 
 ### Examples
 <table>
@@ -475,13 +537,21 @@ scalar ID extends string;
     </tr>
     <tr>
       <td>
-        <pre><code>scalar password extends string;
-scalar ternary;</code></pre>
-      </td>
+
+```typespec
+scalar password extends string;
+scalar ternary;
+```
+
+</td>
       <td>
-        <pre><code>scalar Password
-scalar Ternary</code></pre>
-      </td>
+
+```graphql
+scalar Password
+scalar Ternary
+```
+
+</td>
     </tr>
 </table>
 
@@ -500,18 +570,18 @@ For nested unions, a single union will be recursively composed with all the vari
 As the `interface` models are decorated with an `@Interface` decorator, throw a validation error when defining a `union` variant for a model type that is decorated with this.
 Wrap the scalars in a wrapping object type and emit a union with those types.
 
-Create explicit unions in GraphQL for anonymous TSP unions, naming them using the context where the Union is declared, for example using model and property names, or the operation and parameter names, or the operation name if used as a return type.  And all cases with the "Union" suffix. (See examples). Note that this approach may generate identical GraphQL unions with distinct names. We will throw an error if there are naming conflicts.
+Create explicit unions in GraphQL for anonymous TSP unions, naming them using the context where the Union is declared, for example using model and property names, or the operation and parameter names, or the operation name if used as a return type. And all cases with the "Union" suffix. (See examples). Note that this approach may generate identical GraphQL unions with distinct names. We will throw an error if there are naming conflicts.
 
 There are some special cases with distinct treatments, like:
 
 * Unions containing *`null`* type: see Nullability
 
-Mapping
+#### Mapping
 
-| TypeSpec | GraphQL | Notes |
-| :---- | :---- | :---- |
-| Union.name | Union.name | Anonymous Unions can be represented as: ModelPropertyUnion OperationParameterUnion OperationUnion |
-| Union.types | Union.types |  |
+| TypeSpec      | GraphQL       | Notes                                                                                                                |
+|:--------------|:--------------|:---------------------------------------------------------------------------------------------------------------------|
+| `Union.name`  | `Union.name`  | Anonymous Unions can be represented as: <br><p>• ModelPropertyUnion<br>• OperationParameterUnion<br>• OperationUnion |
+| `Union.types` | `Union.types` |                                                                                                                      |
 
 ### Examples
 <table>
@@ -521,65 +591,95 @@ Mapping
     </tr>
     <tr>
       <td>
-        <pre><code>@doc("Named Union")
+
+```typespec
+/** Named Union */
 union Animal {
   bear: Bear,
   lion: Lion,
-}</code></pre>
-      </td>
+}
+```
+
+</td>
       <td>
-        <pre><code>union Animal = Bear | Lion</code></pre>
-      </td>
+
+```graphql
+union Animal = Bear | Lion
+```
+
+</td>
     </tr>
     <tr>
       <td>
         <p>Nested unions</p>
-        <pre><code>@doc("Named Union")
+
+```typespec
+/** Named Union */
 union Animal {
   bear: Bear,
   lion: Lion,
 }
 
-@doc("Nested Union")
+/** Nested Union */
 union Pet {
   cat: Cat,
   dog: Dog,
   animal: Animal,
-}</code></pre>
-      </td>
+}
+```
+
+</td>
       <td>
-        <pre><code>union Pet = Cat | Dog | Bear | Lion</code></pre>
-      </td>
+
+```graphql
+union Pet = Cat | Dog | Bear | Lion
+```
+
+</td>
     </tr>
     <tr>
       <td>
         <p>Anonymous union in param</p>
-        <pre><code>@doc("Anonymous Union in a parameter")
+
+```typespec
+/** Anonymous Union in a parameter */
 @query
 op setUserAddress(
   id: int32,
   data: FullAddress | BasicAddress,
-): User;</code></pre>
-      </td>
+): User;
+```
+
+</td>
       <td>
-        <pre><code>union SetUserAddresDataUnion = FullAddress | BasicAddress
+
+```graphql
+union SetUserAddresDataUnion = FullAddress | BasicAddress
 
 type Query {
   setUserAddress(id: Int!, data: SetUserAddressDataUnion!): User!
-}</code></pre>
-      </td>
+}
+```
+
+</td>
     </tr>
     <tr>
       <td>
         <p>Named union of scalars</p>
-        <pre><code>@doc("Named Union of Scalars")
+
+```typespec
+/** Named Union of Scalars */
 union TwoScalars {
   text: string,
   numeric: float32,
-}</code></pre>
-      </td>
+}
+```
+
+</td>
       <td>
-        <pre><code>union TwoScalars = TextUnionVariant | NumericUnionVariant
+
+```graphql
+union TwoScalars = TextUnionVariant | NumericUnionVariant
 
 type TextUnionVariant {
   value: String!
@@ -587,39 +687,57 @@ type TextUnionVariant {
 
 type NumericUnionVariant {
   value: Float!
-}</code></pre>
-      </td>
+}
+```
+
+</td>
     </tr>
     <tr>
       <td>
         <p>Named union of scalars and models</p>
-        <pre><code>union CompositeAddress {
+
+```typespec
+union CompositeAddress {
   oneLineAddress: string,
   fullAddress: FullAddress,
   basicAddress: BasicAddress
-}</code></pre>
-      </td>
+}
+```
+
+</td>
       <td>
-        <pre><code>type OneLineAddressUnionVariant {
+
+```graphql
+type OneLineAddressUnionVariant {
   value: String!
 }
 
-union CompositeAddress = OneLineAddressUnionVariant | FullAddress | BasicAddress</code></pre>
-      </td>
+union CompositeAddress = OneLineAddressUnionVariant | FullAddress | BasicAddress
+```
+
+</td>
     </tr>
     <tr>
       <td>
         <p>Anonymous union in return type</p>
-        <pre><code>@doc("Anonymous Union in a return type")
-op getUser(id: int32): User | Error;</code></pre>
-      </td>
+
+```typespec
+/** Anonymous Union in a return type */
+op getUser(id: int32): User | Error;
+```
+
+</td>
       <td>
-        <pre><code>union GetUserUnion = User | Error
+
+```graphql
+union GetUserUnion = User | Error
 
 type Query {
   getUser(id: Int!): GetUserUnion!
-}</code></pre>
-      </td>
+}
+```
+
+</td>
     </tr>
 </table>
 
@@ -641,7 +759,7 @@ type Query {
 ### Context and design challenges
 
 * Fields (model properties) can receive [arguments](https://spec.graphql.org/draft/#sec-Language.Arguments).
-* Field Arguments follow the same rules as operation parameters. (Actually,  operation parameters are field arguments)
+* Field Arguments follow the same rules as operation parameters. (Actually, operation parameters are field arguments)
 * The models directly or indirectly used in the field arguments should be declared as Input
 * [Arguments are Unordered](https://spec.graphql.org/draft/#sec-Language.Arguments.Arguments-Are-Unordered)
 * TypeSpec does not support arguments on model properties.
@@ -653,28 +771,27 @@ type Query {
 * Operations and namespaces that are used in the `operationFields` decorator are not emitted as part of the root GraphQL operations like `query`, `mutation`, or `subscription`
 
 
-```
+```typespec
 extern dec operationFields(target: Model, ...onOperations: Operation[] | Interface[])
 ```
 
 
 
-Mapping
+#### Mapping
 
-| TypeSpec | GraphQL | Notes |
-| :---- | :---- | :---- |
-| @operationFields | Model | List of operations or interfaces are the arguments |
-| Operation.name | Field.name | Model is the target of the decorator. |
-| Operation.returnType | Field.type | Model is the target of the decorator. |
-| Operation.parameters | Field.ArgumentsMap | Model is the target of the decorator. |
+| TypeSpec               | GraphQL              | Notes                                              |
+|:-----------------------|:---------------------|:---------------------------------------------------|
+| `@operationFields`     | `Model`              | List of operations or interfaces are the arguments |
+| `Operation.name`       | `Field.name`         | Model is the target of the decorator.              |
+| `Operation.returnType` | `Field.type`         | Model is the target of the decorator.              |
+| `Operation.parameters` | `Field.ArgumentsMap` | Model is the target of the decorator.              |
 
-Decorators
+#### Decorators
 
-| Decorator | Target | Parameters | Validations |
-| :---- | :---- | :---- | :---- |
-| @operationFields | Model | The operations or interfaces to be added as a field with arguments on the GraphQL object type  |  |
-|  |  |  |  |
-| @useAsQuery | Model | None |  |
+| Decorator          | Target  | Parameters                                                                                    | Validations |
+|:-------------------|:--------|:----------------------------------------------------------------------------------------------|:------------|
+| `@operationFields` | `Model` | The operations or interfaces to be added as a field with arguments on the GraphQL object type |             |
+| `@useAsQuery`      | `Model` | None                                                                                          |             |
 
 ### Examples
 <table>
@@ -684,7 +801,9 @@ Decorators
     </tr>
     <tr>
       <td>
-        <pre><code>@operationFields(ImageService.urls, followers)
+
+```typespec
+@operationFields(ImageService.urls, followers)
 model User {
   id: integer;
   name: string;
@@ -707,10 +826,14 @@ model MyOwnQuery {
   me: User
 }
 
-op followers(sort: string): User[]</code></pre>
-      </td>
+op followers(sort: string): User[]
+```
+
+</td>
       <td>
-        <pre><code>type User {
+
+```graphql
+type User {
   id: Int!
   name: String!
   followers(sort: String!): [User]!
@@ -732,8 +855,10 @@ schema {
 type MyOwnQuery {
   me: User
   followers(sort: String): [User]
-}</code></pre>
-      </td>
+}
+```
+
+</td>
     </tr>
 </table>
 
@@ -747,26 +872,7 @@ Additional examples that show namespaces in GraphQL can be found here:
 * \[DISCARDED\] `@parameters({arg1: type1; arg2: type2;})` decorator targeting Model Properties.
   We prototyped this, but found issues when validating/generating the Input types.
 * \[DISCARDED\] `@mapArguments(modelProperty, arg1, agr2, …)` decorator over Operations, where arg1, arg2, etc. are the name of the parameters of the target operation to map as arguments of the modelProperty. 
-
-** \[DISCARDED\] ModelRoute Decorator Design:**
-We propose to introduce a decorator over the `Operations` to map the operation as a new parameterized field of a model.
-
-* The `@modelRoute` decorator will receive a parameter with the Model where to add the field.
-* The new field of the model will be created using the name, parameters and type of the operation.
-* The operation will be excluded from the top-level `Query` and `Mutation` types.
-* Multiple decorators can be added to the same operation, each one with a different Model.
-* Since the operations designed to be targeted by the `@modelRoute` decorator would be probably useless for other schemas because of the lack of the Model context; we may want to force the Model to appear in the parameters and exclude it from the GraphQL field arguments, or even take the first parameter of the operation as the Model.
-
-
-```
-@modelRoute(User)
-op avatar(user:User, size: str): String;
-
-type User {
-  id: Int!
-  avatar(size: String): String!
-}
-```
+* \[DISCARDED\] `@modelRoute(model)` decorator over Operations, where the model is passed as a parameter to the decorator. This would be used to map the operation as a new parameterized field of a model.
 
 ## Interfaces
 
@@ -779,7 +885,7 @@ Only [Output Types](#output-types) can be decorated as an `Interface`. If an `In
 
 GraphQL Interfaces will be defined using the two specific decorators outlined below:
 
-```
+```typespec
 extern dec Interface(target: Model);
 extern dec compose(target: Model, ...implements: Interface.target[]);
 ```
@@ -787,21 +893,21 @@ extern dec compose(target: Model, ...implements: Interface.target[]);
 The `@Interface` decorator will designate the TSP model to be used as an Interface in GraphQL. This model will be emitted as the `GraphQLInterface` type.
 
 The `@compose` decorator designates which `Interface`s should the current model be composed of. The `@compose` decorator can only refer to other models that are marked with the `@Interface` decorator and not vanilla model types.
-Mapping
 
-| TypeSpec | GraphQL | Notes |
-| :---- | :---- | :---- |
-| @Interface | Interface |  |
-| Model | Interface (Output Type) | Note only output models can be interfaces |
-| @compose | extends Iface1, Iface2… | @compose can be used either with a combination of the @Interface decorator or on the model directly |
+#### Mapping
 
-Decorators
+| TypeSpec     | GraphQL                   | Notes                                                                                               |
+|:-------------|:--------------------------|:----------------------------------------------------------------------------------------------------|
+| `@Interface` | `interface`               |                                                                                                     |
+| `Model`      | `interface (Output Type)` | Note only output models can be interfaces                                                           |
+| `@compose`   | `extends Iface1, Iface2…` | @compose can be used either with a combination of the @Interface decorator or on the model directly |
 
-| Decorator | Target | Parameters | Validations |
-| :---- | :---- | :---- | :---- |
-| @Interface | Model |   | Can be assigned only to an output model |
-|  |  |  |  |
-| @compose | Model | Targets of the Interface decorator | Can be assigned only to an output model All the fields of the models from `compose` must be present in the target model |
+#### Decorators
+
+| Decorator    | Target | Parameters                         | Validations                                                                                                             |
+|:-------------|:-------|:-----------------------------------|:------------------------------------------------------------------------------------------------------------------------|
+| `@Interface` | Model  |                                    | Can be assigned only to an output model                                                                                 |
+| `@compose`   | Model  | Targets of the Interface decorator | Can be assigned only to an output model All the fields of the models from `compose` must be present in the target model |
 
 ### Examples
 <table>
@@ -811,7 +917,9 @@ Decorators
     </tr>
     <tr>
       <td>
-        <pre><code>alias ID = string
+
+```typespec
+alias ID = string
 
 @Interface
 model Node {
@@ -834,11 +942,15 @@ model Identity {
 model Actor {
   ... Person
   rating: string;
-}</code></pre>
-        <p>Fields within the composed model can be defined using either <code>...</code> operator or manually, both are valid</p>
+}
+```
+
+<p>Fields within the composed model can be defined using either <code>...</code> operator or manually, both are valid</p>
       </td>
       <td>
-        <pre><code>scalar PlainDate
+
+```graphql
+scalar PlainDate
 
 interface Node {
   id: ID!
@@ -855,8 +967,10 @@ type Actor implements Node & Person {
   birthDate: PlainDate!
   age: Int
   rating: String!
-}</code></pre>
-        <p>GraphQL requires both Person and Node to be explicitly implemented by Actor.</p>
+}
+```
+
+<p>GraphQL requires both Person and Node to be explicitly implemented by Actor.</p>
       </td>
     </tr>
 </table>
@@ -891,21 +1005,22 @@ TypeSpec enums with no types that can only be identifiers or string literals wil
 4. Append the string representation to `result`
 
 **Pros:** The GraphQL enum is a string representation of the `value` and reflects the true intention of the developer
+
 **Cons:** The server side implementation will have to figure out the translation between the GraphQL enum and the internal representation of the enum where the algorithm isn’t obvious (i.e. they will basically have to implement the steps above).
 
 Inline enums that don’t have an enum name will be assigned a distinct name based on where the field appears in the TSP schema. The name derived from the field will be followed by an `Enum` suffix. To provide disambiguation, the full name should be `namespace` \+ `modelName` \+ `fieldName`. See the examples table for an example.
 
-```
+```typespec
 Inline enum:
 size?: "small" | "medium" | "large"
 ```
 
-**Mapping**
+#### Mapping
 
-| TypeSpec | GraphQL | Notes |
-| :---- | :---- | :---- |
-| Enum.name | Enum.name | See Naming conventions |
-| Enum.members | Enum.members |  |
+| TypeSpec       | GraphQL        | Notes                  |
+|:---------------|:---------------|:-----------------------|
+| `Enum.name`    | `Enum.name`    | See Naming conventions |
+| `Enum.members` | `Enum.members` |                        |
 
 ### Examples
 <table>
@@ -915,76 +1030,108 @@ size?: "small" | "medium" | "large"
     </tr>
     <tr>
       <td>
-        <pre><code>@doc("Simple Enum")
+
+```typespec
+/** Simple Enum */
 enum Direction {
   North,
   East,
   South,
   West,
-}</code></pre>
-      </td>
+}
+```
+
+</td>
       <td>
-        <pre><code>enum Direction {
+
+```graphql
+enum Direction {
   NORTH
   EAST
   SOUTH
   WEST
-}</code></pre>
-      </td>
+}
+```
+
+</td>
     </tr>
     <tr>
       <td>
-        <pre><code>@doc("Enum with Values")
+
+```typespec
+/** Enum with Values */
 enum Hour {
   Nothing: 0,
   HalfofHalf: 0.25,
   SweetSpot: 0.5,
   AlmostFull: 0.75,
-}</code></pre>
-      </td>
+}
+```
+
+</td>
       <td>
         <p>Convert the hour values into GraphQL enum values</p>
-        <pre><code>enum Hour {
+
+```graphql
+enum Hour {
   _0
   _0_25
   _0_5
   _0_75
-}</code></pre>
-        <p>Note that we don’t use the type as TSP types might only have meaning within the TSP code and not the emitted protocol</p>
+}
+```
+
+<p>Note that we don’t use the type as TSP types might only have meaning within the TSP code and not the emitted protocol</p>
       </td>
     </tr>
     <tr>
       <td>
-        <pre><code>enum Boundary {
+
+```typespec
+enum Boundary {
   zero: 0,
   negOne: -1,
   one: 1
-}</code></pre>
-      </td>
+}
+```
+
+</td>
       <td>
         <p>Convert Boundary values into GraphQL enum values</p>
-        <pre><code>enum Boundary {
+
+```graphql
+enum Boundary {
   _0
   _NEGATIVE_1
   _1
-}</code></pre>
-      </td>
+}
+```
+
+</td>
     </tr>
     <tr>
       <td>
-        <pre><code>namespace DemoService;
+
+```typespec
+namespace DemoService;
 model Person {
   size?: "small" | "medium" | "large"
-}</code></pre>
-      </td>
+}
+```
+
+</td>
       <td>
         <p>Derive a unique name based on the namespace, model, field name \+ “Enum”</p>
-        <pre><code>enum DemoServicePersonSizeEnum {
+
+```graphql
+enum DemoServicePersonSizeEnum {
   SMALL
   MEDIUM
   LARGE
-}</code></pre>
-      </td>
+}
+```
+
+</td>
     </tr>
 </table>
 
@@ -996,30 +1143,28 @@ model Person {
 
 
 
-```
+```typespec
 enum Hour {
-  @invisible(GraphQLVis)
-  Nothing: 0,
-  @invisible(GraphQLVis)
-  HalfofHalf: 0.25,
-  @invisible(GraphQLVis)
-  SweetSpot: 0.5,
-  @invisible(GraphQLVis)
-  AlmostFull: 0.75,
+  @invisible(GraphQLVis) Nothing: 0,
+  @invisible(GraphQLVis) HalfofHalf: 0.25,
+  @invisible(GraphQLVis) SweetSpot: 0.5,
+  @invisible(GraphQLVis) AlmostFull: 0.75,
   ... GraphQLHour
 }
 
 @invisible(HttpVis)
 enum GraphQLHour {
-  Nothing: "zero",
+  Nothing: "zero",
   HalfofHalf: "quarter",
   SweetSpot: "half",
   AlmostFull: "threeQuarters",
 }
+```
 
 
 ====================================  GRAPHQL  ====================================
 
+```graphql
 enum Hour {
    ZERO
    QUARTER
@@ -1032,7 +1177,7 @@ enum Hour {
 
 ### Context and design challenges
 
-There are three kinds of [GraphQL Operations](https://spec.graphql.org/draft/#sec-Executing-Operations): Query, Mutation and Subscription.  While in [TypeSpec](https://typespec.io/docs/language-basics/operations) there is no difference between them.
+There are three kinds of [GraphQL Operations](https://spec.graphql.org/draft/#sec-Executing-Operations): Query, Mutation and Subscription. While in [TypeSpec](https://typespec.io/docs/language-basics/operations) there is no difference between them.
 
 - At least one query operation should be included in the schema.
 - The models directly or indirectly used in the operation parameters should be declared as [Input types](#input-types)
@@ -1061,22 +1206,22 @@ In line with the Field Arguments design, the operations decorated directly or in
 When no operation is emitted, an empty schema will be generated.
 When mutations are provided, but there are no query operations, a dummy Query will be added to the schema to make it valid.
 
-**Mapping**
+#### Mapping
 
-| TypeSpec | GraphQL | Notes |
-| :---- | :---- | :---- |
-| @GraphQL.query @GraphQL.mutation @GraphQL.subscription | (operation) Type | If decorators are not present, some rules will apply to define the operation Type. |
-| Operation.name | name | See Naming conventions |
-| Operation.returnType | type | See Output Types |
-| Operation.parameters | args | See Input Types |
+| TypeSpec                                                     | GraphQL          | Notes                                                                              |
+|:-------------------------------------------------------------|:-----------------|:-----------------------------------------------------------------------------------|
+| `@GraphQL.query` `@GraphQL.mutation` `@GraphQL.subscription` | (operation) `Type` | If decorators are not present, some rules will apply to define the operation Type. |
+| `Operation.name`                                             | `name`           | See Naming conventions                                                             |
+| `Operation.returnType`                                       | `type`           | See Output Types                                                                   |
+| `Operation.parameters`                                       | `args`           | See Input Types                                                                    |
 
 **Decorators**
 
-| Decorator | Target | Parameters | Validations (on VS Code and at TSP  compile time) |
-| :---- | :---- | :---- | :---- |
-| @query | Operation, Interface | NA | Just one of these decorators should be applied to the same Operation. |
-| @mutation | Operation, Interface | NA |  |
-| @subscription | Operation, Interface | NA |  |
+| Decorator       | Target                   | Parameters | Validations (on VS Code and at TSP compile time)                      |
+|:----------------|:-------------------------|:-----------|:----------------------------------------------------------------------|
+| `@query`        | `Operation`, `Interface` | N/A        | Just one of these decorators should be applied to the same Operation. |
+| `@mutation`     | `Operation`, `Interface` | N/A        |                                                                       |
+| `@subscription` | `Operation`, `Interface` | N/A        |                                                                       |
 
 ### Examples
 <table>
@@ -1086,11 +1231,13 @@ When mutations are provided, but there are no query operations, a dummy Query wi
     </tr>
     <tr>
       <td>
-        <pre><code>@doc("Explicit Query")
+
+```typespec
+/** Explicit Query */
 @GraphQL.query
 op getUser(id: int32): User;
 
-@doc("Explicit Mutation")
+/** Explicit Mutation */
 @GraphQl.mutation
 op setUserName(
   id: int32,
@@ -1104,7 +1251,7 @@ op setUserPronouns(
   prononuns: String,
 ): User;
 
-@doc("Mutation bc body param")
+/** Mutation bc body param */
 op setUserAddress(
   id: int32,
   @HTTP.body
@@ -1125,11 +1272,15 @@ op getUserAddressById(
   id: int32,
 ): Address;
 
-@doc("Mutation by default")
-op getCurrentUser(): User;</code></pre>
-      </td>
+/** Mutation by default */
+op getCurrentUser(): User;
+```
+
+</td>
       <td>
-        <pre><code>type Query {
+
+```graphql
+type Query {
   getUser(id: Int): User!
   getUsersByAddress(address: Address): [User!]
   getUserAddressById(id: Int): Address!
@@ -1140,39 +1291,53 @@ type Mutation {
   setUserPronouns(id: Int, pronouns: String): User!
   setUserAddress(id: Int, address: Address): User!
   getCurrentUser(id: Int): User!
-}</code></pre>
-      </td>
+}
+```
+
+</td>
     </tr>
     <tr>
       <td>
-        <pre><code>@doc("Schema with a single Mutation")
+
+```typespec
+/** Schema with a single Mutation */
 @GraphQl.mutation
 op setUserName(
   id: int32,
   name: string
-): User;</code></pre>
-      </td>
+): User;
+```
+
+</td>
       <td>
-        <pre><code>""" Dummy Query """
+
+```graphql
+""" Dummy Query """
 type Query {
   _: Boolean
 }
 
 type Mutation {
   setUserName(id:Int, name: String): User
-}</code></pre>
-      </td>
+}
+```
+
+</td>
     </tr>
     <tr>
       <td>
-        <pre><code>@doc("ERROR: Duplicated GraphQL operation kind")
+
+```typespec
+/** ERROR: Duplicated GraphQL operation kind */
 @GraphQl.query
 @GraphQl.mutation
 op setUser(
   id: int32,
   name: string
-): User;</code></pre>
-      </td>
+): User;
+```
+
+</td>
       <td>
         <p><strong>Decorator Validation Errors</strong></p>
       </td>
@@ -1189,12 +1354,12 @@ TSP defines a `list` and `Array` builtin types and both of those need to be conv
 
 For TSP lists (`[]`) and arrays (`Array`) used as types of properties, parameters and operations, we will emit the corresponding list of types in GraphQL.
 
-**Mapping**
+#### Mapping
 
-| TypeSpec | GraphQL | Notes |
-| :---- | :---- | :---- |
-| List.type | List.type |  |
-| Array.type | List.type |  |
+| TypeSpec     | GraphQL     | Notes |
+|:-------------|:------------|:------|
+| `List.type`  | `List.type` |       |
+| `Array.type` | `List.type` |       |
 
 ### Examples
 <table>
@@ -1204,14 +1369,16 @@ For TSP lists (`[]`) and arrays (`Array`) used as types of properties, parameter
     </tr>
     <tr>
       <td>
-        <pre><code>@doc("Lists as property types")
+
+```typespec
+/** Lists as property types */
 model User {
   id: int32;
   pronouns: string[];
   groups: Group[];
 }
 
-@doc("Lists as op return types")
+/** Lists as op return types */
 op getUserAddresses(
   id: int32;
 ): User[];
@@ -1219,10 +1386,14 @@ op getUserAddresses(
 model Pet {
   id: int32;
   names: Array<string>;
-}</code></pre>
-      </td>
+}
+```
+
+</td>
       <td>
-        <pre><code>type User {
+
+```graphql
+type User {
   id: Int!
   pronouns: [String!]!
   groups: [Group!]!
@@ -1235,27 +1406,36 @@ type Query {
 type Pet {
   id: Int!
   names: [String!]!
-}</code></pre>
-      </td>
+}
+```
+
+</td>
     </tr>
     <tr>
       <td>
-        <pre><code>
-  model Foo {
-    a: string[];
-    b: Array<string | null>;
-    c?: string[];
-    d: string[] | null;
-  }</code></pre>
-      </td>
+
+```typespec
+model Foo {
+  a: string[];
+  b: Array<string | null>;
+  c?: string[];
+  d: string[] | null;
+}
+```
+
+</td>
       <td>
-        <pre><code>type Foo {
+
+```graphql
+type Foo {
   a: [String!]!
   b: [String]!
   c: [String!]
   d: [String!]
-}</code></pre>
-        <p>Note the difference in the requiredness of the values vs the list itself for the various options</p>
+}
+```
+
+<p>Note the difference in the requiredness of the values vs the list itself for the various options</p>
       </td>
     </tr>
 </table>
@@ -1267,20 +1447,20 @@ type Pet {
 In [GraphQL](https://spec.graphql.org/October2021/#sec-Non-Null.Nullable-vs-Optional), all properties and parameters are nullable by default, and the *`!`* operator is applied to indicate non-nullability.
 And although all fields are optional; for parameters, Input fields are required if they are marked as non-nullable.
 
-In TypeSpec non-nullable is the default, while nullability is expressed by an Union that includes the  *`null`* type.  Also in TypeSpec: all the fields are required, unless are marked optional with the *`?`* operator.
+In TypeSpec non-nullable is the default, while nullability is expressed by an Union that includes the *`null`* type. Also in TypeSpec: all the fields are required, unless are marked optional with the *`?`* operator.
 
 ### Design Proposal
 
 All output types and return types will be emitted in GraphQL as non-nullable (*`!`* operator), except when the field is marked as optional, or when the type of the field is an Union containing the TypeSpec *`null`* type.
 
-We can also use the same rules for Input fields, but we will force the field as required if the property or the argument is not nullable.  Alternatively, we can throw an error.
+We can also use the same rules for Input fields, but we will force the field as required if the property or the argument is not nullable. Alternatively, we can throw an error.
 
-| TypeSpec | GraphQL Output | GraphQL Input |
-| :---- | :---- | :---- |
-|   name: string; | name: String\! | name: String\! |
-|   name?: string; | name: String | name: String\! |
-|   name: string | null; | name: String | name: String |
-|   name?: string | null; | name: String | name: String |
+| TypeSpec                 | GraphQL Output  | GraphQL Input   |
+|:-------------------------|:----------------|:----------------|
+| `name: string;`          | `name: String!` | `name: String!` |
+| `name?: string;`         | `name: String`  | `name: String!` |
+| `name: string \| null;`  | `name: String`  | `name: String`  |
+| `name?: string \| null;` | `name: String`  | `name: String ` |
 
 ### Examples
 <table>
@@ -1290,7 +1470,9 @@ We can also use the same rules for Input fields, but we will force the field as 
     </tr>
     <tr>
       <td>
-        <pre><code>model User {
+
+```typespec
+model User {
   id: int32;
   name: string;
   pronouns?: string;
@@ -1299,10 +1481,14 @@ We can also use the same rules for Input fields, but we will force the field as 
   pet: Pet | null;
 }
 op getCurrentUser: User;
-op getPet(user: User): Pet | null;</code></pre>
-      </td>
+op getPet(user: User): Pet | null;
+```
+
+</td>
       <td>
-        <pre><code>type User {
+
+```graphql
+type User {
   id: Int!
   name: String!
   pronouns: String
@@ -1313,12 +1499,16 @@ op getPet(user: User): Pet | null;</code></pre>
 type Query {
   getCurrentUser: User!
   getPet(user: User!): Pet
-}</code></pre>
-      </td>
+}
+```
+
+</td>
     </tr>
     <tr>
       <td>
-        <pre><code>model User {
+
+```typespec
+model User {
   id: int32;
   name: string;
   pronouns?: string;
@@ -1336,10 +1526,14 @@ op patchUserOptional(
 ): User;
 op patchUserNullableOptional(
   user?: User | null
-): User;</code></pre>
-      </td>
+): User;
+```
+
+</td>
       <td>
-        <pre><code>type User {
+
+```graphql
+type User {
   id: Int!
   name: String!
   pronouns: String
@@ -1358,8 +1552,10 @@ type Query {
   patchUserNullable(user: UserInput): User!
   patchUserOptional(user: UserInput!): User!
   patchUserNullableOptional(user: UserInput): User!
-}</code></pre>
-      </td>
+}
+```
+
+</td>
     </tr>
 </table>
 
@@ -1382,14 +1578,14 @@ type Query {
 
 ### Design Proposal
 Add to the emitter the handling of the *`never`* type, and exclude any field from the Model before emitting the Model.
-Note: This may result in empty models.  We need to define what to do with fields pointing to empty Models.
+Note: This may result in empty models. We need to define what to do with fields pointing to empty Models.
 
 For Implicit filtered models (automatic visibility):
 
-* Filter all output models using the "read" visibility, generating new models like ModelRead, or maybe  ModelOutput.  The new model would be generated only if it is distinct from the original Model.
-* Since GraphQL does not distinguish between create, update and delete operations; we can generate our Input models just based on the GraphQL operations are used for: Query (visibility "query") or for Mutation (visibilities: "create", "update" and  "delete"); generating: ModelQueryInput and ModelMutationInput.
-* To emit a schema closer to those emitted by other emitters, if the operation is marked with a HTTP verb decorator, we will need to follow the HTTP library specification to filter the models before using them, and if needed, generate new models based on the visibility and the operation type.  For example: for the operations responding using a Model, we will emit a new model named ModelRead with the properties filtered using the "read" visibility.
-  Note that the naming should include the Input suffix and this approach will generate models like UserCreateInput, UserUpdateInput, UserDeleteInput, etc.
+* Filter all output models using the "read" visibility, generating new models like ModelRead, or maybe ModelOutput. The new model would be generated only if it is distinct from the original Model.
+* Since GraphQL does not distinguish between create, update and delete operations; we can generate our Input models just based on the GraphQL operations are used for: Query (visibility "query") or for Mutation (visibilities: "create", "update" and "delete"); generating: ModelQueryInput and ModelMutationInput.
+* To emit a schema closer to those emitted by other emitters, if the operation is marked with a HTTP verb decorator, we will need to follow the HTTP library specification to filter the models before using them, and if needed, generate new models based on the visibility and the operation type. For example: for the operations responding using a Model, we will emit a new model named ModelRead with the properties filtered using the "read" visibility.
+Note that the naming should include the Input suffix and this approach will generate models like UserCreateInput, UserUpdateInput, UserDeleteInput, etc.
 
 ### Examples
 <table>
@@ -1399,8 +1595,10 @@ For Implicit filtered models (automatic visibility):
     </tr>
     <tr>
       <td>
-        <pre><code>Never and explicit filtering
-model PostBase&lt;TState&gt; {
+
+```typespec
+/** Never and explicit filtering */
+model PostBase<TState>; {
   @visibility("read")
   id: int32;
   title: string;
@@ -1410,15 +1608,19 @@ model PostBase&lt;TState&gt; {
   postState: TState;
   postCountry?: Country;
 }
-model Post is PostBase&lt;int32&gt;;
-model PostGql is PostBase&lt;never&gt;;
+model Post is PostBase<int32>;
+model PostGql is PostBase<never>;
 @withVisibility("read")
 model PostRead {
   ...Post;
-}</code></pre>
-      </td>
+}
+```
+
+</td>
       <td>
-        <pre><code>""" postState is Int """
+
+```graphql
+""" postState is Int """
 type Post {
   id: Int!
   title: String!
@@ -1444,12 +1646,16 @@ type PostRead {
   isPopular: Boolean!
   postState: Int!
   postCountry: Country
-}</code></pre>
-      </td>
+}
+```
+
+</td>
     </tr>
     <tr>
       <td>
-        <pre><code>Automatic visibility with HTTP
+
+```typespec
+/** Automatic visibility with HTTP */
 model User {
   name: string;
   @visibility("read", "update") id: string;
@@ -1461,10 +1667,14 @@ interface Users {
   @post create(user: User): User;
   @get get(@path id: string): User;
   @patch set(user: User): User;
-}</code></pre>
-      </td>
+}
+```
+
+</td>
       <td>
-        <pre><code>scalar plainDate
+
+```graphql
+scalar plainDate
 
 """ Create automatic types """
 type User {
@@ -1497,12 +1707,16 @@ type Query {
 type Mutation {
   create(user: UserCreateInput): User!
   set(user: UserUpdateInput!): User!
-}</code></pre>
-      </td>
+}
+```
+
+</td>
     </tr>
     <tr>
       <td>
-        <pre><code>Automatic visibility with GraphQL
+
+```typespec
+/** Automatic visibility with GraphQL */
 model User {
   name: string;
   @visibility("read", "update") id: string;
@@ -1513,10 +1727,14 @@ interface Users {
   @mutation create(user: User): User;
   @query get(id: string): User;
   @mutation set(user: User): User;
-}</code></pre>
-      </td>
+}
+```
+
+</td>
       <td>
-        <pre><code>scalar plainDate
+
+```graphql
+scalar plainDate
 
 type User {
   name: String!
@@ -1544,8 +1762,10 @@ type Query {
 type Mutation {
   create(user: UserCreateInput): User!
   set(user: UserUpdateInput!): User!
-}</code></pre>
-      </td>
+}
+```
+
+</td>
     </tr>
 </table>
 
@@ -1556,8 +1776,8 @@ type Mutation {
 
 ## User feedback:
 
-The emitter will generate feedback for the developers through errors and warnings.  But the warning list could be enormous and not easy to read, especially when trying to emit a GraphQL from a large TSP specification not specifically designed for GraphQL.
-With this in mind we are proposing to emit a "How to improve your TypeSpec scheme for GraphQL" report based on the warnings and other signals.  The purpose is to help developers to generate a better GraphQL schema, introducing the GraphQL decorators and other tricks to their TypeSpec code.  The report should be more readable than the warnings.
+The emitter will generate feedback for the developers through errors and warnings. But the warning list could be enormous and not easy to read, especially when trying to emit a GraphQL from a large TSP specification not specifically designed for GraphQL.
+With this in mind we are proposing to emit a "How to improve your TypeSpec scheme for GraphQL" report based on the warnings and other signals. The purpose is to help developers to generate a better GraphQL schema, introducing the GraphQL decorators and other tricks to their TypeSpec code. The report should be more readable than the warnings.
 
 ## Typespec extension suggestions
-These will be opened as separate issues.
+- [Requiredness and Optionality in TypeSpec](https://github.com/pinterest/typespec/blob/santa/optionality/packages/graphql/letter-to-santa/optionality.md)
