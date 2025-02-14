@@ -1158,6 +1158,9 @@ There are three kinds of [GraphQL Operations](https://spec.graphql.org/draft/#se
 
 ### Design Proposal
 
+> [!WARNING]
+> This section is under review. The means of associating operations with a given operation type may change.
+
 To distinguish between Queries, Mutations and Subscription, we are proposing to include a set of three decorators in TypeSpec: `@query`, `@mutation` and `@subscription`.  These will decorate the TSP Operations to indicate the GraphQL kind.
 The decorators would also be added to an interface, understanding that all operations within the interface would be of the provided kind.
 The GraphQL emitter will generate the proper GraphQL kind for each Operation, according to these rules:
