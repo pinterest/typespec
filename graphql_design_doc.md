@@ -982,6 +982,9 @@ type Actor implements Node & Person {
 
 ## Enums
 
+> [!WARNING]
+> This section is under review and possible reconsideration.
+
 ### Context and design challenges
 
 TSP enum member types have no meaning in GraphQL and the enum member values should follow the naming convention shown below (similar to all other literal names). From the GraphQL spec: “[*EnumValue*](https://spec.graphql.org/October2021/#EnumValue)
@@ -1441,6 +1444,9 @@ type Foo {
 </table>
 
 ## Nullable vs Optional
+
+> [!WARNING]
+> This section is under review. The approach described here will be overhauled if our [Contextual Requiredness proposal](https://github.com/pinterest/typespec/blob/santa/optionality/packages/graphql/letter-to-santa/optionality.md) is accepted. 
 
 ### Context and design challenges
 
