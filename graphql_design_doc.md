@@ -1158,19 +1158,12 @@ There are three kinds of [GraphQL Operations](https://spec.graphql.org/draft/#se
 
 ### Design Proposal
 
-To distinguish between Queries, Mutations and Subscription, we are proposing to include a set of three decorators in TypeSpec: @query, @mutation and @subscription.  These will decorate the TSP Operations to indicate the GraphQL kind.
+To distinguish between Queries, Mutations and Subscription, we are proposing to include a set of three decorators in TypeSpec: `@query`, `@mutation` and `@subscription`.  These will decorate the TSP Operations to indicate the GraphQL kind.
 The decorators would also be added to an interface, understanding that all operations within the interface would be of the provided kind.
 The GraphQL emitter will generate the proper GraphQL kind for each Operation, according to these rules:
 
-1. Follow the explicit definition of any of the decorators: @query, @mutation, @subscription
-2. If the decorator is not provided, then:
-   1. If the strictEmit option is on, the operation would be omitted from the GraphQL schema
-   2. If the strictEmit option is off, then:
-      1. If the Operation is marked with @http.get or @http.head the Operation will be generated as a Query
-      2. If the Operation is marked as @http.put, @http.post @http.patch or @http.delete, the Operation will be generated as a Mutation
-      3. if the Operation is not  marked with any http verb, we fallback to the OpenAPI emitter behavior as follows:
-         1. If any of the parameters of the Operation is marked with @http.path, the emitter defaults to `query,`
-         2. Else, the operation will be emitted as Mutations, because the OpenAPI emitter defaults to `post`.
+1. Follow the explicit definition of the decorator: `@query`, `@mutation`, `@subscription`
+2. If the decorator is not provided, then the operation would be omitted from the GraphQL schema
 
 
 The Operation parameters will be converted to GraphQL arguments following the rules for the GraphQL Input types.
