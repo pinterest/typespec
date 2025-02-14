@@ -172,16 +172,7 @@ op getUser(id: int): User;
 </td>
     <td>
 
-```graphql
-scalar Any
-type User {
-  image: Any
-}
-type Query {
-  getUser(id: Int!): User!
-}
-
-```
+<p>This results in an error</p>
 
 </td>
   </tr>
@@ -262,7 +253,7 @@ To emit a valid GraphQL and still represent the schema defined in TypeSpec, the 
   - **🔴 Design decision:** All models are created with the `Input` suffix regardless of whether or not it is used as both, because the model can be used as both `input` and `output` in the future and changing the type name will cause issues with schema evolution.
   - **Cons:** the `Input` suffix can be annoying or result in types like `UserInputInput`
 - If the `model` or its properties are invalid Input types, an error will be raised.
-  - **🔴 Design decision:** In order to provide a different definition of the same field so that the GraphQL type can be represented more accurately, we will use the [upcoming visibility redesign to provide an alternative definition](https://discord.com/channels/1247582902930116749/1250119513681301514/1300865256679276655), see the examples to see what that could look like.
+  - **🔴 Design decision:** In order to provide a different definition of the same field so that the GraphQL type can be represented more accurately, we will use [visibility](#visibility--never), see the examples to see what that could look like.
 - If the `model` contains an unbroken chain of non-null singular fields, throw an error and fail the emitter process
 
 #### Mapping
@@ -345,28 +336,7 @@ op createUser(userData: UserData): User
 
 </td>
       <td>
-        <p>Translate the invalid input to Any</p>
-
-```typespec
-scalar Any
-input UserDataInput {
-  pet: Any
-  name: String!
-  email: String
-  age: Int
-}
-type User {
-  pet: Pet
-  name: String!
-  email: String
-  age: Int
-  id: Int!
-}
-union Pet = Dog | Cat
-type Mutation {
-  createUser(userData: UserDataInput!): User!
-}
-```
+        <p>This results in an error</p>
 
 </td>
     </tr>
@@ -527,7 +497,7 @@ scalar ID extends string;
 | `plainDate`            |                 | `scalar PlainDate`           | `String`  |                                                                               |
 | `plainTime`            |                 | `scalar PlainTime`           | `String`  |                                                                               |
 | `url`                  |                 | `scalar URL`                 | `String`  | [URL living standard](https://url.spec.whatwg.org/)                           |
-| `unknown`              |                 | `scalar Any`                 | `String`  |                                                                               |
+| `unknown`              |                 | `scalar Unknown`             | `String`  |                                                                               |
 
 ### Examples
 <table>
