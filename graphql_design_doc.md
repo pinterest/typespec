@@ -70,7 +70,7 @@ The main design constraint is that we only want to traverse the TSP program once
 We need to consider two main scenarios when designing the GraphQL emitter:
 
 1. When the TypeSpec code is specifically designed for emitting GraphQL, we can equip developers with GraphQL-specific decorators, and objects. This will aid in crafting TypeSpec code that generates well-designed GraphQL schemas. Given that GraphQL does not employ HTTP or REST concepts, developers should be able to bypass those libraries. However, it should still be feasible to emit OpenAPI or any other schema by adding the appropriate decorators (like `@route`) to the existing TypeSpec code used to generate the GraphQL schema and the existing graphql emitter should continue to work as expected.
-2. When a developer aims to create a GraphQL service from an existing TypeSpec schema originally used for emitters like OpenAPI, we focus on designing a usable GraphQL schema. This may involve using `Any` scalars for unsupported GraphQL objects and emitting all the operations in the TypeSpec code. Although the emitted GraphQL schema might lack optimal design, it remains functional. If a specific pattern can enhance the GraphQL schema and aligns with our design guidelines, it should be applied. We will also offer warnings and recommendations to assist developers in modifying the TypeSpec code to improve their emitted GraphQL schema incrementally.
+2. When a developer aims to create a GraphQL service from an existing TypeSpec schema originally used for emitters like OpenAPI, we focus on producing a GraphQL schema that represents the TypeSpec with no loss of specificity. Instead of assuming intent, we will provide errors and warnings as soon as possible when something in the TypeSpec schema is not directly compatible with GraphQL and the means of making it compatible are not deterministic.
 
 ## Output Types
 
@@ -261,7 +261,7 @@ To emit a valid GraphQL and still represent the schema defined in TypeSpec, the 
 - If the input type is a `Model` and all the properties of the `Model` are of valid Input types, a new `Input` object will be created in GraphQL, with the typename as the original type \+ `Input` suffix.
   - **🔴 Design decision:** All models are created with the `Input` suffix regardless of whether or not it is used as both, because the model can be used as both `input` and `output` in the future and changing the type name will cause issues with schema evolution.
   - **Cons:** the `Input` suffix can be annoying or result in types like `UserInputInput`
-- If the `model` or its properties are invalid Input types, the type of the invalid model or property will be assigned to the `Any` scalar type and a warning will be emitted.
+- If the `model` or its properties are invalid Input types, an error will be raised.
   - **🔴 Design decision:** In order to provide a different definition of the same field so that the GraphQL type can be represented more accurately, we will use the [upcoming visibility redesign to provide an alternative definition](https://discord.com/channels/1247582902930116749/1250119513681301514/1300865256679276655), see the examples to see what that could look like.
 - If the `model` contains an unbroken chain of non-null singular fields, throw an error and fail the emitter process
 
@@ -1138,7 +1138,7 @@ enum DemoServicePersonSizeEnum {
 ### Design Alternatives
 
 1. Use the type name instead of values for integer and floating point values. But, we would need to be consistent and use TSP enums in the type context rather than the value context which feels wrong.
-2. Emit `Any` for enums with values as integers or floating points and let the developer define an alternate type using the [upcoming visibility redesign to provide an alternative definition](https://discord.com/channels/1247582902930116749/1250119513681301514/1300865256679276655).
+2. Emit `Any` for enums with values as integers or floating points and let the developer define an alternate type [using visibility](#visibility--never).
    1. If the `@invisible` decorator can be applied to `EnumMembers`, we can provide alternate enum members for GraphQL in the same enum definition which change the emitter to emit the GraphQL enum values as shown below:
 
 
@@ -1569,7 +1569,7 @@ type Query {
 ### Context and design challenges
 
 * TypeSpec have two ways to filter out properties from Models:
-  * Visibility, using `@visibilty` and `@witthVisibility` decorators.
+  * Visibility, using `@visibilty`, `@invisible`, `@withVisibility`, et al decorators.
   * `never` type
 * The filtering based on explicit filtered models using `@withVisibility` is already considered in the compiler, so it will be also included in the emitter.
 * HTTP library has the [automatic visibility](https://typespec.io/docs/libraries/http/operations/#automatic-visibility) concept that automatically filters the properties from the model based on the HTTP type of the operation, with no need of generating explicit filtered models.
@@ -1580,12 +1580,29 @@ type Query {
 Add to the emitter the handling of the *`never`* type, and exclude any field from the Model before emitting the Model.
 Note: This may result in empty models. We need to define what to do with fields pointing to empty Models.
 
-For Implicit filtered models (automatic visibility):
+Create a new [visibility class](https://typespec.io/docs/language-basics/visibility/#basic-concepts) named `OperationType`:
 
-* Filter all output models using the "read" visibility, generating new models like ModelRead, or maybe ModelOutput. The new model would be generated only if it is distinct from the original Model.
-* Since GraphQL does not distinguish between create, update and delete operations; we can generate our Input models just based on the GraphQL operations are used for: Query (visibility "query") or for Mutation (visibilities: "create", "update" and "delete"); generating: ModelQueryInput and ModelMutationInput.
-* To emit a schema closer to those emitted by other emitters, if the operation is marked with a HTTP verb decorator, we will need to follow the HTTP library specification to filter the models before using them, and if needed, generate new models based on the visibility and the operation type. For example: for the operations responding using a Model, we will emit a new model named ModelRead with the properties filtered using the "read" visibility.
-Note that the naming should include the Input suffix and this approach will generate models like UserCreateInput, UserUpdateInput, UserDeleteInput, etc.
+```typespec
+enum OperationType {
+  Query,
+  Mutation,
+  Subscription,
+}
+```
+
+For implicit filtered models (automatic visibility):
+
+GraphQL does not have an equivalent concept like HTTP verbs that map to the `Lifecycle` visibility modifiers. However, GraphQL mutations will commonly adhere to these type of "CRUD" operations.
+
+TSP developers will need to take advantage of the [`@parameterVisibility`](https://typespec.io/docs/standard-library/built-in-decorators/#@parameterVisibility) and [`@returnTypeVisibility`](https://typespec.io/docs/standard-library/built-in-decorators/#@returnTypeVisibility) decorators to filter the models based on the semantic operation type.
+In the case where the operation does not have explicit visibility specified and is already decorated with an HTTP verb, the emitter will use [the HTTP library specification](https://typespec.io/docs/libraries/http/operations/#automatic-visibility) to apply the related visibility to the input types.
+
+If none of the standard "CRUD" operations apply, whether the [operation](#operations) is a query, mutation, or subscription will apply the `OperationType.Query`, `OperationType.Mutation`, or `OperationType.Subscription` visibility to input types, respectively.
+
+For practical reasons, we will follow lead of the HTTP library on response types and filter them to `Lifecycle.Read` by default.
+
+Generated model names will be suffixed with the appropriate operation type, e.g. `UserQueryInput`, `UserRead`, `UserCreateInput`, `UserMutationInput`, etc.
+The new models would be generated only if they are distinct from the original Model.
 
 ### Examples
 <table>
@@ -1599,18 +1616,18 @@ Note that the naming should include the Input suffix and this approach will gene
 ```typespec
 /** Never and explicit filtering */
 model PostBase<TState>; {
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   id: int32;
   title: string;
   isPopular: boolean;
-  @visibility("update")
+  @visibility(Lifecycle.Update)
   poster?: Person;
   postState: TState;
   postCountry?: Country;
 }
 model Post is PostBase<int32>;
 model PostGql is PostBase<never>;
-@withVisibility("read")
+@withVisibility(Lifecycle.Read)
 model PostRead {
   ...Post;
 }
@@ -1658,9 +1675,9 @@ type PostRead {
 /** Automatic visibility with HTTP */
 model User {
   name: string;
-  @visibility("read", "update") id: string;
-  @visibility("create") password: string;
-  @visibility("read") lastPwdReset: plainDate;
+  @visibility(Lifecycle.Read, Lifecycle.Update) id: string;
+  @visibility(Lifecycle.Create) password: string;
+  @visibility(Lifecycle.Read) lastPwdReset: plainDate;
 }
 @route("/users")
 interface Users {
@@ -1701,12 +1718,12 @@ type UserUpdateInput {
 }
 
 type Query {
-  get(id: String!): User!
+  get(id: String!): UserRead!
 }
 
 type Mutation {
-  create(user: UserCreateInput): User!
-  set(user: UserUpdateInput!): User!
+  create(user: UserCreateInput): UserRead!
+  set(user: UserUpdateInput!): UserRead!
 }
 ```
 
@@ -1719,9 +1736,9 @@ type Mutation {
 /** Automatic visibility with GraphQL */
 model User {
   name: string;
-  @visibility("read", "update") id: string;
-  @visibility("create") password: string;
-  @visibility("read") lastPwdReset: plainDate;
+  @visibility(Lifecycle.Read, Lifecycle.Update) id: string;
+  @visibility(Lifecycle.Create) password: string;
+  @visibility(Lifecycle.Read) lastPwdReset: plainDate;
 }
 interface Users {
   @mutation create(user: User): User;
@@ -1756,12 +1773,12 @@ type UserMutationInput {
 }
 
 type Query {
-  get(id: String!): User!
+  get(id: String!): UserRead!
 }
 
 type Mutation {
-  create(user: UserCreateInput): User!
-  set(user: UserUpdateInput!): User!
+  create(user: UserCreateInput): UserRead!
+  set(user: UserUpdateInput!): UserRead!
 }
 ```
 
@@ -1773,6 +1790,7 @@ type Mutation {
 
 * Define what to do with fields pointing to empty models
 * Should we keep the original Models in the schema, even if they are not used?
+* We should expect that `<Model>Read` types will be the most common; should we have the `Lifecycle.Read`-filtered model instead be called `<Model>`, and the unfiltered model be something like `<Model>Full`?
 
 ## User feedback:
 
