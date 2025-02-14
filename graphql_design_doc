@@ -105,25 +105,33 @@ When creating an operation that returns models, all directly or indirectly refer
   </tr>
   <tr>
     <td>
-      <pre><code>@doc("Simple output model")
+
+```typespec
+/** Simple output model */
 model Image {
   id: int32,
   url: str,
 }
-@doc("Operation")
+
+/** Operation */
 op getImage(
   id: int32,
   size: str,
-): Image;</code></pre>
+): Image;
+```
+
     </td>
     <td>
-      <pre><code>type Image {
+
+```graphql
+type Image {
   id: Int!
   url: String!
 }
 type Query {
   getImage(id: Int!, size:String!): Image!
-}</code></pre>
+}```
+
     </td>
   </tr>
   <tr>
