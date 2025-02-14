@@ -478,26 +478,26 @@ scalar ID extends string;
 
 **Type Mappings to GraphQL custom Scalars**
 
-| TypeSpec               | encoding        | GraphQL                      | Primitive | specifiedBy                                                                   |
-|:-----------------------|:----------------|:-----------------------------|:----------|:------------------------------------------------------------------------------|
-| `integer` `int64`      |                 | `scalar BigInt`              | `String`  |                                                                               |
-| `numeric`              |                 | `scalar Numeric`             | `String`  |                                                                               |
-| `decimal` `decimal128` |                 | `scalar BigDecimal`          | `String`  |                                                                               |
-| `bytes`                | `base64`        | `scalar Bytes`               | `String`  | [RFC4648](https://datatracker.ietf.org/doc/html/rfc4648)                      |
-|                        | `base64url`     | `scalar BytesUrl`            | `String`  | [RFC4648](https://datatracker.ietf.org/doc/html/rfc4648#section-5)            |
-| `utcDateTime`          | `rfc3339`       | `scalar UTCDateTime`         | `String`  | [RFC3339](https://datatracker.ietf.org/doc/html/rfc3339)                      |
-|                        | `rfc7231`       | `scalar UTCDateTimeHuman`    | `String`  | [RFC7231](https://datatracker.ietf.org/doc/html/rfc7231)                      |
-|                        | `unixTimestamp` | `scalar UTCDateTimeUnix`     | `Int`     |                                                                               |
-| `offsetDateTime`       | `rfc3339`       | `scalar OffsetDateTime`      | `String`  | [RFC3339](https://datatracker.ietf.org/doc/html/rfc3339)                      |
-|                        | `rfc7231`       | `scalar OffsetDateTimeHuman` | `String`  | [RFC7231](https://datatracker.ietf.org/doc/html/rfc7231)                      |
-|                        | `unixTimestamp` | `scalar OffsetDateTimeUnix`  | `Int`     |                                                                               |
-| `unixTimestamp32`      |                 | `scalar OffsetDateTimeUnix`  | `Int`     |                                                                               |
-| `duration`             | `ISO8601`       | `scalar Duration`            | `String`  | [ISO 8601-1:2019](https://www.iso.org/obp/ui/#iso:std:iso:8601:-1:ed-1:v1:en) |
-|                        | `seconds`       | `scalar DurationSeconds`     | `Float`   |                                                                               |
-| `plainDate`            |                 | `scalar PlainDate`           | `String`  |                                                                               |
-| `plainTime`            |                 | `scalar PlainTime`           | `String`  |                                                                               |
-| `url`                  |                 | `scalar URL`                 | `String`  | [URL living standard](https://url.spec.whatwg.org/)                           |
-| `unknown`              |                 | `scalar Unknown`             | `String`  |                                                                               |
+| TypeSpec               | encoding        | GraphQL                      | Primitive                           | specifiedBy                                                                   |
+|:-----------------------|:----------------|:-----------------------------|:------------------------------------|:------------------------------------------------------------------------------|
+| `integer` `int64`      |                 | `scalar BigInt`              | `String`                            |                                                                               |
+| `numeric`              |                 | `scalar Numeric`             | `String`                            |                                                                               |
+| `decimal` `decimal128` |                 | `scalar BigDecimal`          | `String`                            |                                                                               |
+| `bytes`                | `base64`        | `scalar Bytes`               | `String`                            | [RFC4648](https://datatracker.ietf.org/doc/html/rfc4648)                      |
+|                        | `base64url`     | `scalar BytesUrl`            | `String`                            | [RFC4648](https://datatracker.ietf.org/doc/html/rfc4648#section-5)            |
+| `utcDateTime`          | `rfc3339`       | `scalar UTCDateTime`         | `String`                            | [RFC3339](https://datatracker.ietf.org/doc/html/rfc3339)                      |
+|                        | `rfc7231`       | `scalar UTCDateTimeHuman`    | `String`                            | [RFC7231](https://datatracker.ietf.org/doc/html/rfc7231)                      |
+|                        | `unixTimestamp` | `scalar UTCDateTimeUnix`     | `Int`                               |                                                                               |
+| `offsetDateTime`       | `rfc3339`       | `scalar OffsetDateTime`      | `String`                            | [RFC3339](https://datatracker.ietf.org/doc/html/rfc3339)                      |
+|                        | `rfc7231`       | `scalar OffsetDateTimeHuman` | `String`                            | [RFC7231](https://datatracker.ietf.org/doc/html/rfc7231)                      |
+|                        | `unixTimestamp` | `scalar OffsetDateTimeUnix`  | `Int`                               |                                                                               |
+| `unixTimestamp32`      |                 | `scalar OffsetDateTimeUnix`  | `Int`                               |                                                                               |
+| `duration`             | `ISO8601`       | `scalar Duration`            | `String`                            | [ISO 8601-1:2019](https://www.iso.org/obp/ui/#iso:std:iso:8601:-1:ed-1:v1:en) |
+|                        | `seconds`       | `scalar DurationSeconds`     | `Int` or `Float`, based on `@encode` |                                                                               |
+| `plainDate`            |                 | `scalar PlainDate`           | `String`                            |                                                                               |
+| `plainTime`            |                 | `scalar PlainTime`           | `String`                            |                                                                               |
+| `url`                  |                 | `scalar URL`                 | `String`                            | [URL living standard](https://url.spec.whatwg.org/)                           |
+| `unknown`              |                 | `scalar Unknown`             | `String`                            |                                                                               |
 
 ### Examples
 <table>
