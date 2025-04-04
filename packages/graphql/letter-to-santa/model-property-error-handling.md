@@ -70,7 +70,7 @@ extern dec handles(target: Operation | ModelProperty, ...errors: Model[]);
 ````
 
 The decorator can be applied to operations or model properties.
-It specifies that the operation or model property will handle the listed errors,preventing them from being propagated to the client.
+It specifies that the operation or model property will handle the listed errors, preventing them from being propagated to the client.
 
 The `errors` parameter is a list of models that represent the errors that will be handled by the operation or model property.
 Each model must be decorated with the [`@error` decorator][error-decorator].
@@ -847,7 +847,7 @@ model User {
 ```
 
 This TypeSpec, by contrast, indicates that the `profilePictureUrl` property's value is always a string, but that accessing it may produce either a `NotFoundError` or a `PermissionDeniedError`.
-Typically, this means that the property does not _have_ a value in that scenario, and instead should be used to describe the appropriate error-returning semantic of a given protocol.
+Typically, this means that the property does not _have_ a value in that scenario and instead should be used to describe the appropriate error-returning semantic of a given protocol.
 
 ## Summary
 
