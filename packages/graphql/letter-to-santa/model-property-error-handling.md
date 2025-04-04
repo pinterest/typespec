@@ -49,21 +49,36 @@ The `errors` parameter is a list of models that represent the possible errors th
 
 ````typespec
 /**
- * Specify that this operation will handle certain types of errors.
+ * Specify that this operation or model property will handle certain types of errors.
  *
- * @param errors The list of error models that will be handled by this operation.
+ * @param errors The list of error models that will be handled by this operation or model property.
  *
  * @example
  *
  * ```typespec
- * @handles(InvalidURLError)
- * op getUser(id: string): User | NotFoundError;
+ * @handles(InvalidURLError) op getUser(id: string): User | NotFoundError;
+ *
+ * model User {
+ *   @handles(PermissionDeniedError) profilePictureUrl: string;
+ * }
  * ```
  */
-extern dec handles(target: Operation, ...errors: Model[]);
+extern dec handles(target: Operation | ModelProperty, ...errors: Model[]);
 ````
 
-The decorator can be applied to operations. It specifies that the operation will handle the listed errors if they are thrown by accessing a property decorated with the `@throws` decorator, preventing them from being propagated to the client.
+The decorator can be applied to operations or model properties. It specifies that the operation or model property will handle the listed errors,preventing them from being propagated to the client.
+
+The `errors` parameter is a list of models that represent the errors that will be handled by the operation or model property.
+Each model must be decorated with the [`@error` decorator][error-decorator].
+
+For example, if a property handles an error internally, that error will not propagate to the operation's response type:
+
+```typespec
+model User {
+  @throws(InvalidURLError)
+  @handles(PermissionDeniedError)
+  profilePictureUrl: string;
+}
 
 @route("/user/{id}")
 @get
@@ -95,6 +110,18 @@ op getUser(@path id: string): User | InvalidURLError | GenericError;
 Semantically, this indicates that the operation will handle the `InvalidURLError` error when produced by a model property, but that the operation itself may also return that error, outside the context of a model property.
 
 This becomes important when considering error inheritance.
+
+#### `@throws` + `@handles` decorator
+
+Similarly, model properties may have one or more error types defined in both their `@throws` decorator and the `@handles` decorator. In this case, the error is still considered to be throwable by the model property.
+
+```typespec
+model User {
+  @throws(InvalidURLError)
+  @handles(PermissionDeniedError, InvalidURLError)
+  profilePictureUrl: string;
+}
+```
 
 #### Error inheritance + `@handles` decorator
 
