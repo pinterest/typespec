@@ -1,6 +1,6 @@
 # Proposal: Expressing Model Property Error Handling
 
-This proposal suggests adding a two new decorator to the TypeSpec standard library:
+This proposal suggests adding two new decorators to the TypeSpec standard library:
 
 - `@throws` decorator: This decorator is used to specify that the use of a model property may result in specific errors being produced.
 - `@handles` decorator: This decorator is used to specify that an operation or property will handle certain types of errors, preventing them from being propagated.
@@ -858,7 +858,9 @@ This distinction ensures that the proposal remains flexible and applicable to a 
 
 <br>
 
-## Bonus: Adding Context Modifiers to `@error`
+## Additional Considerations
+
+### Adding Context Modifiers to `@error`
 
 As an optional enhancement, we propose extending the `@error` decorator to include an argument for specifying context (visibility) modifiers.
 This would allow developers to explicitly indicate the contexts in which an error applies, such as input validation, output handling, or both.
@@ -906,11 +908,11 @@ Here, `Lifecycle.CREATE` and `Lifecycle.UPDATE` indicate that `InvalidEmailError
 Libraries and emitters should interpret context modifiers, when applied to error models, to determine what errors should be included in different contexts.
 This mirrors the [visibility system][visibility-system], and libraries and emitters should interpret the context modifiers the same way as they already do for visibility.
 
-### Examples
+#### Examples
 
 The following examples illustrate how the context modifiers can be used in practice.
 
-#### Input Contexts
+##### Input Contexts
 
 Errors with `Lifecycle.CREATE`, `Lifecycle.UPDATE`, or `Lifecycle.DELETE` are included when the model is used in an input context.
 
@@ -920,7 +922,7 @@ Errors with `Lifecycle.CREATE`, `Lifecycle.UPDATE`, or `Lifecycle.DELETE` are in
 op createUser(request: User): boolean | InvalidEmailError | GenericError;
 ```
 
-#### Output Contexts
+##### Output Contexts
 
 Errors with `Lifecycle.READ` are included when the model is used in an output context.
 
@@ -930,7 +932,7 @@ Errors with `Lifecycle.READ` are included when the model is used in an output co
 op getUser(@path id: string): User | PermissionDeniedError | GenericError;
 ```
 
-#### Both Contexts
+##### Both Contexts
 
 Errors can apply to both input and output contexts by specifying multiple lifecycle stages.
 
@@ -940,6 +942,49 @@ model GenericError {
   message: string;
 }
 ```
+
+<br>
+
+### Identifying Unused Error Handlers
+
+TypeSpec only knows, and can only reason about, errors that are specified in a `@throws` decorator.
+If an error is specified in a `@handles` decorator but not in any `@throws` decorator of all the model properties that are part of that property or operation, the TypeSpec compiler will not be able to determine whether the error is actually used.
+
+To help developers make that determination, the TypeSpec compiler will issue a warning when this scenario occurs.
+If the developer determines that the error _is_ thrown outside of the context of TypeSpec, they can use the standard [`# suppress` directive][suppress-directive] to suppress the warning.
+
+This warning helps to avoid misleading consumers about an error type that may not actually occur.
+
+#### Example: Unused Error Handler
+
+Consider the following example:
+
+```typespec
+@error
+model NotFoundError {
+  message: string;
+}
+
+@error
+model PermissionDeniedError {
+  message: string;
+}
+
+model User {
+  @throws(NotFoundError)
+  profilePictureUrl: string;
+}
+
+@route("/user/{id}")
+@get
+@handles(PermissionDeniedError) // warning
+op getUser(@path id: string): User;
+```
+
+In this example, the `getUser` operation specifies that it handles `PermissionDeniedError` using the `@handles` decorator.
+However, none of the properties or operations used in `getUser` (in this case, just the `User.profilePictureUrl` property) specify `PermissionDeniedError` in their `@throws` decorators.
+
+As a result, the TypeSpec compiler will issue a warning.
 
 #
 
@@ -951,3 +996,4 @@ model GenericError {
 [graphql-emitter]: https://github.com/microsoft/typespec/issues/4933
 [statuscode-decorator]: https://typespec.io/docs/libraries/http/reference/decorators/#@TypeSpec.Http.statusCode
 [visibility-system]: https://typespec.io/docs/language-basics/visibility/
+[suppress-directive]: https://typespec.io/docs/language-basics/directives/#suppress
