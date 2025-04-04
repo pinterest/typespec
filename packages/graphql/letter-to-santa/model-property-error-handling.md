@@ -172,6 +172,8 @@ This is meant to align with exception semantics common among many languages, whe
 
 ## Implementations and Use Cases
 
+Below we list some proposed implementations in various emitter targets. These are meant to be illustrative of the effects of the `@throws` and `@handles` decorators, and are not proposing any of the specific syntax or implementation shown below.
+
 ### HTTP/REST/OpenAPI
 
 In a typical HTTP/REST API where operations are represented by endpoints, the `@throws` decorator can provide more accurate return types for operations that contain properties that may fail.
@@ -562,6 +564,143 @@ type ActivityEntry {
   * this field is non-null because it has RaceConditionError (which propagates) in its return type
   """
   markAsSeen(seen: Boolean!): Boolean!
+}
+```
+
+</details>
+
+<br>
+
+### Protocol Buffers (Protobuf)
+
+Protocol Buffers (Protobuf) is a language-neutral, platform-neutral mechanism for serializing structured data. While Protobuf itself does not have a built-in concept of errors, the `@throws` and `@handles` decorators can be used to model and document errors in TypeSpec, which can then be translated into Protobuf-compatible patterns. Different patterns for communicating errors in Protobuf can be expressed using additional TypeSpec decorators.
+
+#### Using `@throws` with Protobuf
+
+The `@throws` decorator can be used to specify errors that may occur when accessing a property. These errors can be represented in Protobuf by defining separate message types for each error and including them in a `oneof` field in the response message.
+
+For example:
+
+<details open><summary><em>Click to collapse</em></summary>
+
+```typespec
+@error
+@oneOfError
+model NotFoundError {
+  message: string;
+}
+
+@error
+@oneOfError
+model PermissionDeniedError {
+  message: string;
+}
+
+model User {
+  @throws(NotFoundError, PermissionDeniedError)
+  profilePictureUrl: string;
+}
+
+@route("/user/{id}")
+@get
+op getUser(@path id: string): User;
+```
+
+</details>
+
+This could be translated into the following Protobuf schema:
+
+<details open><summary><em>Click to collapse</em></summary>
+
+```proto
+message NotFoundError {
+  string message = 1;
+}
+
+message PermissionDeniedError {
+  string message = 1;
+}
+
+message User {
+  string profilePictureUrl = 1;
+}
+
+message GetUserResponse {
+  oneof result {
+    User user = 1;
+    NotFoundError not_found_error = 2;
+    PermissionDeniedError permission_denied_error = 3;
+  }
+}
+
+service UserService {
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+}
+
+message GetUserRequest {
+  string id = 1;
+}
+```
+
+</details>
+
+#### Using gRPC Status Codes
+
+When using Protobuf with gRPC, errors are often communicated using gRPC's built-in status codes and error details.
+These could be expressed in TypeSpec using a `@statusCode` decorator from a gRPC library, along with a generic `Error` model in the operation's return type.
+
+<details open><summary><em>Click to collapse</em></summary>
+
+```typespec
+@error
+model Error {
+  code: gRPC.StatusCode;
+  message: string;
+}
+
+@error
+model NotFoundError extends Error {
+  code: gRPC.StatusCode.NOT_FOUND;
+}
+
+model User {
+  @throws(NotFoundError) profilePictureUrl: string;
+}
+
+@route("/user/{id}")
+@get
+op getUser(@path id: string): User | Error;
+```
+
+</details>
+
+This could be translated into the following Protobuf schema:
+
+<details open><summary><em>Click to collapse</em></summary>
+
+```proto
+message Error {
+  GrpcStatusCode code = 1;
+  string message = 2;
+}
+
+message User {
+  string profilePictureUrl = 1;
+}
+
+message GetUserResponse {
+  oneof result {
+    User user = 1;
+    Error error = 2;
+  }
+}
+
+service UserService {
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+}
+
+message GetUserRequest {
+  string id = 1;
 }
 ```
 
