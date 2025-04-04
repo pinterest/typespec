@@ -39,9 +39,12 @@ It also proposes updating existing emitters to support these new decorators.
 extern dec throws(target: ModelProperty, ...errors: Model[]);
 ````
 
-The decorator can be applied to model properties. It specifies that any operation or context using the decorated property may produce the listed errors. This allows consumers to anticipate and handle these errors appropriately.
+The decorator can be applied to model properties.
+It specifies that any operation or context using the decorated property may produce the listed errors.
+This allows consumers to anticipate and handle these errors appropriately.
 
-The `errors` parameter is a list of models that represent the possible errors that can be thrown. Each model must be decorated with the [`@error` decorator][error-decorator].
+The `errors` parameter is a list of models that represent the possible errors that can be thrown.
+Each model must be decorated with the [`@error` decorator][error-decorator].
 
 <br>
 
@@ -66,7 +69,8 @@ The `errors` parameter is a list of models that represent the possible errors th
 extern dec handles(target: Operation | ModelProperty, ...errors: Model[]);
 ````
 
-The decorator can be applied to operations or model properties. It specifies that the operation or model property will handle the listed errors,preventing them from being propagated to the client.
+The decorator can be applied to operations or model properties.
+It specifies that the operation or model property will handle the listed errors,preventing them from being propagated to the client.
 
 The `errors` parameter is a list of models that represent the errors that will be handled by the operation or model property.
 Each model must be decorated with the [`@error` decorator][error-decorator].
@@ -85,7 +89,8 @@ model User {
 op getUser(@path id: string): User | GenericError;
 ```
 
-In this case, the `PermissionDeniedError` is handled internally by the `profilePictureUrl` property and does not appear in the list of possible errors for the `getUser` operation. However, the `InvalidURLError` is still propagated to the operation's response type.
+In this case, the `PermissionDeniedError` is handled internally by the `profilePictureUrl` property and does not appear in the list of possible errors for the `getUser` operation.
+However, the `InvalidURLError` is still propagated to the operation's response type.
 
 #### Operation errors + `@throws` decorator
 
@@ -98,7 +103,8 @@ If an error type is specified in both the operation's return type and the `@thro
 
 #### Operation errors + `@handles` decorator
 
-It is possible, and valid, that an operation both `@handles` an error and also has a return type that includes that error. In this case, the operation _will_ include the error in the list of possible errors for the operation.
+It is possible, and valid, that an operation both `@handles` an error and also has a return type that includes that error.
+In this case, the operation _will_ include the error in the list of possible errors for the operation.
 
 ```typespec
 @route("/user/{id}")
@@ -113,7 +119,8 @@ This becomes important when considering error inheritance.
 
 #### `@throws` + `@handles` decorator
 
-Similarly, model properties may have one or more error types defined in both their `@throws` decorator and the `@handles` decorator. In this case, the error is still considered to be throwable by the model property.
+Similarly, model properties may have one or more error types defined in both their `@throws` decorator and the `@handles` decorator.
+In this case, the error is still considered to be throwable by the model property.
 
 ```typespec
 model User {
@@ -154,7 +161,8 @@ op getUser(@path id: string): User | GenericError;
 
 Now, any errors thrown by any of the model properties used in the operation will not be added to the operation's error output if they extend from `GenericError`.
 
-This inheritance does _not_ apply to the `@throws` decorator. If a property is decorated with `@throws(GenericError)`, it is not considered to be decorated with `@throws(NotFoundError)` or `@throws(PermissionDeniedError)`, even though those errors extend from `GenericError`.
+This inheritance does _not_ apply to the `@throws` decorator.
+If a property is decorated with `@throws(GenericError)`, it is not considered to be decorated with `@throws(NotFoundError)` or `@throws(PermissionDeniedError)`, even though those errors extend from `GenericError`.
 
 Conversely, if a property is decorated with `@throws(NotFoundError)`, it is not considered to be decorated with `@throws(GenericError)`.
 
@@ -168,7 +176,8 @@ This is meant to align with exception semantics common among many languages, whe
 
 In a typical HTTP/REST API where operations are represented by endpoints, the `@throws` decorator can provide more accurate return types for operations that contain properties that may fail.
 
-In a larger API, it may be quite difficult to track all of the errors that can occur within an operation when the errors can be generated by many different layers of an API stack. The `@throws` decorator helps give the developer a more complete view of the errors that an operation can produce.
+In a larger API, it may be quite difficult to track all of the errors that can occur within an operation when the errors can be generated by many different layers of an API stack.
+The `@throws` decorator helps give the developer a more complete view of the errors that an operation can produce.
 
 Let's say we have this definition of models:
 
@@ -217,7 +226,6 @@ op getUser(@path id: string): User | GenericError;
 This will produce the following OpenAPI:
 
 <details open><summary><em>Click to collapse</em></summary>
-<a name="bare-errors"></a>
 
 ```yaml
 paths:
@@ -322,7 +330,8 @@ User | NotFoundError | PermissionDeniedError | InvalidURLError | GenericError;
 
 #### Using `@handles` decorator
 
-Perhaps our `getUser()` operation is designed to handle the `InvalidURLError` error, while other operations may not do so. We can use the `@handles` decorator to specify that this operation will handle that error:
+Perhaps our `getUser()` operation is designed to handle the `InvalidURLError` error, while other operations may not do so.
+We can use the `@handles` decorator to specify that this operation will handle that error:
 
 ```typespec
 @route("/user/{id}")
@@ -375,26 +384,35 @@ paths:
 
 </details>
 
-This is not limited to the `profilePictureUrl` property. Any property that is decorated with `@throws(InvalidURLError)` and is used in the `getUser()` operation will no longer add `InvalidURLError` to the list of possible errors for the operation.
+This is not limited to the `profilePictureUrl` property.
+Any property that is decorated with `@throws(InvalidURLError)` and is used in the `getUser()` operation will no longer add `InvalidURLError` to the list of possible errors for the operation.
 
 <br>
 
 ### GraphQL
 
-In GraphQL, errors are typically propagated through the [`errors` key in the response][graphql-errors]. The `@throws` decorator can be used to document which errors may occur when resolving a specific field. For example, a field decorated with `@throws` could generate GraphQL schema documentation indicating the possible errors.
+In GraphQL, errors are typically propagated through the [`errors` key in the response][graphql-errors].
+The `@throws` decorator can be used to document which errors may occur when resolving a specific field.
+For example, a field decorated with `@throws` could generate GraphQL schema documentation indicating the possible errors.
 
-Some GraphQL schemas use the ["errors as data" pattern][errors-as-data], where errors are included in the possible value of a field using union types. In this case, the `@throws` decorator can be used to specify which errors must be included in that union type.
+Some GraphQL schemas use the ["errors as data" pattern][errors-as-data], where errors are included in the possible value of a field using union types.
+In this case, the `@throws` decorator can be used to specify which errors must be included in that union type.
 
-The forthcoming [GraphQL emitter][graphql-emitter] will include additional decorators that can be applied to error models, similar to `@typespec/http`'s [`@statusCode` decorator][statuscode-decorator]. These decorators can be used to customize how errors in a `@throws` decorator are emitted in the GraphQL schema.
+The forthcoming [GraphQL emitter][graphql-emitter] will include additional decorators that can be applied to error models, similar to `@typespec/http`'s [`@statusCode` decorator][statuscode-decorator].
+These decorators can be used to customize how errors in a `@throws` decorator are emitted in the GraphQL schema.
 
-For example, a `@propagate` decorator could be used to indicate that an error type, if produced, should be propagated to parent fields. In GraphQL, this is accomplished by making a field type non-nullable, which means that if a value cannot be produced for that field (due to an error), the error will be bubble up through parent fields, stopping at the first field which is nullable.
+For example, a `@propagate` decorator could be used to indicate that an error type, if produced, should be propagated to parent fields.
+In GraphQL, this is accomplished by making a field type non-nullable, which means that if a value cannot be produced for that field (due to an error), the error will be bubble up through parent fields, stopping at the first field which is nullable.
 
-A `@asData` decorator could be used to indicate that an error type should be included in the ["errors as data" pattern][errors-as-data]. This allows a GraphQL schema to opt-in to using this pattern for specific errors, while still allowing other errors (e.g. unexpected server errors) to be propagated normally.
+A `@asData` decorator could be used to indicate that an error type should be included in the ["errors as data" pattern][errors-as-data].
+This allows a GraphQL schema to opt-in to using this pattern for specific errors, while still allowing other errors (e.g. unexpected server errors) to be propagated normally.
 
-The `@handles` decorator can also be used in GraphQL to specify that a field resolver will handle certain types of errors. Specifying an error in the `@handles` decorator will:
+The `@handles` decorator can also be used in GraphQL to specify that a field resolver will handle certain types of errors.
+Specifying an error in the `@handles` decorator will:
 
 - omit the error from the union response type, if the error has the `@asData` decorator.
-- prevent the error from triggering non-nullability of the field type, if the error has the `@propagate` decorator. The field may still be marked non-null through other errors or other means.
+- prevent the error from triggering non-nullability of the field type, if the error has the `@propagate` decorator.
+  The field may still be marked non-null through other errors or other means.
 
 #### Example
 
@@ -553,11 +571,13 @@ type ActivityEntry {
 
 ### Client libraries
 
-Client libraries should leverage language-specific constructs to represent fields or operations that may produce errors. For example, in languages with an error monad or result monad, such as Kotlin or Swift, these constructs should be used to represent fields decorated with `@throws` or operations decorated with `@handles`.
+Client libraries should leverage language-specific constructs to represent fields or operations that may produce errors.
+For example, in languages with an error monad or result monad, such as Kotlin or Swift, these constructs should be used to represent fields decorated with `@throws` or operations decorated with `@handles`.
 
 #### Example: Kotlin
 
-In Kotlin, the `Result` type or sealed classes can be used. For example:
+In Kotlin, the `Result` type or sealed classes can be used.
+For example:
 
 <details open><summary><em>Click to collapse</em></summary>
 
@@ -593,7 +613,8 @@ This approach ensures that clients handle errors in a type-safe and idiomatic wa
 
 #### Example: Swift
 
-In Swift, the `Result` type can be used to represent fields or operations that may fail. For example:
+In Swift, the `Result` type can be used to represent fields or operations that may fail.
+For example:
 
 <details open><summary><em>Click to collapse</em></summary>
 
@@ -631,7 +652,9 @@ This approach ensures that clients handle errors in a type-safe and idiomatic wa
 
 ### Server libraries
 
-Server libraries should generate code that includes appropriate error handling stubs. For example, in languages with an error monad or result monad, these constructs should be used to represent fields or operations that may produce errors. This allows server implementations to handle errors explicitly and propagate them as needed.
+Server libraries should generate code that includes appropriate error handling stubs.
+For example, in languages with an error monad or result monad, these constructs should be used to represent fields or operations that may produce errors.
+This allows server implementations to handle errors explicitly and propagate them as needed.
 
 #### Example: Scala
 
@@ -693,13 +716,16 @@ Here, the server explicitly handles errors when resolving the `profile_picture_u
 
 ## Use in request input
 
-The `@throws` and `@handles` decorators apply equally to input as they do to output. Just as these decorators allow developers to model and handle errors that may occur when accessing properties in a server's response, they can also be used to model and handle errors that arise when processing client-provided input. The mechanics of how these decorators are applied and how they affect the emitted output remain consistent between input and output.
+The `@throws` and `@handles` decorators apply equally to input as they do to output.
+Just as these decorators allow developers to model and handle errors that may occur when accessing properties in a server's response, they can also be used to model and handle errors that arise when processing client-provided input.
+The mechanics of how these decorators are applied and how they affect the emitted output remain consistent between input and output.
 
 <br>
 
 ### `@throws` for Input Validation Errors
 
-When applied to input properties, the `@throws` decorator specifies the errors that may occur during the validation or processing of client-provided data. For example, an input model for creating a user might specify that the `email` field can produce `InvalidEmailError` or `MissingFieldError`, while the `password` field can produce `InvalidPasswordError`:
+When applied to input properties, the `@throws` decorator specifies the errors that may occur during the validation or processing of client-provided data.
+For example, an input model for creating a user might specify that the `email` field can produce `InvalidEmailError` or `MissingFieldError`, while the `password` field can produce `InvalidPasswordError`:
 
 ```typespec
 model CreateUserRequest {
@@ -711,13 +737,16 @@ model CreateUserRequest {
 }
 ```
 
-These errors are generated by the server in response to invalid or incomplete input provided by the client. This is conceptually different from output errors, which are typically generated by the server's internal logic or data access operations. However, the propagation of errors from model properties to the operation's response type works the same way for input as it does for output.
+These errors are generated by the server in response to invalid or incomplete input provided by the client.
+This is conceptually different from output errors, which are typically generated by the server's internal logic or data access operations.
+However, the propagation of errors from model properties to the operation's response type works the same way for input as it does for output.
 
 <br>
 
 ### `@handles` for Input-Level Error Handling
 
-The `@handles` decorator can be used to specify which input-related errors are handled by the operation itself, preventing them from being propagated to the client. For example, an operation to create a user might handle `InvalidEmailError` internally while allowing other errors to propagate:
+The `@handles` decorator can be used to specify which input-related errors are handled by the operation itself, preventing them from being propagated to the client.
+For example, an operation to create a user might handle `InvalidEmailError` internally while allowing other errors to propagate:
 
 ```typespec
 @route("/user")
@@ -732,7 +761,8 @@ This behavior mirrors how `@handles` is used for output errors, allowing develop
 
 ### Error Propagation for Input
 
-Errors specified in `@throws` on input properties propagate to operations unless explicitly handled with `@handles`. For example, the following operation automatically includes `InvalidEmailError`, `MissingFieldError`, and `InvalidPasswordError` in its error response types because they are specified in the `CreateUserRequest` model:
+Errors specified in `@throws` on input properties propagate to operations unless explicitly handled with `@handles`.
+For example, the following operation automatically includes `InvalidEmailError`, `MissingFieldError`, and `InvalidPasswordError` in its error response types because they are specified in the `CreateUserRequest` model:
 
 ```typespec
 @route("/user")
@@ -745,13 +775,16 @@ op createUser(request: CreateUserRequest):
   | GenericError;
 ```
 
-This ensures consistency between input and output error modeling. By default, errors propagate from input properties to operations, but operations can override this behavior with `@handles`.
+This ensures consistency between input and output error modeling.
+By default, errors propagate from input properties to operations, but operations can override this behavior with `@handles`.
 
 <br>
 
 ### Protocol-Specific Behavior
 
-Input-related errors can also be tied to specific protocol behaviors. For example, errors can be associated with HTTP status codes or GraphQL-specific behaviors. The following example shows how to use the `@statusCode` decorator to specify that `InvalidEmailError` and `MissingFieldError` should result in HTTP 400 responses:
+Input-related errors can also be tied to specific protocol behaviors.
+For example, errors can be associated with HTTP status codes or GraphQL-specific behaviors.
+The following example shows how to use the `@statusCode` decorator to specify that `InvalidEmailError` and `MissingFieldError` should result in HTTP 400 responses:
 
 ```typespec
 @error
@@ -775,7 +808,8 @@ This is consistent with how protocol-specific metadata is applied to output erro
 
 ### Mimic error handling in operations
 
-TypeSpec [operations][operations] allow for specifying possible errors that the operation may produce via the [operation's return type][operations-return-type]. The standard pattern is to use a union type that includes the models representing the errors, which have been decorated with the [`@error` decorator][error-decorator].
+TypeSpec [operations][operations] allow for specifying possible errors that the operation may produce via the [operation's return type][operations-return-type].
+The standard pattern is to use a union type that includes the models representing the errors, which have been decorated with the [`@error` decorator][error-decorator].
 
 For example:
 
@@ -790,9 +824,11 @@ op getUser(id: string): User | NotFoundError;
 
 The `@throws` decorator is different from the return type of operations in that it is used to document errors that may occur when accessing a property.
 
-This distinction is useful when a property itself may inherently produce errors, regardless of the operation in which it is used. For example, accessing a property that requires a network fetch or a permission check may result in errors.
+This distinction is useful when a property itself may inherently produce errors, regardless of the operation in which it is used.
+For example, accessing a property that requires a network fetch or a permission check may result in errors.
 
-Using a union type, as operations do, does not allow for the same error semantic in model properties. Instead, such a type would be indicative of possible types for the property's _value_:
+Using a union type, as operations do, does not allow for the same error semantic in model properties.
+Instead, such a type would be indicative of possible types for the property's _value_:
 
 ```typespec
 model User {
@@ -800,7 +836,8 @@ model User {
 }
 ```
 
-The above TypeSpec implies that the property could be populated with either a string or one of two model type. The fact that `NotFoundError` and `PermissionDeniedError` use the `@error` decorator is irrelevant.
+The above TypeSpec implies that the property could be populated with either a string or one of two model type.
+The fact that `NotFoundError` and `PermissionDeniedError` use the `@error` decorator is irrelevant.
 
 ```typespec
 model User {
@@ -809,17 +846,24 @@ model User {
 }
 ```
 
-This TypeSpec, by contrast, indicates that the `profilePictureUrl` property's value is always a string, but that accessing it may produce either a `NotFoundError` or a `PermissionDeniedError`. Typically, this means that the property does not _have_ a value in that scenario, and instead should be used to describe the appropriate error-returning semantic of a given protocol.
+This TypeSpec, by contrast, indicates that the `profilePictureUrl` property's value is always a string, but that accessing it may produce either a `NotFoundError` or a `PermissionDeniedError`.
+Typically, this means that the property does not _have_ a value in that scenario, and instead should be used to describe the appropriate error-returning semantic of a given protocol.
 
 ## Summary
 
-The `@throws` and `@handles` decorators provide a unified framework for modeling and handling errors across both input and output scenarios. While the mechanics of these decorators are identical for input and output, the use cases differ slightly. Input errors are generated by the server in response to invalid or incomplete client-provided data, whereas output errors are typically generated by the server's internal logic or data access operations. This distinction ensures that the proposal remains flexible and applicable to a wide range of error-handling scenarios.
+The `@throws` and `@handles` decorators provide a unified framework for modeling and handling errors across both input and output scenarios.
+While the mechanics of these decorators are identical for input and output, the use cases differ slightly.
+Input errors are generated by the server in response to invalid or incomplete client-provided data, whereas output errors are typically generated by the server's internal logic or data access operations.
+This distinction ensures that the proposal remains flexible and applicable to a wide range of error-handling scenarios.
 
 <br>
 
 ## Bonus: Adding Context Modifiers to `@error`
 
-As an optional enhancement, we propose extending the `@error` decorator to include an argument for specifying context (visibility) modifiers. This would allow developers to explicitly indicate the contexts in which an error applies, such as input validation, output handling, or both. This enhancement would provide additional clarity and flexibility when modeling errors. This does not change the core mechanics of the `@throws` and `@handles` decorators.
+As an optional enhancement, we propose extending the `@error` decorator to include an argument for specifying context (visibility) modifiers.
+This would allow developers to explicitly indicate the contexts in which an error applies, such as input validation, output handling, or both.
+This enhancement would provide additional clarity and flexibility when modeling errors.
+This does not change the core mechanics of the `@throws` and `@handles` decorators.
 
 ### Proposed Definition
 
@@ -859,7 +903,8 @@ model PermissionDeniedError {
 
 Here, `Lifecycle.CREATE` and `Lifecycle.UPDATE` indicate that `InvalidEmailError` applies in input contexts (e.g., when creating or updating a resource), while `Lifecycle.READ` indicates that `PermissionDeniedError` applies in output contexts (e.g., when reading a resource).
 
-Libraries and emitters should interpret context modifiers, when applied to error models, to determine what errors should be included in different contexts. This mirrors the [visibility system][visibility-system], and libraries and emitters should interpret the context modifiers the same way as they already do for visibility.
+Libraries and emitters should interpret context modifiers, when applied to error models, to determine what errors should be included in different contexts.
+This mirrors the [visibility system][visibility-system], and libraries and emitters should interpret the context modifiers the same way as they already do for visibility.
 
 ### Examples
 
