@@ -99,6 +99,15 @@ In the examples above, we are specifying that `getUser()` may return a `GenericE
 
 If an error type is specified in both the operation's return type and the `@throws` decorator, there is no conflict — the operation will include the error (once) in the list of possible errors.
 
+Semantically, the distinction between a `@throws` decorator and the operation's return type is in where the error is communicated.
+An error on a return type indicates that the error is somehow exposed directly in that return type.
+An error specified with `@throws`, on the other hand, may appear in a different location depending on if or where the error is is specified in a `@handles` decorator.
+
+For instance, a bulk operation of some kind that includes the results of several sub-operations could communicate errors in a few different ways.
+One way would be for each of the operations in the bulk set to provide its error value as its specific return type — as indicated by an error present in the return type.
+Another might be for the bulk operation to aggregate all of the errors that occurred in the sub-operations and communicate them somewhere in its own response, which could be accomplished by the sub-operations using the `@throws` decorator and the bulk operation using the `@handles` decorator.
+Essentially, an error in a return type is opted out of any contextual handling, while an error in a `@throws` decorator follows the rules specified by other operations, properties, and/or [contextual modifiers](#context-modifiers).
+
 <br>
 
 #### Operation errors + `@handles` decorator
@@ -1085,6 +1094,8 @@ This distinction ensures that the proposal remains flexible and applicable to a 
 <br>
 
 ## Additional Considerations
+
+<a name="context-modifiers"></a>
 
 ### Optional: Adding Context Modifiers to `@error`
 
