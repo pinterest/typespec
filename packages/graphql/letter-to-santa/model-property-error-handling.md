@@ -1189,6 +1189,10 @@ model GenericError {
 }
 ```
 
+##### No contexts
+
+Just as is true for visibility, if no context is specified, the error model [will be included in all of the default context modifiers][default-visibility] applied by default by the visibility class.
+
 #### Context follows visibility
 
 There are a number of ways to modify the visibility of a model or operation. Context modifiers, as applied to errors, will follow the same rules as they do for visibility.
@@ -1198,6 +1202,34 @@ For example, use of the [`@parameterVisibility`][parameter-visibility] or [`@ret
 This also means that decorators which apply implicit visibility, such as [`@post`][post-decorator] or [`@put`][put-decorator], will apply the implicit visibility of the operation to the error model.
 
 Any other modification of visibility including visibility filters, custom context classes, et. al. should affect errors in the same way as they affect model properties.
+
+#### Rejected alternative: Context modifiers on `@throws` and `@handles`
+
+An alternative to adding context modifiers to the `@error` decorator is to add them to the `@throws` and `@handles` decorators.
+
+This would allow developers to specify the context in which an error applies model property by model property, rather than applying to an error model everywhere it appears.
+
+Such an alternative approach might look something like:
+
+```typespec
+model User {
+  @key id: string;
+
+  @visibility(Lifecycle.Create, Lifecycle.Update, Lifecycle.Read)
+  @throws([InvalidEmailError], [Lifecycle.Create, Lifecycle.Update])
+  email: string;
+}
+```
+
+While this approach does allow for finer granularity in specifying the context in which an error applies, it also adds complexity to the `@throws` and `@handles` decorators — and complexity for the developer to reason about the context in which an error applies.
+Applying context modifiers to the `@error` decorator abstracts the concerns of context away from any particular field or operation, so the developer does not always need to be considering it.
+It seems fairly intuitive for a developer to specify that an `InvalidParametersError` would only apply in input contexts, while a `PermissionDeniedError` would only apply in output contexts.
+
+If context modifiers are specified on the `@throws` and `@handles` decorators, it is likely that the developer forgets to add all of the relevant lifecycle modifiers in some cases.
+This would result in operations insufficiently specifying errors, leading to clients receiving errors that they do not expect from the spec.
+
+By contrast, adding context modifiers to the `@error` decorator is more likely to add errors in more contexts than are needed; while not ideal, specifying extra errors in the spec that will never be returned is less problematic than omitting errors that will be.
+Indeed, there's no guarantee that _any_ error specified ever actually will be.
 
 <br>
 
@@ -1257,3 +1289,4 @@ As a result, the TypeSpec compiler will issue a warning.
 [return-type-visibility]: https://typespec.io/docs/standard-library/built-in-decorators/#@returnTypeVisibility
 [post-decorator]: https://typespec.io/docs/libraries/http/reference/decorators/#@TypeSpec.Http.post
 [put-decorator]: https://typespec.io/docs/libraries/http/reference/decorators/#@TypeSpec.Http.put
+[default-visibility]: https://typespec.io/docs/language-basics/visibility/#basic-concepts
