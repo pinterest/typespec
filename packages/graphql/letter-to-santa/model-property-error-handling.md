@@ -708,6 +708,93 @@ message GetUserRequest {
 
 <br>
 
+### Apache Thrift
+
+Apache Thrift supports defining exceptions as part of its IDL (Interface Definition Language), which makes it well-suited for modeling error using the `@throws` and `@handles` decorators.
+
+#### Using `@throws` with Thrift
+
+Exceptions specified by `@throws` can be represented in Thrift by defining exception types and including them in the `throws` clause of a service method.
+
+For example:
+
+<details open><summary><em>Click to collapse</em></summary>
+
+```typespec
+@error
+model NotFoundError {
+  message: string;
+}
+
+@error
+model PermissionDeniedError {
+  message: string;
+}
+
+model User {
+  @throws(NotFoundError, PermissionDeniedError)
+  profilePictureUrl: string;
+}
+
+@route("/user/{id}")
+@get
+op getUser(@path id: string): User;
+```
+
+</details>
+
+This could be translated into the following Thrift IDL:
+
+<details open><summary><em>Click to collapse</em></summary>
+
+```thrift
+exception NotFoundError {
+  1: string message;
+}
+
+exception PermissionDeniedError {
+  1: string message;
+}
+
+struct User {
+  1: string profilePictureUrl;
+}
+
+service UserService {
+  User getUser(1: string id) throws (
+    1: NotFoundError notFoundError,
+    2: PermissionDeniedError permissionDeniedError
+  );
+}
+```
+
+</details>
+
+#### Using `@handles` with Thrift
+
+The `@handles` decorator can be used to specify which exceptions are handled internally by an operation or property. In Thrift, this can be reflected by omitting the handled exceptions from the `throws` clause of the service method.
+
+For example:
+
+```typespec
+@route("/user/{id}")
+@get
+@handles(PermissionDeniedError)
+op getUser(@path id: string): User;
+```
+
+If `PermissionDeniedError` is handled internally, the Thrift IDL would look like this:
+
+```thrift
+service UserService {
+  User getUser(1: string id) throws (
+    1: NotFoundError notFoundError
+  );
+}
+```
+
+<br>
+
 ### Client libraries
 
 Client libraries should leverage language-specific constructs to represent fields or operations that may produce errors.
