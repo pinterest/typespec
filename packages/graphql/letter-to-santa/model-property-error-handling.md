@@ -1086,12 +1086,13 @@ This distinction ensures that the proposal remains flexible and applicable to a 
 
 ## Additional Considerations
 
-### Adding Context Modifiers to `@error`
+### Optional: Adding Context Modifiers to `@error`
 
 As an optional enhancement, we propose extending the `@error` decorator to include an argument for specifying context (visibility) modifiers.
 This would allow developers to explicitly indicate the contexts in which an error applies, such as input validation, output handling, or both.
 This enhancement would provide additional clarity and flexibility when modeling errors.
-This does not change the core mechanics of the `@throws` and `@handles` decorators.
+
+**This does not change the core mechanics of the `@throws` and `@handles` decorators, and the proposal for those decorators remains unchanged whether or not this enhancement is adopted.**
 
 ### Proposed Definition
 
@@ -1105,7 +1106,7 @@ The `@error` decorator would accept an optional argument specifying one or more 
  *
  * @example
  * ```typespec
- * @error(Lifecycle.CREATE, Lifecycle.UPDATE)
+ * @error(Lifecycle.Create, Lifecycle.Update)
  * model PetStoreError {
  *   code: string;
  *   message: string;
@@ -1118,18 +1119,18 @@ extern dec error(target: Model, ...contexts: valueof EnumMember[]);
 For example:
 
 ```typespec
-@error(Lifecycle.CREATE, Lifecycle.UPDATE)
+@error(Lifecycle.Create, Lifecycle.Update)
 model InvalidEmailError {
   message: string;
 }
 
-@error(Lifecycle.READ)
+@error(Lifecycle.Read)
 model PermissionDeniedError {
   message: string;
 }
 ```
 
-Here, `Lifecycle.CREATE` and `Lifecycle.UPDATE` indicate that `InvalidEmailError` applies in input contexts (e.g., when creating or updating a resource), while `Lifecycle.READ` indicates that `PermissionDeniedError` applies in output contexts (e.g., when reading a resource).
+Here, `Lifecycle.Create` and `Lifecycle.Update` indicate that `InvalidEmailError` applies in input contexts (e.g., when creating or updating a resource), while `Lifecycle.Read` indicates that `PermissionDeniedError` applies in output contexts (e.g., when reading a resource).
 
 Libraries and emitters should interpret context modifiers, when applied to error models, to determine what errors should be included in different contexts.
 This mirrors the [visibility system][visibility-system], and libraries and emitters should interpret the context modifiers the same way as they already do for visibility.
@@ -1140,17 +1141,36 @@ The following examples illustrate how the context modifiers can be used in pract
 
 ##### Input Contexts
 
-Errors with `Lifecycle.CREATE`, `Lifecycle.UPDATE`, or `Lifecycle.DELETE` are included when the model is used in an input context.
+By default, errors with `Lifecycle.Create`, `Lifecycle.Update`, or `Lifecycle.Delete` are included when the model is used as a parameter in the respective context.
+
+<details open><summary><em>Click to collapse</em></summary>
 
 ```typespec
-@route("/user")
-@post
-op createUser(request: User): boolean | InvalidEmailError | GenericError;
+@error(Lifecycle.CREATE, Lifecycle.UPDATE)
+model InvalidEmailError {
+  message: string;
+}
+
+model User {
+  @key id: string;
+
+  @visibility(Lifecycle.Create, Lifecycle.Update, Lifecycle.Read)
+  @throws(InvalidEmailError)
+  email: string;
+}
+
+@get op getUser(id: string): User | UserNotFound; // will not include InvalidEmailError, does return email field
+
+@post op createUser(...User): User; // will include InvalidEmailError, does return email field
+
+@delete op deleteUser(id: string): User; // does not include InvalidEmailError, does not return email field
 ```
+
+</details>
 
 ##### Output Contexts
 
-Errors with `Lifecycle.READ` are included when the model is used in an output context.
+By default, errors with `Lifecycle.Read` are included when the model is used in an output context.
 
 ```typespec
 @route("/user/{id}")
@@ -1163,11 +1183,21 @@ op getUser(@path id: string): User | PermissionDeniedError | GenericError;
 Errors can apply to both input and output contexts by specifying multiple lifecycle stages.
 
 ```typespec
-@error(Lifecycle.CREATE, Lifecycle.READ)
+@error(Lifecycle.Create, Lifecycle.Read)
 model GenericError {
   message: string;
 }
 ```
+
+#### Context follows visibility
+
+There are a number of ways to modify the visibility of a model or operation. Context modifiers, as applied to errors, will follow the same rules as they do for visibility.
+
+For example, use of the [`@parameterVisibility`][parameter-visibility] or [`@returnTypeVisibility`][return-type-visibility] decorators will modify the visibility of the error model in the same way as it does for parameters. That is, the properties of a model used as a parameter will apply their `@throws` errors based on the visibility of parameters. The properties of a model used as a return type will apply their `@throws` errors based on the visibility of the return type.
+
+This also means that decorators which apply implicit visibility, such as [`@post`][post-decorator] or [`@put`][put-decorator], will apply the implicit visibility of the operation to the error model.
+
+Any other modification of visibility including visibility filters, custom context classes, et. al. should affect errors in the same way as they affect model properties.
 
 <br>
 
@@ -1223,3 +1253,7 @@ As a result, the TypeSpec compiler will issue a warning.
 [statuscode-decorator]: https://typespec.io/docs/libraries/http/reference/decorators/#@TypeSpec.Http.statusCode
 [visibility-system]: https://typespec.io/docs/language-basics/visibility/
 [suppress-directive]: https://typespec.io/docs/language-basics/directives/#suppress
+[parameter-visibility]: https://typespec.io/docs/standard-library/built-in-decorators/#@parameterVisibility
+[return-type-visibility]: https://typespec.io/docs/standard-library/built-in-decorators/#@returnTypeVisibility
+[post-decorator]: https://typespec.io/docs/libraries/http/reference/decorators/#@TypeSpec.Http.post
+[put-decorator]: https://typespec.io/docs/libraries/http/reference/decorators/#@TypeSpec.Http.put
