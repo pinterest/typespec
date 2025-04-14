@@ -41,7 +41,7 @@ final class ResponseTypeFactory {
         }
 
         if (settings.isFluent()) {
-            if (isLongRunningOperation(operation) && isNotPagingOperation(operation)) {
+            if (isLongRunningOperation(operation) && isNotNextPageOperation(operation)) {
                 // LRO in fluent uses Flux<ByteBuffer> for com.azure.core.management.polling.PollerFactory
                 return mono(GenericType.Response(GenericType.FLUX_BYTE_BUFFER));
             }
@@ -57,26 +57,28 @@ final class ResponseTypeFactory {
 
             final boolean typedHeadersDisallowed = ignoreTypedHeaders || settings.isDisableTypedHeadersMethods();
             if (typedHeadersDisallowed) {
-                return isByteStream(bodyType) ? mono(ClassType.STREAM_RESPONSE) : mono(GenericType.Response(bodyType));
+                return isByteStream(bodyType, settings)
+                    ? binaryResponseMono(settings)
+                    : mono(GenericType.Response(bodyType));
             }
 
             final ObjectSchema headersSchema = ClientMapper.parseHeader(operation, settings);
             final IType headersType = Mappers.getSchemaMapper().map(headersSchema);
-            // If the responseBodyType is InputStream it needs to be converted to Flux<ByteBuffer> so
-            // that it is a valid return type for async method.
-            final IType bType = (bodyType == ClassType.INPUT_STREAM) ? GenericType.FLUX_BYTE_BUFFER : bodyType;
+            // If the responseBodyType is InputStream it needs to be converted to proper binary return type so
+            // that it is valid for async method.
+            final IType bType = (bodyType == ClassType.INPUT_STREAM) ? binaryResponseBodyType(settings) : bodyType;
             return mono(GenericType.RestResponse(headersType, bType));
         }
 
         if (bodyType.equals(ClassType.INPUT_STREAM)) {
-            return mono(ClassType.STREAM_RESPONSE);
+            return binaryResponseMono(settings);
         }
 
         if (bodyType.equals(ClassType.BINARY_DATA)) {
             final boolean useInputStream
                 = settings.isInputStreamForBinary() && !settings.isDataPlaneClient() && !settings.isSyncStackEnabled();
             if (useInputStream) {
-                return mono(ClassType.STREAM_RESPONSE);
+                return binaryResponseMono(settings);
             }
         }
 
@@ -85,6 +87,18 @@ final class ResponseTypeFactory {
         }
 
         return mono(GenericType.Response(bodyType));
+    }
+
+    private static IType binaryResponseBodyType(JavaSettings settings) {
+        // Not touching vanilla for now. Storage is still using Flux<ByteBuffer>.
+        return settings.isVanilla() ? GenericType.FLUX_BYTE_BUFFER : ClassType.BINARY_DATA;
+    }
+
+    private static IType binaryResponseMono(JavaSettings settings) {
+        // Not touching vanilla for now. Storage is still using Flux<ByteBuffer> and StreamResponse.
+        return settings.isVanilla()
+            ? mono(ClassType.STREAM_RESPONSE)
+            : mono(GenericType.Response(ClassType.BINARY_DATA));
     }
 
     /**
@@ -130,12 +144,12 @@ final class ResponseTypeFactory {
         return operation.getExtensions() != null && operation.getExtensions().isXmsLongRunningOperation();
     }
 
-    private static boolean isNotPagingOperation(Operation operation) {
+    private static boolean isNotNextPageOperation(Operation operation) {
         return operation.getExtensions().getXmsPageable() == null
             || operation.getExtensions().getXmsPageable().getNextOperation() != operation;
     }
 
-    private static boolean isByteStream(IType type) {
-        return (type == ClassType.INPUT_STREAM) || (type == GenericType.FLUX_BYTE_BUFFER);
+    private static boolean isByteStream(IType type, JavaSettings settings) {
+        return type == ClassType.INPUT_STREAM || type == binaryResponseBodyType(settings);
     }
 }
