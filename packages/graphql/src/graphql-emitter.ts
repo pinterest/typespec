@@ -32,7 +32,7 @@ export function createGraphQLEmitter(
         return;
       }
       for (const schemaRecord of schemaRecords) {
-        const schemaName = getNamespaceFullName(schemaRecord.schema.type) || "schema";
+        const schemaName = schemaRecord.schema.name || "schema";
         const filePath = interpolatePath(options.outputFile, {
           "schema-name": schemaName,
         });
