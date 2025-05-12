@@ -1,7 +1,7 @@
 import "@typespec/graphql";
 using GraphQL;
 
-@schema
+@schema(#{name: "library-schema"})
 namespace MyLibrary {
   model Book {
     id: string;
