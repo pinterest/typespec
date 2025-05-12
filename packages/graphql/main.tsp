@@ -1,16 +1,19 @@
-namespace MyLibrary;
+import "@typespec/graphql";
+using GraphQL;
 
-model Book {
-  id: string;
-  title: string;
-  publicationDate: string;
-  author: Author;
+@schema
+namespace MyLibrary {
+  model Book {
+    id: string;
+    title: string;
+    publicationDate: string;
+    author: Author;
+  }
+
+  model Author {
+    id: string;
+    name: string;
+    bio?: string;
+    books: Book[];
+  }
 }
-
-model Author {
-  id: string;
-  name: string;
-  bio?: string;
-  books: Book[];
-}
-
