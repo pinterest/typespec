@@ -1,68 +1,46 @@
+import { UsageFlags, type EnumMember, type RekeyableMap } from "@typespec/compiler";
 import {
   GraphQLBoolean,
   GraphQLEnumType,
   GraphQLInputObjectType,
+  GraphQLInterfaceType,
   GraphQLObjectType,
   GraphQLScalarType,
   GraphQLUnionType,
   type GraphQLSchemaConfig,
 } from "graphql";
 
-export class GraphQLTypeRegistry {
-  // A map of type names to their corresponding GraphQL types
-  private types: Map<
-    string,
-    | GraphQLScalarType
+// This interface represents the GraphQL type and its associated metadata to be used during materialization.
+interface GraphQLTypeContext {
+  // TODO: Add more properties as needed such as fields, non-materialzed fields, etc.
+  gqlType?:
     | GraphQLObjectType
     | GraphQLInputObjectType
     | GraphQLEnumType
     | GraphQLUnionType
-  > = new Map();
+    | GraphQLInterfaceType
+    | GraphQLScalarType;
+  usageFlags?: Set<UsageFlags>;
+  visibility?: string; // TODO: Figure out how to represent visibility
+}
+
+export class GraphQLTypeRegistry {
+  private typeRegistry: Map<string, GraphQLTypeContext> = new Map();
 
   constructor() {}
 
-  /**
-   * Registers a new GraphQL type in the registry.
-   * @param name The name of the type as defined in the TypeSpec program.
-   * @param type The GraphQL type to register.
-   */
-  registerType(
-    name: string,
-    type:
-      | GraphQLScalarType
-      | GraphQLObjectType
-      | GraphQLInputObjectType
-      | GraphQLEnumType
-      | GraphQLUnionType,
-  ) {
-    // TODO: Add custom logic needed for registering specific types
-    this.types.set(name, type);
-  }
-
-  /**
-   * Retrieves a GraphQL type by its name.
-   * @param name The name of the type to retrieve.
-   * @returns The GraphQL type if found, otherwise undefined.
-   */
-  getType(
-    name: string,
-  ):
-    | GraphQLScalarType
-    | GraphQLObjectType
-    | GraphQLInputObjectType
-    | GraphQLEnumType
-    | GraphQLUnionType
-    | undefined {
-    return this.types.get(name);
-  }
-
-  /**
-   * Checks if a type is registered in the registry.
-   * @param name The name of the type to check.
-   * @returns True if the type is registered, otherwise false.
-   */
-  hasType(name: string): boolean {
-    return this.types.has(name);
+  registerEnum(enumName: string, enumValues: RekeyableMap<string, EnumMember>) {
+    if (this.typeRegistry.has(enumName)) {
+      throw new Error(`Type "${enumName}" is already registered.`);
+    }
+    this.typeRegistry.set(enumName, {
+      gqlType: new GraphQLEnumType({
+        name: enumName,
+        values: Object.fromEntries(
+          Array.from(enumValues.entries()).map(([key, value]) => [key, { value: value.name }]),
+        ),
+      }),
+    });
   }
 
   materializeSchemaConfig(): GraphQLSchemaConfig {

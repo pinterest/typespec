@@ -4,15 +4,10 @@ import {
   type Diagnostic,
   type DiagnosticCollector,
   type EmitContext,
+  type Enum,
   type Model,
 } from "@typespec/compiler";
-import {
-  GraphQLBoolean,
-  GraphQLObjectType,
-  GraphQLSchema,
-  validateSchema,
-  type GraphQLSchemaConfig,
-} from "graphql";
+import { GraphQLSchema, validateSchema } from "graphql";
 import { type GraphQLEmitterOptions } from "./lib.js";
 import type { Schema } from "./lib/schema.js";
 import { GraphQLTypeRegistry } from "./registry.js";
@@ -59,8 +54,10 @@ class GraphQLSchemaEmitter {
     // TODO: Add GraphQL types to registry as the TSP nodes are visited
     return {
       model: (model: Model) => {
-        {
-        }
+        // Add logic to handle the model node
+      },
+      enum: (model: Enum) => {
+        this.registry.registerEnum(model.name, model.members);
       },
     };
   }
