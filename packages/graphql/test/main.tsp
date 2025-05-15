@@ -16,4 +16,11 @@ namespace MyLibrary {
     bio?: string;
     books: Book[];
   }
+  
+  enum Genre {
+    Fiction,
+    NonFiction,
+    Mystery,
+    Fantasy
+  }
 }

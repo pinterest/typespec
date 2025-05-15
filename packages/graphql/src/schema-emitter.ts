@@ -4,23 +4,20 @@ import {
   type Diagnostic,
   type DiagnosticCollector,
   type EmitContext,
+  type Enum,
   type Model,
 } from "@typespec/compiler";
-import {
-  GraphQLBoolean,
-  GraphQLObjectType,
-  GraphQLSchema,
-  validateSchema,
-  type GraphQLSchemaConfig,
-} from "graphql";
+import { GraphQLSchema, validateSchema } from "graphql";
 import { type GraphQLEmitterOptions } from "./lib.js";
 import type { Schema } from "./lib/schema.js";
+import { GraphQLTypeRegistry } from "./registry.js";
 
 class GraphQLSchemaEmitter {
   private tspSchema: Schema;
   private context: EmitContext<GraphQLEmitterOptions>;
   private options: GraphQLEmitterOptions;
   private diagnostics: DiagnosticCollector;
+  private registry: GraphQLTypeRegistry;
   constructor(
     tspSchema: Schema,
     context: EmitContext<GraphQLEmitterOptions>,
@@ -31,26 +28,14 @@ class GraphQLSchemaEmitter {
     this.context = context;
     this.options = options;
     this.diagnostics = createDiagnosticCollector();
+    this.registry = new GraphQLTypeRegistry();
   }
 
   async emitSchema(): Promise<[GraphQLSchema, Readonly<Diagnostic[]>] | undefined> {
     const schemaNamespace = this.tspSchema.type;
     // Logic to emit the GraphQL schema
     navigateTypesInNamespace(schemaNamespace, this.semanticNodeListener());
-    // Replace this with the actual schema config that should be derived from the registry
-    // something like: registry.materializeSchemaConfig();
-    const schemaConfig: GraphQLSchemaConfig = {
-      query: new GraphQLObjectType({
-        name: "Query",
-        fields: {
-          _: {
-            type: GraphQLBoolean,
-            description:
-              "A placeholder field. If you are seeing this, it means no operations were defined that could be emitted.",
-          },
-        },
-      }),
-    };
+    const schemaConfig = this.registry.materializeSchemaConfig();
     const schema = new GraphQLSchema(schemaConfig);
     // validate the schema
     const validationErrors = validateSchema(schema);
@@ -69,8 +54,10 @@ class GraphQLSchemaEmitter {
     // TODO: Add GraphQL types to registry as the TSP nodes are visited
     return {
       model: (model: Model) => {
-        {
-        }
+        // Add logic to handle the model node
+      },
+      enum: (model: Enum) => {
+        this.registry.registerEnum(model.name, model.members);
       },
     };
   }
