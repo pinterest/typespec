@@ -15,6 +15,7 @@ namespace MyLibrary {
     name: string;
     bio?: string;
     books: Book[];
+    friend: Author;
   }
   
   enum Genre {

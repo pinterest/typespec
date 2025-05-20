@@ -1,52 +1,96 @@
-import { UsageFlags, type EnumMember, type RekeyableMap } from "@typespec/compiler";
+import { UsageFlags, type Enum, type Model } from "@typespec/compiler";
 import {
   GraphQLBoolean,
   GraphQLEnumType,
-  GraphQLInputObjectType,
-  GraphQLInterfaceType,
   GraphQLObjectType,
-  GraphQLScalarType,
-  GraphQLUnionType,
+  type GraphQLNamedType,
   type GraphQLSchemaConfig,
 } from "graphql";
 
-// This interface represents the GraphQL type and its associated metadata to be used during materialization.
-interface GraphQLTypeContext {
-  // TODO: Add more properties as needed such as fields, non-materialzed fields, etc.
-  gqlType?:
-    | GraphQLObjectType
-    | GraphQLInputObjectType
-    | GraphQLEnumType
-    | GraphQLUnionType
-    | GraphQLInterfaceType
-    | GraphQLScalarType;
+// The TSPTypeContext interface represents the intermediate TSP type information before materialization.
+// It stores the raw TSP type and any extracted metadata relevant for GraphQL generation.
+interface TSPTypeContext {
+  tspType: Enum | Model; // Extend with other TSP types like Operation, Interface, TSP Union, etc.
+  name: string;
   usageFlags?: Set<UsageFlags>;
-  visibility?: string; // TODO: Figure out how to represent visibility
+  // TODO: Add any other TSP-specific metadata here.
 }
-
+/**
+ * GraphQLTypeRegistry manages the registration and materialization of TypeSpec (TSP) 
+ * types into their corresponding GraphQL type definitions.
+ *
+ * The registry operates in a two-stage process:
+ * 1. Registration: TSP types (like Enums, Models, etc.) are first registered
+ *    along with relevant metadata (e.g., name, usage flags). This stores an
+ *    intermediate representation (`TSPTypeContext`) without immediately creating
+ *    GraphQL types. This stage is typically performed while traversing the TSP AST. 
+ *    Register type by calling the appropriate method (e.g., `addEnum`).
+ * 
+ * 2. Materialization: When a GraphQL type is needed (e.g., to build the final
+ *    schema or resolve a field type), the registry can materialize the TSP type
+ *    into its GraphQL counterpart (e.g., `GraphQLEnumType`, `GraphQLObjectType`). 
+ *    Materialize types by calling the appropriate method (e.g., `materializeEnum`).
+ *
+ * This approach helps in:
+ *  - Decoupling TSP AST traversal from GraphQL object instantiation.
+ *  - Caching materialized GraphQL types to avoid redundant work and ensure object identity.
+ *  - Handling forward references and circular dependencies, as types can be
+ *    registered first and materialized later when all dependencies are known or
+ *    by using thunks for fields/arguments.
+ */
 export class GraphQLTypeRegistry {
-  private typeRegistry: Map<string, GraphQLTypeContext> = new Map();
+  // Stores intermediate TSP type information, keyed by TSP type name.
+  // TODO: make this more of a seen set than a map
+  private tspTypesWithContext: Map<string, TSPTypeContext> = new Map();
 
-  constructor() {}
+  // Stores materialized GraphQL types, keyed by their GraphQL name.
+  private materializedGraphQLTypes: Map<string, GraphQLNamedType> = new Map();
 
-  registerEnum(enumName: string, enumValues: RekeyableMap<string, EnumMember>) {
-    if (this.typeRegistry.has(enumName)) {
-      throw new Error(`Type "${enumName}" is already registered.`);
+  addEnum(tspEnum: Enum): void {
+    const enumName = tspEnum.name;
+    if (this.tspTypesWithContext.has(enumName)) {
+      // Optionally, log a warning or update if new information is more complete.
+      return;
     }
-    this.typeRegistry.set(enumName, {
-      gqlType: new GraphQLEnumType({
-        name: enumName,
-        values: Object.fromEntries(
-          Array.from(enumValues.entries()).map(([key, value]) => [key, { value: value.name }]),
-        ),
-      }),
+
+    this.tspTypesWithContext.set(enumName, {
+      tspType: tspEnum,
+      name: enumName,
+      // TODO: Populate usageFlags based on TSP context and other decorator context.
     });
   }
 
+  // Materializes a TSP Enum into a GraphQLEnumType.
+  materializeEnum(enumName: string): GraphQLEnumType | undefined {
+    const context = this.tspTypesWithContext.get(enumName);
+    if (!context || context.tspType.kind !== "Enum") {
+      // TODO: Handle error or warning for missing context.
+      return undefined;
+    }
+
+    const tspEnum = context.tspType as Enum;
+
+    const gqlEnum = new GraphQLEnumType({
+      name: context.name,
+      values: Object.fromEntries(
+        Array.from(tspEnum.members.values()).map((member) => [
+          member.name, 
+          {
+            value: member.value ?? member.name,
+          },
+        ]),
+      ),
+    });
+
+    this.materializedGraphQLTypes.set(enumName, gqlEnum);
+    return gqlEnum;
+  }
+
   materializeSchemaConfig(): GraphQLSchemaConfig {
-    // TODO: Update logic to materialize the schema config from the registered types. For now, it returns a placeholder schema.
-    const schemaConfig: GraphQLSchemaConfig = {
-      query: new GraphQLObjectType({
+    const allMaterializedGqlTypes = Array.from(this.materializedGraphQLTypes.values());
+    let queryType = this.materializedGraphQLTypes.get("Query") as GraphQLObjectType | undefined;
+    if (!queryType) {
+      queryType = new GraphQLObjectType({
         name: "Query",
         fields: {
           _: {
@@ -55,8 +99,12 @@ export class GraphQLTypeRegistry {
               "A placeholder field. If you are seeing this, it means no operations were defined that could be emitted.",
           },
         },
-      }),
+      });
+    }
+
+    return {
+      query: queryType,
+      types: allMaterializedGqlTypes.length > 0 ? allMaterializedGqlTypes : null,
     };
-    return schemaConfig;
   }
 }

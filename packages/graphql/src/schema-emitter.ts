@@ -11,6 +11,7 @@ import { GraphQLSchema, validateSchema } from "graphql";
 import { type GraphQLEmitterOptions } from "./lib.js";
 import type { Schema } from "./lib/schema.js";
 import { GraphQLTypeRegistry } from "./registry.js";
+import { exit } from "node:process";
 
 class GraphQLSchemaEmitter {
   private tspSchema: Schema;
@@ -53,11 +54,17 @@ class GraphQLSchemaEmitter {
   semanticNodeListener() {
     // TODO: Add GraphQL types to registry as the TSP nodes are visited
     return {
-      model: (model: Model) => {
+      enum: (node: Enum) => {
+        this.registry.addEnum(node);
+      },
+      model: (node: Model) => {
         // Add logic to handle the model node
       },
-      enum: (model: Enum) => {
-        this.registry.registerEnum(model.name, model.members);
+      exitEnum: (node: Enum) => {
+        this.registry.materializeEnum(node.name);
+      },
+      exitModel: (node: Model) => {
+        // Add logic to handle the exit of the model node
       },
     };
   }
