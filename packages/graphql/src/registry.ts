@@ -40,20 +40,20 @@ interface TSPTypeContext {
  */
 export class GraphQLTypeRegistry {
   // Stores intermediate TSP type information, keyed by TSP type name.
-  // TODO: make this more of a seen set than a map
-  private tspTypesWithContext: Map<string, TSPTypeContext> = new Map();
+  // TODO: make this more of a seen set
+  private TSPTypeContextRegistry: Map<string, TSPTypeContext> = new Map();
 
   // Stores materialized GraphQL types, keyed by their GraphQL name.
   private materializedGraphQLTypes: Map<string, GraphQLNamedType> = new Map();
 
   addEnum(tspEnum: Enum): void {
     const enumName = tspEnum.name;
-    if (this.tspTypesWithContext.has(enumName)) {
+    if (this.TSPTypeContextRegistry.has(enumName)) {
       // Optionally, log a warning or update if new information is more complete.
       return;
     }
 
-    this.tspTypesWithContext.set(enumName, {
+    this.TSPTypeContextRegistry.set(enumName, {
       tspType: tspEnum,
       name: enumName,
       // TODO: Populate usageFlags based on TSP context and other decorator context.
@@ -62,7 +62,12 @@ export class GraphQLTypeRegistry {
 
   // Materializes a TSP Enum into a GraphQLEnumType.
   materializeEnum(enumName: string): GraphQLEnumType | undefined {
-    const context = this.tspTypesWithContext.get(enumName);
+    // Check if the GraphQL type is already materialized.
+    if (this.materializedGraphQLTypes.has(enumName)) {
+      return this.materializedGraphQLTypes.get(enumName) as GraphQLEnumType;
+    }
+
+    const context = this.TSPTypeContextRegistry.get(enumName);
     if (!context || context.tspType.kind !== "Enum") {
       // TODO: Handle error or warning for missing context.
       return undefined;
