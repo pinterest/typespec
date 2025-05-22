@@ -149,6 +149,8 @@ export const libDef = {
     compose: { description: "State for the @compose decorator." },
     interface: { description: "State for the @Interface decorator." },
     schema: { description: "State for the @schema decorator." },
+    useAsQuery: { description: "State for the @useAsQuery decorator." },
+    specifiedBy: { description: "State for the @specifiedBy decorator." },
   },
 } as const;
 
