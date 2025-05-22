@@ -3,7 +3,7 @@
 This proposal introduces two decorators for the TypeSpec standard library:
 
 - `@raises` decorator: Used to indicate that a model property may be associated with specific errors.
-- `@handles` decorator: Used to indicate that an operation or property will handle certain types of errors, preventing them from being considered further.
+- `@handles` decorator: Used to indicate that an [operation](#operation) or property will handle certain types of errors, preventing them from being considered further.
 
 The proposal also recommends that new and existing emitters support these decorators for improved error documentation and code generation.
 
@@ -19,7 +19,11 @@ The proposal also recommends that new and existing emitters support these decora
 
 ## Terminology
 
-- <a name="operation-error"></a>**Operation error**: An error that is included in an operation's return type, or otherwise surfaced directly by the operation. [Operation error](#operation-error)s are part of the API contract and are explicitly documented as possible results of invoking the operation.
+- <a name="operation"></a>**Operation**: A [TypeSpec operation](https://typespec.io/docs/language-basics/operations/) which defines an action or function that can be performed. In protocol-specific contexts like HTTP/REST, [operations](#operation) often map to API endpoints. In other contexts like GraphQL, [operations](#operation) may map to queries, mutations, or resolvers. [Operations](#operation) are a core TypeSpec concept, not specific to any protocol.
+
+- <a name="return-type"></a>**Return type**: The [return type of a TypeSpec operation](https://typespec.io/docs/language-basics/operations/#return-type) which defines what the [operation](#operation) returns when invoked. This is a core TypeSpec language concept and exists independently of protocol-specific mechanisms for returning data or errors. Different protocols may represent the [return type](#return-type) in different ways (HTTP response bodies, GraphQL field values, etc.).
+
+- <a name="operation-error"></a>**Operation error**: An error that is included in an [operation](#operation)'s [return type](#return-type), or otherwise surfaced directly by the operation. [Operation error](#operation-error)s are part of the API contract and are explicitly documented as possible results of invoking the operation.
 
 <br>
 
@@ -61,9 +65,9 @@ The `errors` parameter is a list of models representing possible errors. Each er
 
 ````typespec
 /**
- * Indicates that this operation or model property will handle certain types of errors.
+ * Indicates that this [operation](#operation) or model property will handle certain types of errors.
  *
- * @param errors The list of error models that will be handled by this operation or model property.
+ * @param errors The list of error models that will be handled by this [operation](#operation) or model property.
  *
  * @example
  *
@@ -78,13 +82,13 @@ The `errors` parameter is a list of models representing possible errors. Each er
 extern dec handles(target: Operation | ModelProperty, ...errors: Model[]);
 ````
 
-The decorator can be applied to operations or model properties.
-It specifies that the operation or model property will handle the listed errors, preventing them from being propagated to the client.
+The decorator can be applied to [operations](#operation) or model properties.
+It specifies that the [operation](#operation) or model property will handle the listed errors, preventing them from being propagated to the client.
 
-The `errors` parameter is a list of models that represent the errors that will be handled by the operation or model property.
+The `errors` parameter is a list of models that represent the errors that will be handled by the [operation](#operation) or model property.
 Each model must be decorated with the [`@error` decorator][error-decorator].
 
-For example, if a property handles an error internally, that error will not propagate to the operation's return type:
+For example, if a property handles an error internally, that error will not propagate to the [operation](#operation)'s [return type](#return-type):
 
 ```typespec
 model User {
@@ -93,44 +97,40 @@ model User {
   profilePictureUrl: string;
 }
 
-@route("/user/{id}")
-@get
-op getUser(@path id: string): User | GenericError;
+op getUser(id: string): User | GenericError;
 ```
 
 In this case, the `PermissionDeniedError` is handled internally by the `profilePictureUrl` property and does not appear in the list of possible errors for the `getUser` operation.
-However, the `InvalidURLError` is still propagated to the operation's return type.
+However, the `InvalidURLError` is still propagated to the [operation](#operation)'s [return type](#return-type).
 
 #### [Operation errors](#operation-error) + `@raises` decorator
 
-The `@raises` decorator can be used alongside an operation's return type. For example, `getUser()` may return a `GenericError` in its return type, in addition to errors that may be associated with properties like `profilePictureUrl`.
+The `@raises` decorator can be used alongside an [operation](#operation)'s [return type](#return-type). For example, `getUser()` may return a `GenericError` in its [return type](#return-type), in addition to errors that may be associated with properties like `profilePictureUrl`.
 
-If an error type is specified in both the operation's return type and the `@raises` decorator, the operation will include the error (once) in the list of possible errors.
+If an error type is specified in both the [operation](#operation)'s [return type](#return-type) and the `@raises` decorator, the [operation](#operation) will include the error (once) in the list of possible errors.
 
-Semantically, the distinction between a `@raises` decorator and the operation's return type is in where the error is communicated.
-An error on a return type indicates that the error is somehow exposed directly in that response.
+Semantically, the distinction between a `@raises` decorator and the [operation](#operation)'s [return type](#return-type) is in where the error is communicated.
+An error on a [return type](#return-type) indicates that the error is somehow exposed directly in that response.
 An error specified with `@raises`, on the other hand, may appear in a different location depending on if or where the error is specified in a `@handles` decorator.
 
-For instance, a bulk operation of some kind that includes the results of several sub-operations could communicate errors in a few different ways.
-One way would be for each of the operations in the bulk set to provide its error value as its specific return type — as indicated by an error present in the return type.∆
-Another might be for the bulk operation to aggregate all the errors that occurred in the sub-operations and communicate them somewhere in its own response, which could be accomplished by the sub-operations using the `@raises` decorator and the bulk operation using the `@handles` decorator.
-Essentially, an error in a return type is opted out of any contextual handling, while an error in a `@raises` decorator follows the rules specified by other operations, properties, and/or [contextual modifiers](#context-modifiers).
+For instance, a bulk [operation](#operation) of some kind that includes the results of several sub-[operations](#operation) could communicate errors in a few different ways.
+One way would be for each of the [operations](#operation) in the bulk set to provide its error value as its specific [return type](#return-type) — as indicated by an error present in the [return type](#return-type).∆
+Another might be for the bulk [operation](#operation) to aggregate all the errors that occurred in the sub-[operations](#operation) and communicate them somewhere in its own response, which could be accomplished by the sub-[operations](#operation) using the `@raises` decorator and the bulk [operation](#operation) using the `@handles` decorator.
+Essentially, an error in a [return type](#return-type) is opted out of any contextual handling, while an error in a `@raises` decorator follows the rules specified by other operations, properties, and/or [contextual modifiers](#context-modifiers).
 
 <br>
 
 #### [Operation errors](#operation-error) + `@handles` decorator
 
-It is possible, and valid, that an operation both `@handles` an error and also has a return type that includes that error.
-In this case, the operation _will_ include the error in the list of possible errors for the operation.
+It is possible, and valid, that an [operation](#operation) both `@handles` an error and also has a [return type](#return-type) that includes that error.
+In this case, the [operation](#operation) _will_ include the error in the list of possible errors for the operation.
 
 ```typespec
-@route("/user/{id}")
-@get
 @handles(InvalidURLError)
-op getUser(@path id: string): User | InvalidURLError | GenericError;
+op getUser(id: string): User | InvalidURLError | GenericError;
 ```
 
-Semantically, this indicates that the operation will handle the `InvalidURLError` error when produced by a model property, but that the operation itself may also return that error, outside the context of a model property.
+Semantically, this indicates that the [operation](#operation) will handle the `InvalidURLError` error when produced by a model property, but that the [operation](#operation) itself may also return that error, outside the context of a model property.
 
 This becomes important when considering error inheritance.
 
@@ -160,22 +160,16 @@ model GenericError {
 }
 
 @error
-model NotFoundError extends GenericError {
-  @statusCode _: 404;
-}
+model NotFoundError extends GenericError {}
 
 @error
-model PermissionDeniedError extends GenericError {
-  @statusCode _: 403;
-}
+model PermissionDeniedError extends GenericError {}
 
-@route("/user/{id}")
-@get
 @handles(GenericError)
-op getUser(@path id: string): User | GenericError;
+op getUser(id: string): User | GenericError;
 ```
 
-Now, any errors thrown by any of the model properties used in the operation will not be added to the operation's error output if they extend from `GenericError`.
+Now, any errors thrown by any of the model properties used in the [operation](#operation) will not be added to the [operation](#operation)'s error output if they extend from `GenericError`.
 
 This inheritance does _not_ apply to the `@raises` decorator.
 If a property is decorated with `@raises(GenericError)`, it is not considered to be decorated with `@raises(NotFoundError)` or `@raises(PermissionDeniedError)`, even though those errors extend from `GenericError`.
@@ -192,10 +186,10 @@ Below we list some proposed implementations in various emitter targets. These ar
 
 ### HTTP/REST/OpenAPI
 
-In a typical HTTP/REST API where operations are represented by endpoints, the `@raises` decorator can provide more accurate return types for operations that contain properties that may fail.
+In a typical HTTP/REST API where [operations](#operation) are represented by endpoints, the `@raises` decorator can provide more accurate [return type](#return-type)s for [operations](#operation) that contain properties that may fail.
 
-In a larger API, it may be quite difficult to track all of the errors that can occur within an operation when the errors can be generated by many different layers of an API stack.
-The `@raises` decorator helps give the developer a more complete view of the errors that an operation can produce.
+In a larger API, it may be quite difficult to track all of the errors that can occur within an [operation](#operation) when the errors can be generated by many different layers of an API stack.
+The `@raises` decorator helps give the developer a more complete view of the errors that an [operation](#operation) can produce.
 
 Let's say we have this definition of models:
 
@@ -233,7 +227,7 @@ model User {
 
 </details>
 
-Now we define an operation that uses the `User` model:
+Now we define an [operation](#operation) that uses the `User` model:
 
 ```typespec
 @route("/user/{id}")
@@ -338,7 +332,7 @@ paths:
 
 </details>
 
-The definition of `getUser()` has not changed, but it is now emitted as if the return type was
+The definition of `getUser()` has not changed, but it is now emitted as if the [return type](#return-type) was
 
 ```typespec
 User | NotFoundError | PermissionDeniedError | InvalidURLError | GenericError;
@@ -348,8 +342,8 @@ User | NotFoundError | PermissionDeniedError | InvalidURLError | GenericError;
 
 #### Using `@handles` decorator
 
-Perhaps our `getUser()` operation is designed to handle the `InvalidURLError` error, while other operations may not do so.
-We can use the `@handles` decorator to specify that this operation will handle that error:
+Perhaps our `getUser()` [operation](#operation) is designed to handle the `InvalidURLError` error, while other [operations](#operation) may not do so.
+We can use the `@handles` decorator to specify that this [operation](#operation) will handle that error:
 
 ```typespec
 @route("/user/{id}")
@@ -403,7 +397,7 @@ paths:
 </details>
 
 This is not limited to the `profilePictureUrl` property.
-Any property that is decorated with `@raises(InvalidURLError)` and is used in the `getUser()` operation will no longer add `InvalidURLError` to the list of possible errors for the operation.
+Any property that is decorated with `@raises(InvalidURLError)` and is used in the `getUser()` [operation](#operation) will no longer add `InvalidURLError` to the list of possible errors for the operation.
 
 <br>
 
@@ -423,12 +417,12 @@ For example, a `@propagate` decorator could be used to indicate that an error ty
 In GraphQL, this is accomplished by making a field type non-nullable, which means that if a value cannot be produced for that field (due to an error), the error will be bubble up through parent fields, stopping at the first field which is nullable.
 
 A `@asData` decorator could be used to indicate that an error type should be included in the ["errors as data" pattern][errors-as-data].
-This allows a GraphQL schema to opt-in to using this pattern for specific errors, while still allowing other errors (e.g. unexpected server errors) to be propagated normally.
+This allows a GraphQL schema to opt-in to using this pattern for specific errors, while still allowing other errors (e.g. unexpected server errors) to be propagated normally. This avoids changing the shape of the TypeSpec API description to serve the needs of a specific protocol.
 
 The `@handles` decorator can also be used in GraphQL to specify that a field resolver will handle certain types of errors.
 Specifying an error in the `@handles` decorator will:
 
-- omit the error from the union return type, if the error has the `@asData` decorator.
+- omit the error from the union [return type](#return-type), if the error has the `@asData` decorator.
 - prevent the error from triggering non-nullability of the field type, if the error has the `@propagate` decorator.
   The field may still be marked non-null through other errors or other means.
 
@@ -494,7 +488,7 @@ model ActivityEntry {
 }
 
 // In GraphQL, fields can take arguments.
-// These are specified like operations in TypeSpec.
+// These are specified like [operations](#operation) in TypeSpec.
 @doc("Users following this user")
 @handles(RaceConditionError) op followers(type?: string): User[];
 
@@ -577,7 +571,7 @@ type ActivityEntry {
 
   """
   Mark this entry as seen
-  * this field is non-null because it has RaceConditionError (which propagates) in its return type
+  * this field is non-null because it has RaceConditionError (which propagates) in its [return type](#return-type)
   """
   markAsSeen(seen: Boolean!): Boolean!
 }
@@ -663,7 +657,7 @@ message GetUserRequest {
 #### Using gRPC Status Codes
 
 When using Protobuf with gRPC, errors are often communicated using gRPC's built-in status codes and error details.
-These could be expressed in TypeSpec using a `@statusCode` decorator from a gRPC library, along with a generic `Error` model in the operation's return type.
+These could be expressed in TypeSpec using a `@statusCode` decorator from a gRPC library, along with a generic `Error` model in the [operation](#operation)'s [return type](#return-type).
 
 <details open><summary><em>Click to collapse</em></summary>
 
@@ -788,7 +782,7 @@ service UserService {
 
 #### Using `@handles` with Thrift
 
-The `@handles` decorator can be used to specify which exceptions are handled internally by an operation or property. In Thrift, this can be reflected by omitting the handled exceptions from the `throws` clause of the service method.
+The `@handles` decorator can be used to specify which exceptions are handled internally by an [operation](#operation) or property. In Thrift, this can be reflected by omitting the handled exceptions from the `throws` clause of the service method.
 
 For example:
 
@@ -813,8 +807,8 @@ service UserService {
 
 ### Client libraries
 
-Client libraries should leverage language-specific constructs to represent fields or operations that may produce errors.
-For example, in languages with an error monad or result monad, such as Kotlin or Swift, these constructs should be used to represent fields decorated with `@raises` or operations decorated with `@handles`.
+Client libraries should leverage language-specific constructs to represent fields or [operations](#operation) that may produce errors.
+For example, in languages with an error monad or result monad, such as Kotlin or Swift, these constructs should be used to represent fields decorated with `@raises` or [operations](#operation) decorated with `@handles`.
 
 #### Example: Kotlin
 
@@ -855,7 +849,7 @@ This approach ensures that clients handle errors in a type-safe and idiomatic wa
 
 #### Example: Swift
 
-In Swift, the `Result` type can be used to represent fields or operations that may fail.
+In Swift, the `Result` type can be used to represent fields or [operations](#operation) that may fail.
 For example:
 
 <details open><summary><em>Click to collapse</em></summary>
@@ -895,7 +889,7 @@ This approach ensures that clients handle errors in a type-safe and idiomatic wa
 ### Server libraries
 
 Server libraries should generate code that includes appropriate error handling stubs.
-For example, in languages with an error monad or result monad, these constructs should be used to represent fields or operations that may produce errors.
+For example, in languages with an error monad or result monad, these constructs should be used to represent fields or [operations](#operation) that may produce errors.
 This allows server implementations to handle errors explicitly and propagate them as needed.
 
 #### Example: Scala
@@ -981,18 +975,16 @@ model CreateUserRequest {
 
 These errors are generated by the server in response to invalid or incomplete input provided by the client.
 This is conceptually different from output errors, which are typically generated by the server's internal logic or data access operations.
-However, the propagation of errors from model properties to the operation's return type works the same way for input as it does for output.
+However, the propagation of errors from model properties to the [operation](#operation)'s [return type](#return-type) works the same way for input as it does for output.
 
 <br>
 
 ### `@handles` for Input-Level Error Handling
 
-The `@handles` decorator can be used to specify which input-related errors are handled by the operation itself, preventing them from being propagated to the client.
-For example, an operation to create a user might handle `InvalidEmailError` internally while allowing other errors to propagate:
+The `@handles` decorator can be used to specify which input-related errors are handled by the [operation](#operation) itself, preventing them from being propagated to the client.
+For example, an [operation](#operation) to create a user might handle `InvalidEmailError` internally while allowing other errors to propagate:
 
 ```typespec
-@route("/user")
-@post
 @handles(InvalidEmailError)
 op createUser(request: CreateUserRequest): User | GenericError;
 ```
@@ -1003,12 +995,10 @@ This behavior mirrors how `@handles` is used for output errors, allowing develop
 
 ### Error Propagation for Input
 
-Errors specified in `@raises` on input properties propagate to operations unless explicitly handled with `@handles`.
-For example, the following operation automatically includes `InvalidEmailError`, `MissingFieldError`, and `InvalidPasswordError` in its error return types because they are specified in the `CreateUserRequest` model:
+Errors specified in `@raises` on input properties propagate to [operations](#operation) unless explicitly handled with `@handles`.
+For example, the following [operation](#operation) automatically includes `InvalidEmailError`, `MissingFieldError`, and `InvalidPasswordError` in its error [return type](#return-type)s because they are specified in the `CreateUserRequest` model:
 
 ```typespec
-@route("/user")
-@post
 op createUser(request: CreateUserRequest):
   | User
   | InvalidEmailError
@@ -1018,7 +1008,7 @@ op createUser(request: CreateUserRequest):
 ```
 
 This ensures consistency between input and output error modeling.
-By default, errors propagate from input properties to operations, but operations can override this behavior with `@handles`.
+By default, errors propagate from input properties to operations, but [operations](#operation) can override this behavior with `@handles`.
 
 <br>
 
@@ -1050,7 +1040,7 @@ This is consistent with how protocol-specific metadata is applied to output erro
 
 ### Mimic error handling in operations
 
-TypeSpec [operations][operations] allow for specifying possible errors that the operation may produce via the [operation's return type][operations-return-type].
+TypeSpec [operations][operations] allow for specifying possible errors that the [operation](#operation) may produce via the [operation's return type][operations-return-type].
 The standard pattern is to use a union type that includes the models representing the errors, which have been decorated with the [`@error` decorator][error-decorator].
 
 For example:
@@ -1064,12 +1054,12 @@ model NotFoundError {
 op getUser(id: string): User | NotFoundError;
 ```
 
-The `@raises` decorator is different from the return type of operations in that it is used to document errors that may occur when accessing a property.
+The `@raises` decorator is different from the [return type](#return-type) of [operations](#operation) in that it is used to document errors that may occur when accessing a property.
 
-This distinction is useful when a property itself may inherently produce errors, regardless of the operation in which it is used.
+This distinction is useful when a property itself may inherently produce errors, regardless of the [operation](#operation) in which it is used.
 For example, accessing a property that requires a network fetch or a permission check may result in errors.
 
-Using a union type, as operations do, does not allow for the same error semantic in model properties.
+Using a union type, as [operations](#operation) do, does not allow for the same error semantic in model properties.
 Instead, such a type would be indicative of possible types for the property's _value_:
 
 ```typespec
@@ -1118,7 +1108,7 @@ The `@error` decorator would accept an optional argument specifying one or more 
 
 ````typespec
 /**
- * Specify that this model is an error type. Operations return error types when the operation has failed.
+ * Specify that this model is an error type. Operations return error types when the [operation](#operation) has failed.
  *
  * @param contexts The list of contexts in which this error applies. This can be used to indicate whether the error is relevant for input, output, or both.
  *
@@ -1177,11 +1167,11 @@ model User {
   email: string;
 }
 
-@get op getUser(id: string): User | UserNotFound; // will not include InvalidEmailError, does return email field
+op getUser(id: string): User | UserNotFound; // will not include InvalidEmailError, does return email field
 
-@post op createUser(...User): User; // will include InvalidEmailError, does return email field
+op createUser(...User): User; // will include InvalidEmailError, does return email field
 
-@delete op deleteUser(id: string): User; // does not include InvalidEmailError, does not return email field
+op deleteUser(id: string): User; // does not include InvalidEmailError, does not return email field
 ```
 
 </details>
@@ -1191,9 +1181,7 @@ model User {
 By default, errors with `Lifecycle.Read` are included when the model is used in an output context.
 
 ```typespec
-@route("/user/{id}")
-@get
-op getUser(@path id: string): User | PermissionDeniedError | GenericError;
+op getUser(id: string): User | PermissionDeniedError | GenericError;
 ```
 
 ##### Both Contexts
@@ -1215,9 +1203,9 @@ Just as is true for visibility, if no context is specified, the error model [wil
 
 There are a number of ways to modify the visibility of a model or operation. Context modifiers, as applied to errors, will follow the same rules as they do for visibility.
 
-For example, use of the [`@parameterVisibility`][parameter-visibility] or [`@returnTypeVisibility`][return-type-visibility] decorators will modify the visibility of the error model in the same way as it does for parameters. That is, the properties of a model used as a parameter will apply their `@raises` errors based on the visibility of parameters. The properties of a model used as a return type will apply their `@raises` errors based on the visibility of the return type.
+For example, use of the [`@parameterVisibility`][parameter-visibility] or [`@returnTypeVisibility`][return-type-visibility] decorators will modify the visibility of the error model in the same way as it does for parameters. That is, the properties of a model used as a parameter will apply their `@raises` errors based on the visibility of parameters. The properties of a model used as a [return type](#return-type) will apply their `@raises` errors based on the visibility of the [return type](#return-type).
 
-This also means that decorators which apply implicit visibility, such as [`@post`][post-decorator] or [`@put`][put-decorator], will apply the implicit visibility of the operation to the error model.
+This also means that decorators which apply implicit visibility, such as [`@post`][post-decorator] or [`@put`][put-decorator], will apply the implicit visibility of the [operation](#operation) to the error model.
 
 Any other modification of visibility including visibility filters, custom context classes, et. al. should affect errors in the same way as they affect model properties.
 
@@ -1244,7 +1232,7 @@ Applying context modifiers to the `@error` decorator abstracts the concerns of c
 It seems fairly intuitive for a developer to specify that an `InvalidParametersError` would only apply in input contexts, while a `PermissionDeniedError` would only apply in output contexts.
 
 If context modifiers are specified on the `@raises` and `@handles` decorators, it is likely that the developer forgets to add all of the relevant lifecycle modifiers in some cases.
-This would result in operations insufficiently specifying errors, leading to clients receiving errors that they do not expect from the spec.
+This would result in [operations](#operation) insufficiently specifying errors, leading to clients receiving errors that they do not expect from the spec.
 
 By contrast, adding context modifiers to the `@error` decorator is more likely to add errors in more contexts than are needed; while not ideal, specifying extra errors in the spec that will never be returned is less problematic than omitting errors that will be.
 Indeed, there's no guarantee that _any_ error specified ever actually will be.
@@ -1281,14 +1269,11 @@ model User {
   profilePictureUrl: string;
 }
 
-@route("/user/{id}")
-@get
-@handles(PermissionDeniedError) // warning
-op getUser(@path id: string): User;
+op getUser(id: string): User | NotFoundError;
 ```
 
-In this example, the `getUser` operation specifies that it handles `PermissionDeniedError` using the `@handles` decorator.
-However, none of the properties or operations used in `getUser` (in this case, just the `User.profilePictureUrl` property) specify `PermissionDeniedError` in their `@raises` decorators.
+In this example, the `getUser` [operation](#operation) specifies that it handles `PermissionDeniedError` using the `@handles` decorator.
+However, none of the properties or [operations](#operation) used in `getUser` (in this case, just the `User.profilePictureUrl` property) specify `PermissionDeniedError` in their `@raises` decorators.
 
 As a result, the TypeSpec compiler will issue a warning.
 
