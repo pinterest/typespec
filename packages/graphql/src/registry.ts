@@ -49,21 +49,18 @@ export class GraphQLTypeRegistry {
   addEnum(tspEnum: Enum): void {
     const enumName = tspEnum.name;
     if (this.TSPTypeContextRegistry.has(enumName)) {
-      // Optionally, log a warning or update if new information is more complete.
       return;
     }
 
     this.TSPTypeContextRegistry.set(enumName, {
       tspType: tspEnum,
       name: enumName,
-      // TODO: Populate usageFlags based on TSP context and other decorator context.
     });
   }
 
   addModel(tspModel: Model): void {
     const modelName = tspModel.name;
     if (this.TSPTypeContextRegistry.has(modelName)) {
-      // Optionally, log a warning or update if new information is more complete.
       return;
     }
 
@@ -110,9 +107,8 @@ export class GraphQLTypeRegistry {
 
     // Process each property of the model
     for (const [propertyName, property] of tspModel.properties) {
-      // For now, we'll handle only simple scalar types and references to other models
-      // TODO: Add proper type resolution based on the property type
-      let fieldType: GraphQLOutputType = GraphQLString; // Default to string for now
+      // TODO: Add proper type resolution based on the property type, default to string for now
+      let fieldType: GraphQLOutputType = GraphQLString;
 
       // If the property type is a reference to another type, try to materialize it
       if (property.type.kind === "Model") {

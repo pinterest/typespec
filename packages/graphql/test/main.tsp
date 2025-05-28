@@ -16,7 +16,7 @@ namespace MyLibrary {
     id: string;
     name: string;
     bio?: string;
-    books: Book[];
+    book: Book;
     friend: Author;
     publisher: Publisher;
   }
