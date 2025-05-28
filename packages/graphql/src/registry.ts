@@ -173,7 +173,6 @@ export class GraphQLTypeRegistry {
         },
       });
     }
-
     return {
       query: queryType,
       types: allMaterializedGqlTypes.length > 0 ? allMaterializedGqlTypes : null,

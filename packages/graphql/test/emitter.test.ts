@@ -2,9 +2,23 @@ import { strictEqual } from "node:assert";
 import { describe, it } from "vitest";
 import { emitSingleSchema } from "./test-host.js";
 
-// For now, the expected output is a placeholder string.
-// In the future, this should be replaced with the actual GraphQL schema output.
-const expectedGraphQLSchema = `type Query {
+// For now, the expected output contains a placeholder string and model property types as String for scalar types that are not yet supported by the emitter.
+// In the future, this should be replaced with the correct GraphQL schema output.
+const expectedGraphQLSchema = `type Author {
+  name: String
+  book: Book
+  coauthor: Author
+}
+
+type Book {
+  name: String
+  page_count: String
+  published: String
+  price: String
+  author: Author
+}
+
+type Query {
   """
   A placeholder field. If you are seeing this, it means no operations were defined that could be emitted.
   """
@@ -21,10 +35,12 @@ describe("name", () => {
           page_count: int32;
           published: boolean;
           price: float64;
+          author: Author;
         }
         model Author {
           name: string;
-          books: Book[];
+          book: Book;
+          coauthor: Author;
         }
         op getBooks(): Book[];
         op getAuthors(): Author[];

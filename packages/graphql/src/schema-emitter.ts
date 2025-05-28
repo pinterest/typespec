@@ -1,11 +1,13 @@
 import {
   createDiagnosticCollector,
+  ListenerFlow,
   navigateTypesInNamespace,
   type Diagnostic,
   type DiagnosticCollector,
   type EmitContext,
   type Enum,
   type Model,
+  type Namespace,
 } from "@typespec/compiler";
 import { GraphQLSchema, validateSchema } from "graphql";
 import { type GraphQLEmitterOptions } from "./lib.js";
@@ -52,18 +54,22 @@ class GraphQLSchemaEmitter {
 
   semanticNodeListener() {
     return {
+      namespace: (namespace: Namespace) => {
+        if (namespace.name === "TypeSpec" || namespace.name === "Reflection") {
+          return ListenerFlow.NoRecursion;
+        }
+        return;
+      },
       enum: (node: Enum) => {
         this.registry.addEnum(node);
       },
       model: (node: Model) => {
-        // Register the model in the registry
         this.registry.addModel(node);
       },
       exitEnum: (node: Enum) => {
         this.registry.materializeEnum(node.name);
       },
       exitModel: (node: Model) => {
-        // Materialize the model after all its properties have been processed
         this.registry.materializeModel(node.name);
       },
     };
