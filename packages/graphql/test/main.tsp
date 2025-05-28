@@ -1,13 +1,15 @@
 import "@typespec/graphql";
 using GraphQL;
 
-@schema(#{name: "library-schema"})
+@schema(#{ name: "library-schema" })
 namespace MyLibrary {
   model Book {
     id: string;
     title: string;
     publicationDate: string;
     author: Author;
+    prequel: Book;
+    genre: Genre;
   }
 
   model Author {
@@ -16,12 +18,20 @@ namespace MyLibrary {
     bio?: string;
     books: Book[];
     friend: Author;
+    publisher: Publisher;
   }
-  
+
+  model Publisher {
+    id: string;
+    name: string;
+    book: Book;
+    author: Author;
+  }
+
   enum Genre {
     Fiction,
     NonFiction,
     Mystery,
-    Fantasy
+    Fantasy,
   }
 }
