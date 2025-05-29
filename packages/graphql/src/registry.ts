@@ -4,6 +4,7 @@ import {
   GraphQLEnumType,
   GraphQLObjectType,
   GraphQLString,
+  type GraphQLFieldConfigMap,
   type GraphQLNamedType,
   type GraphQLOutputType,
   type GraphQLSchemaConfig,
@@ -37,7 +38,7 @@ interface TSPTypeContext {
  * This approach helps in:
  *  - Decoupling TSP AST traversal from GraphQL object instantiation.
  *  - Caching materialized GraphQL types to avoid redundant work and ensure object identity.
- *  - Handling forward references and circular dependencies through thunks
+ *  - Handling forward references and circular dependencies through per-property lazy evaluation.
  */
 export class GraphQLTypeRegistry {
   // Stores intermediate TSP type information, keyed by TSP type name.
@@ -102,28 +103,38 @@ export class GraphQLTypeRegistry {
     return gqlEnum;
   }
 
-  private computeModelFields(tspModel: Model): Record<string, { type: GraphQLOutputType }> {
-    const fields: Record<string, { type: GraphQLOutputType }> = {};
+  private computeModelFields(tspModel: Model): GraphQLFieldConfigMap<any, any> {
+    const registry = this;
+
+    const fields: GraphQLFieldConfigMap<any, any> = {};
 
     // Process each property of the model
     for (const [propertyName, property] of tspModel.properties) {
-      // TODO: Add proper type resolution based on the property type, default to string for now
-      let fieldType: GraphQLOutputType = GraphQLString;
+      const fieldConfig: any = {};
 
-      // If the property type is a reference to another type, try to materialize it
-      if (property.type.kind === "Model") {
-        const referencedType = this.materializeModel(property.type.name);
-        if (referencedType) {
-          fieldType = referencedType;
-        }
-      } else if (property.type.kind === "Enum") {
-        const referencedType = this.materializeEnum(property.type.name);
-        if (referencedType) {
-          fieldType = referencedType;
-        }
-      }
+      // Define a getter for the type property to enable lazy evaluation per field
+      Object.defineProperty(fieldConfig, "type", {
+        get: function () {
+          // TODO: Add proper type resolution based on the property type, default to string for now
+          let fieldType: GraphQLOutputType = GraphQLString;
 
-      fields[propertyName] = { type: fieldType };
+          // If the property type is a reference to another type, try to materialize it
+          if (property.type.kind === "Model") {
+            const referencedType = registry.materializeModel(property.type.name);
+            if (referencedType) {
+              fieldType = referencedType;
+            }
+          } else if (property.type.kind === "Enum") {
+            const referencedType = registry.materializeEnum(property.type.name);
+            if (referencedType) {
+              fieldType = referencedType;
+            }
+          }
+
+          return fieldType;
+        },
+      });
+      fields[propertyName] = fieldConfig;
     }
 
     return fields;
@@ -144,10 +155,9 @@ export class GraphQLTypeRegistry {
 
     const tspModel = context.tspType as Model;
 
-    // Create the GraphQL object type with a thunk for fields to handle forward references
     const gqlObjectType = new GraphQLObjectType({
       name: context.name,
-      fields: () => this.computeModelFields(tspModel),
+      fields: this.computeModelFields(tspModel),
     });
 
     this.materializedGraphQLTypes.set(modelName, gqlObjectType);
@@ -157,6 +167,7 @@ export class GraphQLTypeRegistry {
   materializeSchemaConfig(): GraphQLSchemaConfig {
     const allMaterializedGqlTypes = Array.from(this.materializedGraphQLTypes.values());
     let queryType = this.materializedGraphQLTypes.get("Query") as GraphQLObjectType | undefined;
+
     if (!queryType) {
       queryType = new GraphQLObjectType({
         name: "Query",
@@ -169,6 +180,7 @@ export class GraphQLTypeRegistry {
         },
       });
     }
+
     return {
       query: queryType,
       types: allMaterializedGqlTypes.length > 0 ? allMaterializedGqlTypes : null,
