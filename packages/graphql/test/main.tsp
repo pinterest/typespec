@@ -10,11 +10,14 @@ namespace MyLibrary {
     author: Author;
     prequel: Book;
     genre: Genre;
+    released: boolean;
+    price: float32;
   }
 
   model Author {
     id: string;
     name: string;
+    age: int32;
     bio?: string;
     book: Book;
     friend: Author;

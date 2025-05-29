@@ -8,6 +8,7 @@ import {
   type GraphQLOutputType,
   type GraphQLSchemaConfig,
 } from "graphql";
+import { getGraphQLScalarType } from "./lib/scalar-mappings.js";
 
 // The TSPTypeContext interface represents the intermediate TSP type information before materialization.
 // It stores the raw TSP type and any extracted metadata relevant for GraphQL generation.
@@ -107,21 +108,18 @@ export class GraphQLTypeRegistry {
 
     // Process each property of the model
     for (const [propertyName, property] of tspModel.properties) {
-      // TODO: Add proper type resolution based on the property type, default to string for now
-      let fieldType: GraphQLOutputType = GraphQLString;
+      let fieldType: GraphQLOutputType | undefined;
 
-      // If the property type is a reference to another type, try to materialize it
-      if (property.type.kind === "Model") {
-        const referencedType = this.materializeModel(property.type.name);
-        if (referencedType) {
-          fieldType = referencedType;
-        }
+      if (property.type.kind === "Scalar") {
+        fieldType = getGraphQLScalarType(property.type);
+      } else if (property.type.kind === "Model") {
+        fieldType = this.materializeModel(property.type.name);
       } else if (property.type.kind === "Enum") {
-        const referencedType = this.materializeEnum(property.type.name);
-        if (referencedType) {
-          fieldType = referencedType;
-        }
+        fieldType = this.materializeEnum(property.type.name);
       }
+
+      // Default to string if type cannot be resolved
+      fieldType = fieldType || GraphQLString;
 
       fields[propertyName] = { type: fieldType };
     }
