@@ -1,9 +1,4 @@
-import {
-  emitFile,
-  getNamespaceFullName,
-  interpolatePath,
-  type EmitContext,
-} from "@typespec/compiler";
+import { emitFile, interpolatePath, type EmitContext } from "@typespec/compiler";
 import { printSchema } from "graphql";
 import type { ResolvedGraphQLEmitterOptions } from "./emitter.js";
 import type { GraphQLEmitterOptions } from "./lib.js";

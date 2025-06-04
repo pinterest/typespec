@@ -14,7 +14,9 @@ describe("@Interface", () => {
       TestModel: Model;
     }>(`
       @Interface
-      @test model TestModel {}
+      @test model TestModel {
+        name: string;
+      }
     `);
     expectDiagnosticEmpty(diagnostics);
 
@@ -29,10 +31,14 @@ describe("@compose", () => {
       AnInterface: Interface;
     }>(`
       @Interface
-      @test model AnInterface {}
+      @test model AnInterface {
+        prop: string;
+      }
 
       @compose(AnInterface)
-      @test model TestModel {}
+      @test model TestModel {
+        prop: string;
+      }
     `);
     expectDiagnosticEmpty(diagnostics);
 
@@ -50,12 +56,18 @@ describe("@compose", () => {
         SecondInterface: Interface;
       }>(`
       @Interface
-      @test model FirstInterface {}
+      @test model FirstInterface {
+        prop: string;
+      }
       @Interface
-      @test model SecondInterface {}
+      @test model SecondInterface {
+        prop: string;
+      }
 
       @compose(FirstInterface, SecondInterface)
-      @test model TestModel {}
+      @test model TestModel {
+        prop: string;
+      }
     `);
     expectDiagnosticEmpty(diagnostics);
 
@@ -87,7 +99,9 @@ describe("@compose", () => {
       }
 
       @compose(AnInterface)
-      model TestModel extends AnInterface {}
+      model TestModel extends AnInterface {
+        another_prop: string;
+      }
     `);
     expectDiagnosticEmpty(diagnostics);
   });
@@ -99,7 +113,9 @@ describe("@compose", () => {
       }
 
       @compose(AnInterface)
-      model TestModel is AnInterface {}
+      model TestModel is AnInterface {
+        another_prop: string;
+      }
     `);
     expectDiagnosticEmpty(diagnostics);
   });
@@ -158,11 +174,15 @@ describe("@compose", () => {
       AnotherInterface: Interface;
     }>(`
       @Interface
-      @test model AnotherInterface {}
+      @test model AnotherInterface {
+        prop: string;
+      }
 
       @compose(AnotherInterface)
       @Interface
-      @test model AnInterface {}
+      @test model AnInterface {
+        prop: string;
+      }
     `);
     expectDiagnosticEmpty(diagnostics);
 

@@ -13,7 +13,9 @@ describe("@operationFields", () => {
       @test op testOperation(): void;
 
       @operationFields(testOperation)
-      @test model TestModel {}
+      @test model TestModel {
+        name: string;
+      }
     `);
     expectDiagnosticEmpty(diagnostics);
 
@@ -30,7 +32,9 @@ describe("@operationFields", () => {
       }
 
       @operationFields(TestInterface)
-      @test model TestModel {}
+      @test model TestModel {
+        prop: string;
+      }
     `);
     expectDiagnosticEmpty(diagnostics);
 
@@ -53,7 +57,9 @@ describe("@operationFields", () => {
       @test op testOperation3(): void;
 
       @operationFields(TestInterface, testOperation3)
-      @test model TestModel {}
+      @test model TestModel {
+        prop: string;
+      }
     `);
     expectDiagnosticEmpty(diagnostics);
 
@@ -72,7 +78,9 @@ describe("@operationFields", () => {
       }
 
       @operationFields(TestInterface, TestInterface.testOperation)
-      @test model TestModel {}
+      @test model TestModel {
+        prop: string;
+      }
     `);
     expectDiagnostics(diagnostics, {
       code: "@typespec/graphql/operation-field-duplicate",
@@ -179,7 +187,9 @@ describe("@operationFields", () => {
         }
   
         @operationFields(testOperation, TestInterface.testOperation)
-        model TestModel {}
+        model TestModel {
+          prop: string;
+        }
       `);
       expectDiagnosticEmpty(diagnostics);
     });

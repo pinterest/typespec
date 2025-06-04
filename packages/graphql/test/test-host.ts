@@ -107,3 +107,17 @@ export async function emitSingleSchema(
   ok(schemaRecord.graphQLOutput, "Expected to have found graphql output");
   return schemaRecord.graphQLOutput;
 }
+
+/**
+ * Test usage tracking by creating a simple schema with output-only models
+ */
+export async function emitSchemaForUsageTest(code: string): Promise<string> {
+  const testCode = `
+@schema
+namespace TestUsage {
+  ${code}
+}
+  `;
+  
+  return await emitSingleSchema(testCode, {});
+}
