@@ -16,16 +16,16 @@ namespace MyLibrary {
     id: string;
     name: string;
     bio?: string;
-    book: Book;
-    friend: Author;
-    publisher: Publisher;
+    books: Book[];
+    friends: Author[];
+    publishers: Publisher[];
   }
 
   model Publisher {
     id: string;
     name: string;
-    book: Book;
-    author: Author;
+    books: Book[];
+    authors: Author[];
   }
 
   enum Genre {

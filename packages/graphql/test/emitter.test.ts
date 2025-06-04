@@ -12,9 +12,9 @@ const expectedGraphQLSchema = `type Author {
 
 type Book {
   name: String
-  page_count: String
-  published: String
-  price: String
+  page_count: Int
+  published: Boolean
+  price: Float
   author: Author
 }
 
