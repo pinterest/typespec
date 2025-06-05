@@ -1,34 +1,41 @@
-import { UsageFlags } from "@typespec/compiler";
+import { UsageFlags, type Type } from "@typespec/compiler";
+import type { GraphQLType } from "graphql";
 
 /**
  * TypeSpec context for type mapping
  * @template T - The TypeSpec type
  */
-export interface TSPContext<T = any> {
+export interface TSPContext<T extends Type> {
   type: T; // The TypeSpec type
   usageFlag: UsageFlags; // How the type is being used (input, output, etc.)
   name?: string; // Optional name override
-  metadata?: Record<string, any>; // Optional additional metadata
+  metadata: Record<string, any>; // Additional metadata
 }
 
 /**
- * Base TypeMap for all GraphQL type mappings
- * @template T - The TypeSpec type
- * @template G - The GraphQL type
+ * Nominal type for keys in the TypeMap
  */
-export abstract class TypeMap<T, G> {
+type TypeKey = string & { __typeKey: any };
+
+/**
+ * Base TypeMap for all GraphQL type mappings
+ * @template T - The TypeSpec type constrained to TSP's Type
+ * @template G - The GraphQL type constrained to GraphQL's GraphQLType
+ */
+export abstract class TypeMap<T extends Type, G extends GraphQLType> {
+
   // Map of materialized GraphQL types
-  protected materializedMap = new Map<string, G>();
+  protected materializedMap = new Map<TypeKey, G>();
 
   // Map of registration contexts
-  protected registrationMap = new Map<string, TSPContext<T>>();
+  protected registrationMap = new Map<TypeKey, TSPContext<T>>();
 
   /**
    * Register a TypeSpec type with context for later materialization
    * @param context - The TypeSpec context
-   * @returns The name used for registration
+   * @returns The name used for registration as a TypeKey
    */
-  register(context: TSPContext<T>): string {
+  register(context: TSPContext<T>): TypeKey {
     const name = this.getNameFromContext(context);
     this.registrationMap.set(name, context);
     return name;
@@ -36,10 +43,10 @@ export abstract class TypeMap<T, G> {
 
   /**
    * Get the materialized GraphQL type
-   * @param name - The type name
+   * @param name - The type name as a TypeKey
    * @returns The materialized GraphQL type or undefined
    */
-  get(name: string): G | undefined {
+  get(name: TypeKey): G | undefined {
     // Return already materialized type if available
     if (this.materializedMap.has(name)) {
       return this.materializedMap.get(name);
@@ -62,7 +69,7 @@ export abstract class TypeMap<T, G> {
    * Check if a type is registered
    */
   isRegistered(name: string): boolean {
-    return this.registrationMap.has(name);
+    return this.registrationMap.has(name as TypeKey);
   }
 
   /**
@@ -83,10 +90,10 @@ export abstract class TypeMap<T, G> {
   /**
    * Get a name from a context
    */
-  protected abstract getNameFromContext(context: TSPContext<T>): string;
+  protected abstract getNameFromContext(context: TSPContext<T>): TypeKey;
 
   /**
    * Materialize a type from a context
    */
-  protected abstract materialize(context: TSPContext<T>): G | undefined;
+  protected abstract materialize(context: TSPContext<T>): G;
 }
