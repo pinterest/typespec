@@ -2,8 +2,8 @@
 
 This proposal introduces two decorators for the TypeSpec standard library:
 
-- `@raises` decorator: Used to indicate that a model property may be associated with specific errors.
-- `@handles` decorator: Used to indicate that an [operation](#operation) or property will handle certain types of errors, preventing them from being considered further.
+- [`@raises` decorator](#raises-decorator): Used to indicate that a model property may be associated with specific errors.
+- [`@handles` decorator](#handles-decorator): Used to indicate that an [operation](#operation) or property will handle certain types of errors, preventing them from being considered further.
 
 The proposal also recommends that new and existing emitters support these decorators for improved error documentation and code generation.
 
@@ -12,24 +12,23 @@ The proposal also recommends that new and existing emitters support these decora
 ## Goals
 
 1. Enable TypeSpec developers to document where errors may occur in model properties.
-2. Provide emitters with information to update the set of [operation error](#operation-error)s based on the models in use and the error handling of the operation.
+2. Provide emitters with information to update the set of [operation errors](#operation-error) based on the models in use and the error handling of the operation.
 3. Allow code emitters to generate code that is aware of and can respond to these errors appropriately.
 
 <br>
 
 ## Terminology
 
-- <a name="operation"></a>**Operation**: A [TypeSpec operation](https://typespec.io/docs/language-basics/operations/) which defines an action or function that can be performed. In protocol-specific contexts like HTTP/REST, [operations](#operation) often map to API endpoints. In other contexts like GraphQL, [operations](#operation) may map to queries, mutations, or resolvers. [Operations](#operation) are a core TypeSpec concept, not specific to any protocol.
+These terms have specific meanings throughout the document, so we will define them here.
 
-- <a name="return-type"></a>**Return type**: The [return type of a TypeSpec operation](https://typespec.io/docs/language-basics/operations/#return-type) which defines what the [operation](#operation) returns when invoked. This is a core TypeSpec language concept and exists independently of protocol-specific mechanisms for returning data or errors. Different protocols may represent the [return type](#return-type) in different ways (HTTP response bodies, GraphQL field values, etc.).
+- <a name="operation"></a>**Operation**: A [TypeSpec operation](https://typespec.io/docs/language-basics/operations/) which defines an action or function that can be performed. In protocol-specific contexts like HTTP/REST, [operations](#operation) often map to API endpoints. In other contexts like GraphQL, operations may map to queries, mutations, or resolvers. Operations are a core TypeSpec concept, not specific to any protocol.
+- ```
 
-- <a name="operation-error"></a>**Operation error**: An error that is included in an [operation](#operation)'s [return type](#return-type), or otherwise surfaced directly by the operation. [Operation error](#operation-error)s are part of the API contract and are explicitly documented as possible results of invoking the operation.
+- <a name="return-type"></a>**Return type**: The [return type of a TypeSpec operation](https://typespec.io/docs/language-basics/operations/#return-type) which defines what the [operation](#operation) returns when invoked. This is a core TypeSpec language concept and exists independently of protocol-specific mechanisms for returning data or errors. Different protocols may represent the return type#return-type in different ways (HTTP response bodies, GraphQL field values, etc.).
 
-<br>
+- <a name="operation-error"></a>**Operation error**: An error that is specified in the [return type](#return-type) of an [operation](#operation) in TypeSpec. Operation errors are part of the API contract and are explicitly documented as possible results of invoking the operation.
 
-1. Enable TypeSpec developers to document where errors may occur in model properties.
-2. Provide emitters with information to update the set of [operation errors](#operation-error) based on the models in use and the error handling of the operation.
-3. Allow code emitters to generate code that is aware of and can respond to these errors appropriately.
+- <a name="protocol-error"></a>**Protocol error**: An error expression specific to the protocol in which it is being expressed. Protocol errors may be the result of any number of sources, e.g. [operation errors](#operation-error), raised model property errors, or protocol processing errors. An [operation error](#operation-error) does not necessarily translate into a protocol error (it's up to the protocol emitter).
 
 <br>
 
@@ -57,6 +56,8 @@ extern dec raises(target: ModelProperty, ...errors: Model[]);
 
 The `@raises` decorator is applied to model properties to document that certain errors may be associated with those properties. This provides valuable information for documentation and code generation, helping consumers and tools understand where errors may occur within a model.
 
+Protocol emitters are expected to consider errors listed in `@raises` decorators when determining what [protocol errors](#protocol-error) should be expressed.
+
 The `errors` parameter is a list of models representing possible errors. Each error model must be decorated with the [`@error` decorator][error-decorator].
 
 <br>
@@ -65,9 +66,9 @@ The `errors` parameter is a list of models representing possible errors. Each er
 
 ````typespec
 /**
- * Indicates that this [operation](#operation) or model property will handle certain types of errors.
+ * Indicates that this operation or model property will handle certain types of errors.
  *
- * @param errors The list of error models that will be handled by this [operation](#operation) or model property.
+ * @param errors The list of error models that will be handled by this operation or model property.
  *
  * @example
  *
@@ -83,25 +84,10 @@ extern dec handles(target: Operation | ModelProperty, ...errors: Model[]);
 ````
 
 The decorator can be applied to [operations](#operation) or model properties.
-It specifies that the [operation](#operation) or model property will handle the listed errors, preventing them from being propagated to the client.
+It specifies that the [operation](#operation) or model property will handle the listed errors, preventing them from being expressed as [protocol errors](#protocol-error).
 
 The `errors` parameter is a list of models that represent the errors that will be handled by the [operation](#operation) or model property.
 Each model must be decorated with the [`@error` decorator][error-decorator].
-
-For example, if a property handles an error internally, that error will not propagate to the [operation](#operation)'s [return type](#return-type):
-
-```typespec
-model User {
-  @raises(InvalidURLError)
-  @handles(PermissionDeniedError)
-  profilePictureUrl: string;
-}
-
-op getUser(id: string): User | GenericError;
-```
-
-In this case, the `PermissionDeniedError` is handled internally by the `profilePictureUrl` property and does not appear in the list of possible errors for the `getUser` operation.
-However, the `InvalidURLError` is still propagated to the [operation](#operation)'s [return type](#return-type).
 
 #### [Operation errors](#operation-error) + `@raises` decorator
 
