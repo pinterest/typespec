@@ -36,7 +36,13 @@ export abstract class TypeMap<T extends Type, G extends GraphQLType> {
    * @returns The name used for registration as a TypeKey
    */
   register(context: TSPContext<T>): TypeKey {
+    // Check if the type is already registered
     const name = this.getNameFromContext(context);
+    if (this.isRegistered(name)) {
+      throw new Error(`Type ${name} is already registered`);
+    }
+
+    // Register the type
     this.registrationMap.set(name, context);
     return name;
   }
