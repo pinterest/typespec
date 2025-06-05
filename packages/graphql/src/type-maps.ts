@@ -8,7 +8,7 @@ import type { GraphQLType } from "graphql";
 export interface TSPContext<T extends Type> {
   type: T; // The TypeSpec type
   usageFlag: UsageFlags; // How the type is being used (input, output, etc.)
-  name?: string; // Optional name override
+  graphqlName?: string; // Optional GraphQL type name override (e.g., "ModelInput" for input types)
   metadata: Record<string, any>; // Additional metadata
 }
 
@@ -75,8 +75,8 @@ export abstract class TypeMap<T extends Type, G extends GraphQLType> {
   /**
    * Get all materialized types
    */
-  getAllMaterialized(): G[] {
-    return Array.from(this.materializedMap.values());
+  getAllMaterialized(): MapIterator<G> {
+    return this.materializedMap.values();
   }
 
   /**
