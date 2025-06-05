@@ -56,10 +56,8 @@ export abstract class TypeMap<T extends Type, G extends GraphQLType> {
     const context = this.registrationMap.get(name);
     if (context) {
       const materializedType = this.materialize(context);
-      if (materializedType) {
-        this.materializedMap.set(name, materializedType);
-        return materializedType;
-      }
+      this.materializedMap.set(name, materializedType);
+      return materializedType;
     }
 
     return undefined;
