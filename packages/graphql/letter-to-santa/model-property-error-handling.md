@@ -11,9 +11,14 @@ The proposal also recommends that new and existing emitters support these decora
 
 ## Goals
 
-1. Enable TypeSpec developers to document where errors may occur in model properties.
-2. Provide emitters with information to update the set of [operation errors](#operation-error) based on the models in use and the error handling of the operation.
-3. Allow code emitters to generate code that is aware of and can respond to these errors appropriately.
+As we (Pinterest) are building out the [GraphQL emitter][graphql-emitter], we have identified a need to express complex error handling patterns that are common in GraphQL APIs and cannot be easily expressed with the existing TypeSpec error handling mechanisms.
+
+**Primary Goal:** Enable Pinterest's GraphQL emitter to express GraphQL's complex field-level error patterns (null propagation, errors-as-data, resolver-level handling).
+
+**Secondary Goals:**
+1. Provide a standard way for other emitters to leverage field-level error information
+2. Enable multi-protocol schemas to express error handling once, generate appropriately for each target
+3. Support workflow orchestration and microservices patterns that require similar error handling
 
 <br>
 
@@ -1069,61 +1074,221 @@ Here, the server explicitly handles errors when resolving the `profile_picture_u
 
 <br>
 
-## Alternatives Considered
+## Real-world Use Cases
 
-### Mimic error handling in operations
+**Note:** While Pinterest's immediate need is GraphQL, these patterns appear across multiple domains where field-level failures require different handling strategies.
 
-TypeSpec [operations][operations] allow for specifying possible errors that the [operation](#operation) may produce via the [operation's return type][operations-return-type].
-The standard pattern is to use a union type that includes the models representing the errors, which have been decorated with the [`@error` decorator][error-decorator].
+This section is meant to demonstrate a few areas in real-world use where this proposal allows a new kind of error handling that is not currently possible.
+Some may be more esoteric and/or speculative than others, but the goal is to explore a wide spectrum of use cases.
 
-For example:
+### Azure Logic Apps Workflow Orchestration
 
-```typespec
-@error
-model NotFoundError {
-  message: string;
-}
+Azure Logic Apps represents a compelling use case for field-level error handling specifications.
+Logic Apps workflows consist of multiple actions that can fail independently, with subsequent actions configured to handle specific failure types through "run after" settings.
 
-op getUser(id: string): User | NotFoundError;
-```
-
-Using a union type, as [operations](#operation) do, does not allow for the same error semantic in model properties.
-Instead, such a type would be indicative of possible types for the property's _value_:
+Consider a workflow that retrieves user data and processes it through multiple services:
 
 ```typespec
-model User {
-  profilePictureUrl: string | NotFoundError | PermissionDeniedError;
+model UserProfileData {
+  @raises(UserNotFoundError, PermissionDeniedError) 
+  basicInfo: UserInfo;
+  
+  @raises(ServiceUnavailableError, RateLimitExceededError)
+  socialMediaLinks: SocialLinks;
+  
+  @raises(NetworkTimeoutError)
+  profileImage: ImageData;
 }
+
+@handles(UserNotFoundError, PermissionDeniedError)
+op createDefaultProfile(userData: UserProfileData): UserProfile;
+
+@handles(ServiceUnavailableError) 
+op retryWithBackoff(userData: UserProfileData): UserProfile;
 ```
 
-The above TypeSpec implies that the property could be populated with either a string or one of two model type.
-The fact that `NotFoundError` and `PermissionDeniedError` use the `@error` decorator is irrelevant.
+This TypeSpec definition directly maps to Logic Apps patterns:
+
+- **`@raises` decorators** specify which actions in the workflow can produce specific error types
+- **`@handles` decorators** correspond to "run after" configurations that execute subsequent actions only for certain failure conditions
+- **Error inheritance** mirrors how Logic Apps scopes can handle categories of related failures
+
+When generating Logic Apps workflow definitions from TypeSpec, an emitter could:
+
+1. **Generate appropriate "run after" configurations** based on `@handles` decorators
+2. **Create error handling scopes** that catch specific error types from `@raises` specifications  
+3. **Implement retry policies** tailored to the documented error types
+4. **Generate monitoring and alerting** based on the expected error scenarios
+
+This approach enables Logic Apps developers to model complex error handling scenarios in TypeSpec and generate robust, fault-tolerant workflows with proper error boundaries and recovery mechanisms.
+
+### Apollo Federation - Subgraph Error Boundaries
+
+In Apollo Federation, different fields can be resolved by different subgraphs, each with their own failure modes.
+The gateway needs fine-grained control over error propagation and fallback strategies.
 
 ```typespec
-model User {
-  @raises(NotFoundError, PermissionDeniedError)
-  profilePictureUrl: string;
+model Product {
+  @raises(ServiceUnavailableError) // Inventory service might be down
+  availableQuantity: int32;
+  
+  @raises(NotFoundError, PermissionDeniedError) // User service checks permissions  
+  customerReviews: Review[];
+  
+  @raises(NetworkTimeoutError) // External pricing API
+  dynamicPricing: Price;
 }
+
+@handles(ServiceUnavailableError) // Gateway handles inventory failures gracefully
+op getProductWithFallbacks(id: string): Product;
 ```
 
-This TypeSpec, by contrast, indicates that the `profilePictureUrl` property's value is always a string, but that accessing it may produce either a `NotFoundError` or a `PermissionDeniedError`.
-Typically, this means that the property does not _have_ a value in that scenario and instead should be used to describe the appropriate [protocol error](#protocol-error).
+When the Apollo Gateway encounters a `ServiceUnavailableError` from the inventory subgraph, the `@handles` decorator allows it to return partial product data rather than failing the entire query.
+This enables sophisticated error boundary patterns in federated GraphQL architectures.
 
-<br>
+### Netflix-style Circuit Breaker Patterns
+
+Microservices architectures use circuit breakers for individual service calls, where different fields require different fallback strategies based on business criticality.
+
+```typespec
+model UserDashboard {
+  @raises(RecommendationServiceError) // Can fallback to cached recommendations
+  personalizedContent: Content[];
+  
+  @raises(BillingServiceError) // Critical - must show billing errors
+  accountStatus: AccountStatus;
+  
+  @raises(WatchHistoryError) // Can fallback to empty state
+  recentlyWatched: Video[];
+}
+
+@handles(RecommendationServiceError, WatchHistoryError) // Handle non-critical failures
+op getDashboardWithFallbacks(userId: string): UserDashboard;
+```
+
+This pattern allows critical errors (billing issues) to propagate while gracefully handling non-critical failures (recommendations, watch history) through fallbacks or cached data.
+
+### E-commerce Partial Product Data
+
+E-commerce platforms need to handle partial product availability where inventory, pricing, and content management systems can fail independently.
+
+```typespec
+model ProductPage {
+  @raises(InventoryServiceError) // Inventory might be temporarily unavailable
+  stockStatus: StockInfo;
+  
+  @raises(PricingServiceError) // Pricing service might be updating
+  currentPrice: Price;
+  
+  @raises(ContentServiceError) // CMS might be down
+  productDescription: string;
+}
+
+@handles(InventoryServiceError) // Show "availability unknown" instead of failing
+op getProductPageWithDefaults(productId: string): ProductPage;
+```
+
+This enables platforms like Shopify to show "availability unknown" or cached pricing when specific services are down, rather than showing broken product pages.
+
+### Financial Trading Platforms - Data Quality Control
+
+Financial systems require different error handling strategies based on data criticality and regulatory requirements.
+
+```typespec
+model MarketData {
+  @raises(StaleDataError, ConnectivityError) // Real-time feed issues
+  livePrice: decimal;
+  
+  @raises(DataQualityError) // Historical data corruption
+  volumeHistory: VolumeData[];
+  
+  @raises(ExchangeUnavailableError) // Exchange-specific issues
+  orderBook: OrderBookData;
+}
+
+@handles(StaleDataError) // Use last-known-good price for trading decisions
+op getTradingData(symbol: string): MarketData;
+```
+
+Trading systems can use the last-known-good price when live feeds are stale, while still surfacing data quality issues that might affect compliance or trading decisions.
+
+### Content Management Systems - Progressive Enhancement
+
+CMS platforms where page components can fail independently but the page should still render with graceful degradation.
+
+```typespec
+model WebPage {
+  @raises(CDNError) // Images might not load
+  heroImage: ImageUrl;
+  
+  @raises(DatabaseError) // Content might be temporarily unavailable  
+  mainContent: RichText;
+  
+  @raises(APIRateLimitError) // Social feeds might be rate-limited
+  socialFeed: SocialPost[];
+}
+
+@handles(CDNError, APIRateLimitError) // Show placeholders for non-critical content
+op renderPageWithDefaults(pageId: string): WebPage;
+```
+
+This enables progressive enhancement patterns where critical content (main text) failures propagate as errors, while non-critical elements (images, social feeds) show placeholders or cached content.
+
+### IoT Data Aggregation - Sensor Reliability
+
+IoT platforms where individual sensors can fail but the system needs to provide meaningful partial data for monitoring and control systems.
+
+```typespec
+model EnvironmentReading {
+  @raises(SensorOfflineError, CalibrationError) // Temperature sensor issues
+  temperature: float;
+  
+  @raises(NetworkTimeoutError) // Connectivity problems
+  humidity: float;
+  
+  @raises(BatteryLowError) // Power management issues
+  airQuality: AirQualityReading;
+}
+
+@handles(SensorOfflineError, BatteryLowError) // Use estimated values for failed sensors
+op getEnvironmentData(stationId: string): EnvironmentReading;
+```
+
+Environmental monitoring systems can use interpolated values from nearby sensors when individual sensors fail, while still alerting operators to calibration issues that require intervention.
+
+## Phased Implementation Approach
+
+We suggest implementation of this proposal follow a two-phase approach to allow for community feedback and refinement before finalizing the design.
+
+**Phase 1 (Experimental):**
+- Implement `@raises` and `@handles` decorators
+- Mark as `@experimental` in TypeSpec core
+- Ship Pinterest GraphQL emitter as reference implementation
+- Add support in the OpenAPI emitter (needed by Pinterest)
+- Gather community feedback
+
+**Phase 2 (Stable):**
+- Refine based on real-world usage
+- Add context modifiers if validated by community needs
+- Remove experimental status
+- Adopt in other emitters
+
 
 ## Additional Considerations
 
 <a name="context-modifiers"></a>
 
-### Optional: Adding Context Modifiers to `@error`
+### Future Enhancement: Context Modifiers
+
+**Note:** This is explicitly NOT part of the initial proposal.
+We propose implementing the core `@raises`/`@handles` functionality first, then evaluating whether context modifiers are needed based on real usage patterns.
 
 As an optional enhancement, we propose extending the [`@error` decorator][error-decorator] to include an argument for specifying [context (visibility) modifiers][visibility-system].
 This would allow developers to explicitly indicate the contexts in which an error applies, such as input validation, output handling, or both.
 This enhancement would provide additional clarity and flexibility when modeling errors.
 
-**This does not change the core mechanics of the `@raises` and `@handles` decorators, and the proposal for those decorators remains unchanged whether or not this enhancement is adopted.**
 
-### Proposed Definition
+#### Proposed Definition
 
 The `@error` decorator would accept an optional argument specifying one or more visibility enums.
 
