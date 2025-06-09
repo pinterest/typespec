@@ -154,7 +154,7 @@ This becomes important when considering error inheritance.
 
 <br>
 
-### Interaction between`@raises` and `@handles` decorators
+### Interaction between `@raises` and `@handles` decorators
 
 Model properties may have one or more error types defined in both their `@raises` decorator and the `@handles` decorator. In this case, the error is still considered possible at that property. Code emitters should treat `@raises` as taking precedence for code generation and documentation.
 
@@ -184,7 +184,7 @@ Most languages have a way to specify that an error type inherits from another er
 
 For the purposes of discussion, let's imagine we have a base error type `GenericError` and two errors that extend it: `NotFoundError` and `PermissionDeniedError`.
 
-#### Error inheritance +`@handles` decorator
+#### Error inheritance + `@handles` decorator
 
 Error handling is often performed generically based on a base error type,
 allowing the developer to handle errors that were not known at the time of writing the code.
@@ -213,7 +213,7 @@ op getUser(id: string): User;
 
 This definition states that the protocol-specific behavior implied by the `@handles(GenericError)` decorator will also apply to `NotFoundError` and `PermissionDeniedError`.
 
-#### Error inheritance +`@raises` decorator
+#### Error inheritance + `@raises` decorator
 
 The inheritance described above for `@handles` does _not_ apply to the `@raises` decorator.
 
@@ -1137,6 +1137,8 @@ patterns that require similar nuance in error handling appear across multiple do
 This section is meant to demonstrate a few areas in real-world use where this proposal allows a new kind of error handling that is not currently possible.
 Some may be more esoteric and/or speculative than others, but the goal is to explore a wide spectrum of use cases.
 
+<br>
+
 ### Azure Logic Apps
 
 Azure Logic Apps represents a compelling use case for field-level error handling specifications.
@@ -1189,6 +1191,8 @@ When generating Logic Apps workflow definitions from TypeSpec, an emitter could:
 
 This approach could enable Logic Apps developers to model execution state handling in TypeSpec and generate robust workflows with proper conditional routing based on action outcomes.
 
+<br>
+
 ### Netflix-style Circuit Breaker Patterns
 
 Microservices architectures use circuit breakers for individual service calls,
@@ -1219,7 +1223,9 @@ op getDashboardWithFallbacks(userId: string): UserDashboard;
 
 This pattern allows critical errors (billing issues) to propagate while gracefully handling non-critical failures (recommendations, watch history) through fallbacks or cached data.
 
-### E-commerce Partial Product Data
+<br>
+
+### E-commerce: Partial Product Data
 
 E-commerce platforms need to handle partial product availability where inventory, pricing, and content management systems can fail independently.
 
@@ -1242,7 +1248,9 @@ op getProductPageWithDefaults(productId: string): ProductPage;
 This enables platforms like Shopify to show "availability unknown" or cached pricing when specific services are down,
 rather than showing broken product pages.
 
-### Content Management Systems - Progressive Enhancement
+<br>
+
+### Content Management Systems: Progressive Enhancement
 
 CMS platforms where page components can fail independently but the page should still render with graceful degradation.
 
