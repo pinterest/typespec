@@ -1137,47 +1137,57 @@ patterns that require similar nuance in error handling appear across multiple do
 This section is meant to demonstrate a few areas in real-world use where this proposal allows a new kind of error handling that is not currently possible.
 Some may be more esoteric and/or speculative than others, but the goal is to explore a wide spectrum of use cases.
 
-### Azure Logic Apps Workflow Orchestration
+### Azure Logic Apps
 
 Azure Logic Apps represents a compelling use case for field-level error handling specifications.
-Logic Apps workflows consist of multiple actions that can fail independently,
-with subsequent actions configured to handle specific failure types through ["run after"][run-after] behavior
+Logic Apps workflows consist of multiple actions that can fail independently, with subsequent actions configured to handle specific failure types through ["run after"][run-after] settings.
+
+Logic Apps uses execution states rather than semantic errors.
+Actions can result in `Failed`, `Skipped`, `TimedOut`, or `Successful` states, and subsequent actions can be configured to run after specific combinations of these states.
 
 Consider a workflow that retrieves user data and processes it through multiple services:
 
 ```typespec
+// Logic Apps execution states
+@error model Failed { reason: string; }
+@error model TimedOut { duration: int32; }
+@error model Skipped { condition: string; }
+
 model UserProfileData {
-  @raises(UserNotFoundError, PermissionDeniedError) 
+  @raises(Failed, TimedOut) // getUserInfo action might fail or timeout
   basicInfo: UserInfo;
   
-  @raises(ServiceUnavailableError, RateLimitExceededError)
+  @raises(Skipped, TimedOut) // getSocialLinks action might be skipped or timeout  
   socialMediaLinks: SocialLinks;
   
-  @raises(NetworkTimeoutError)
+  @raises(Failed) // getProfileImage action might fail
   profileImage: ImageData;
 }
 
-@handles(UserNotFoundError, PermissionDeniedError)
+@handles(Failed) // Configure "run after: Failed"
 op createDefaultProfile(userData: UserProfileData): UserProfile;
 
-@handles(ServiceUnavailableError) 
+@handles(TimedOut) // Configure "run after: TimedOut"  
 op retryWithBackoff(userData: UserProfileData): UserProfile;
+
+@handles(Failed, TimedOut) // Configure "run after: Failed, TimedOut"
+op logErrorAndContinue(userData: UserProfileData): void;
 ```
 
-This TypeSpec definition directly maps to Logic Apps patterns:
+This TypeSpec definition maps to Logic Apps execution state patterns:
 
-- **`@raises` decorators** specify which actions in the workflow can produce specific error types
-- **`@handles` decorators** correspond to "run after" configurations that execute subsequent actions only for certain failure conditions
-- **Error inheritance** mirrors how Logic Apps scopes can handle categories of related failures
+- **`@raises` decorators** specify which execution states individual actions can produce
+- **`@handles` decorators** correspond to "run after" configurations that execute subsequent actions based on specific execution states
+- **Multiple state handling** allows actions to run after combinations of states (e.g., both Failed and TimedOut)
 
 When generating Logic Apps workflow definitions from TypeSpec, an emitter could:
 
 1. **Generate appropriate "run after" configurations** based on `@handles` decorators
-2. **Create error handling scopes** that catch specific error types from `@raises` specifications  
-3. **Implement retry policies** tailored to the documented error types
-4. **Generate monitoring and alerting** based on the expected error scenarios
+2. **Create conditional logic** that routes workflow execution based on action states
+3. **Implement retry and error handling patterns** based on the specified execution states
+4. **Generate monitoring and alerting** for specific failure patterns
 
-This approach enables Logic Apps developers to model complex error handling scenarios in TypeSpec and generate robust, fault-tolerant workflows with proper error boundaries and recovery mechanisms.
+This approach could enable Logic Apps developers to model execution state handling in TypeSpec and generate robust workflows with proper conditional routing based on action outcomes.
 
 ### Netflix-style Circuit Breaker Patterns
 
