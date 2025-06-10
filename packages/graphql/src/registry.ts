@@ -70,6 +70,13 @@ export class GraphQLTypeRegistry {
   }
 
   /**
+   * Reset the global name registry 
+   */
+  static resetGlobalRegistry(): void {
+    GraphQLTypeRegistry.#globalNameRegistry.clear();
+  }
+
+  /**
    * Get GraphQL type names for a model based on usage flags
    * Returns a mapping of usage flags to their corresponding GraphQL type names
    */
@@ -95,8 +102,17 @@ export class GraphQLTypeRegistry {
       graphqlName: model.name,
       metadata: {},
     };
+
+    // Check if the model name already exists in the global registry
+    const graphqlName = model_context.graphqlName as TypeKey;
+    if (GraphQLTypeRegistry.#globalNameRegistry.has(graphqlName)) {
+      throw new Error(
+        `GraphQL type name '${graphqlName}' is already registered. Type names must be unique across the entire schema.`,
+      );
+    }
+
     this.#objectTypes.register(model_context);
-    GraphQLTypeRegistry.#globalNameRegistry.add(model_context.graphqlName as TypeKey);
+    GraphQLTypeRegistry.#globalNameRegistry.add(graphqlName);
 
     // TODO: Register input types for models
   }
