@@ -540,6 +540,21 @@ importers:
 
   packages/graphql:
     dependencies:
+      '@alloy-js/core':
+        specifier: ^0.11.0
+        version: 0.11.0
+      '@alloy-js/typescript':
+        specifier: ^0.11.0
+        version: 0.11.0
+      '@typespec/compiler':
+        specifier: workspace:~
+        version: link:../compiler
+      '@typespec/emitter-framework':
+        specifier: ^0.5.0
+        version: 0.5.0(@alloy-js/core@0.11.0)(@alloy-js/typescript@0.11.0)(@typespec/compiler@packages+compiler)(@typespec/http@packages+http)(@typespec/rest@0.70.0(@typespec/compiler@packages+compiler)(@typespec/http@packages+http))
+      '@typespec/http':
+        specifier: workspace:~
+        version: link:../http
       graphql:
         specifier: ^16.9.0
         version: 16.10.0
@@ -547,9 +562,6 @@ importers:
       '@types/node':
         specifier: ~22.13.13
         version: 22.13.13
-      '@typespec/compiler':
-        specifier: workspace:~
-        version: link:../compiler
       rimraf:
         specifier: ~6.0.1
         version: 6.0.1
@@ -1481,6 +1493,9 @@ importers:
       '@typespec/events':
         specifier: workspace:^
         version: link:../events
+      '@typespec/graphql':
+        specifier: workspace:^
+        version: link:../graphql
       '@typespec/html-program-viewer':
         specifier: workspace:^
         version: link:../html-program-viewer
@@ -2728,6 +2743,9 @@ packages:
     engines: {node: '>=18.0.0'}
     hasBin: true
 
+  '@alloy-js/core@0.11.0':
+    resolution: {integrity: sha512-LW6zHQh1anPkrZt3cW7W47A59Gj8CzwfUP5aF/7QTqh3oSEpa75+nMdl/gcMTu0kSYOs1FV5dAcHVErE1KKbuA==}
+
   '@alloy-js/core@0.15.0':
     resolution: {integrity: sha512-GfQZqaUqGBGFeFJbA9H7Iu+IJQiEQ2B3Hjh5C1N2YclEg5vtjSAb/pdqJ5x2BTqOq2iUCpFOJ44pJy5mhS116Q==}
 
@@ -2737,6 +2755,9 @@ packages:
   '@alloy-js/rollup-plugin@0.1.0':
     resolution: {integrity: sha512-MXR8mBdSh/pxMP8kIXAcMYKsm5yOWZ+igxcaRX1vBXFiHU4eK7gE/5q6Fk8Vdydh+MItWtgekwIhUWvcszdNFQ==}
     engines: {node: '>=18.0.0'}
+
+  '@alloy-js/typescript@0.11.0':
+    resolution: {integrity: sha512-xPhJ5aIV/NKs2U7o5JMYIiAxJInUOk/jsQD94TFpaFQ1EXEn32jw8udItVGBKxoYHTyqMaBsijdvtnziCfnViw==}
 
   '@alloy-js/typescript@0.15.0':
     resolution: {integrity: sha512-dALRXFY6h3i3i4Xv6ym+ejmgerxP6HcCECAhTC7CZJ4zNY9fHDhjqfxScsEaFrbalpib4JMX8wceO47l4CIFTw==}
@@ -6409,6 +6430,22 @@ packages:
   '@typescript-eslint/visitor-keys@8.28.0':
     resolution: {integrity: sha512-hbn8SZ8w4u2pRwgQ1GlUrPKE+t2XvcCW5tTRF7j6SMYIuYG37XuzIW44JCZPa36evi0Oy2SnM664BlIaAuQcvg==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@typespec/emitter-framework@0.5.0':
+    resolution: {integrity: sha512-duih5sT8WtyuwbTXw+e6HxVlLpve45yPOfA8nA4KW/e1VC01bLzyuHKRB8LX05Llay9xC89acvHdjC7AhnZUGQ==}
+    peerDependencies:
+      '@alloy-js/core': ^0.10.0
+      '@alloy-js/typescript': ^0.10.0
+      '@typespec/compiler': ^1.0.0-rc.0
+      '@typespec/http': ^1.0.0-rc.0
+      '@typespec/rest': ^0.68.0
+
+  '@typespec/rest@0.70.0':
+    resolution: {integrity: sha512-pn3roMQV6jBNT4bVA/hnrBAAHleXSyfWQqNO+DhI3+tLU4jCrJHmUZDi82nI9xBl+jkmy2WZFZOelZA9PSABeg==}
+    engines: {node: '>=20.0.0'}
+    peerDependencies:
+      '@typespec/compiler': ^1.0.0
+      '@typespec/http': ^1.0.0
 
   '@typespec/ts-http-runtime@0.2.1':
     resolution: {integrity: sha512-3zI/d10N4D0L0MQVNTLp9PhhY49Wtg9iYZcb+rWxA4Ii9eJigpamCXjGaH7SkrhQ4+5w++ad7TP64tQzUvRDQA==}
@@ -13911,6 +13948,14 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@alloy-js/core@0.11.0':
+    dependencies:
+      '@vue/reactivity': 3.5.13
+      cli-table3: 0.6.5
+      pathe: 2.0.3
+      picocolors: 1.1.1
+      prettier: 3.5.3
+
   '@alloy-js/core@0.15.0':
     dependencies:
       '@vue/reactivity': 3.5.13
@@ -13933,6 +13978,12 @@ snapshots:
       - '@types/babel__core'
       - rollup
       - supports-color
+
+  '@alloy-js/typescript@0.11.0':
+    dependencies:
+      '@alloy-js/core': 0.11.0
+      change-case: 5.4.4
+      pathe: 2.0.3
 
   '@alloy-js/typescript@0.15.0':
     dependencies:
@@ -19409,6 +19460,19 @@ snapshots:
       '@typescript-eslint/types': 8.28.0
       eslint-visitor-keys: 4.2.0
 
+  '@typespec/emitter-framework@0.5.0(@alloy-js/core@0.11.0)(@alloy-js/typescript@0.11.0)(@typespec/compiler@packages+compiler)(@typespec/http@packages+http)(@typespec/rest@0.70.0(@typespec/compiler@packages+compiler)(@typespec/http@packages+http))':
+    dependencies:
+      '@alloy-js/core': 0.11.0
+      '@alloy-js/typescript': 0.11.0
+      '@typespec/compiler': link:packages/compiler
+      '@typespec/http': link:packages/http
+      '@typespec/rest': 0.70.0(@typespec/compiler@packages+compiler)(@typespec/http@packages+http)
+
+  '@typespec/rest@0.70.0(@typespec/compiler@packages+compiler)(@typespec/http@packages+http)':
+    dependencies:
+      '@typespec/compiler': link:packages/compiler
+      '@typespec/http': link:packages/http
+
   '@typespec/ts-http-runtime@0.2.1':
     dependencies:
       http-proxy-agent: 7.0.2
@@ -19561,7 +19625,7 @@ snapshots:
       flatted: 3.3.3
       pathe: 2.0.3
       sirv: 3.0.1
-      tinyglobby: 0.2.12
+      tinyglobby: 0.2.14
       tinyrainbow: 2.0.0
       vitest: 3.0.9(@types/debug@4.1.12)(@types/node@22.13.13)(@vitest/ui@3.0.9)(happy-dom@17.4.4)(jiti@1.21.6)(jsdom@25.0.1)(tsx@4.19.3)(yaml@2.7.1)
     optional: true

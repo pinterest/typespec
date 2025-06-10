@@ -62,6 +62,7 @@
     "@typespec/json-schema": "workspace:^",
     "@typespec/openapi": "workspace:^",
     "@typespec/openapi3": "workspace:^",
+    "@typespec/graphql": "workspace:^",
     "@typespec/playground": "workspace:^",
     "@typespec/protobuf": "workspace:^",
     "@typespec/rest": "workspace:^",
