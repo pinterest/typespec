@@ -8,6 +8,7 @@ namespace MyLibrary {
     title: string;
     publicationDate: string;
     author: Author;
+    price: float32;
   }
 
   model Author {
@@ -16,6 +17,7 @@ namespace MyLibrary {
     bio?: string;
     books: Book[];
     friend: Author;
+    age: int32;
   }
   
   enum Genre {

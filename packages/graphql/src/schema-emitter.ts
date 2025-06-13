@@ -1,17 +1,18 @@
 import {
   createDiagnosticCollector,
+  ListenerFlow,
   navigateTypesInNamespace,
   type Diagnostic,
   type DiagnosticCollector,
   type EmitContext,
-  type Enum,
   type Model,
+  type ModelProperty,
+  type Namespace,
 } from "@typespec/compiler";
 import { GraphQLSchema, validateSchema } from "graphql";
 import { type GraphQLEmitterOptions } from "./lib.js";
 import type { Schema } from "./lib/schema.js";
 import { GraphQLTypeRegistry } from "./registry.js";
-import { exit } from "node:process";
 
 class GraphQLSchemaEmitter {
   private tspSchema: Schema;
@@ -29,7 +30,7 @@ class GraphQLSchemaEmitter {
     this.context = context;
     this.options = options;
     this.diagnostics = createDiagnosticCollector();
-    this.registry = new GraphQLTypeRegistry();
+    this.registry = new GraphQLTypeRegistry(context.program);
   }
 
   async emitSchema(): Promise<[GraphQLSchema, Readonly<Diagnostic[]>] | undefined> {
@@ -54,17 +55,20 @@ class GraphQLSchemaEmitter {
   semanticNodeListener() {
     // TODO: Add GraphQL types to registry as the TSP nodes are visited
     return {
-      enum: (node: Enum) => {
-        this.registry.addEnum(node);
+      namespace: (namespace: Namespace) => {
+        if (namespace.name === "TypeSpec" || namespace.name === "Reflection") {
+          return ListenerFlow.NoRecursion;
+        }
+        return;
       },
       model: (node: Model) => {
-        // Add logic to handle the model node
-      },
-      exitEnum: (node: Enum) => {
-        this.registry.materializeEnum(node.name);
+        this.registry.addModel(node);
       },
       exitModel: (node: Model) => {
-        // Add logic to handle the exit of the model node
+        this.registry.materializeModel(node.name);
+      },
+      modelProperty: (node: ModelProperty) => {
+        this.registry.addModelProperty(node);
       },
     };
   }
