@@ -7,7 +7,6 @@ import {
   GraphQLObjectType,
   type GraphQLFieldConfigArgumentMap,
   type GraphQLFieldConfigMap,
-  type GraphQLInputType,
   type GraphQLOutputType,
   type GraphQLType,
 } from "graphql";
@@ -26,7 +25,7 @@ export interface TSPContext<T extends Type> {
 /**
  * Thunk types for lazy evaluation of GraphQL types and arguments
  */
-export type ThunkGraphQLType = () => GraphQLInputType | GraphQLOutputType;
+export type ThunkGraphQLType = () => GraphQLType;
 export type ThunkGraphQLFieldConfigArgumentMap = () => GraphQLFieldConfigArgumentMap;
 
 /**

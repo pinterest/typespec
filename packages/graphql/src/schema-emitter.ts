@@ -1,3 +1,4 @@
+import type { Model, ModelProperty, Namespace } from "@typespec/compiler";
 import {
   createDiagnosticCollector,
   ListenerFlow,
@@ -5,21 +6,24 @@ import {
   type Diagnostic,
   type DiagnosticCollector,
   type EmitContext,
-  type Model,
-  type ModelProperty,
-  type Namespace,
 } from "@typespec/compiler";
-import { GraphQLSchema, validateSchema } from "graphql";
-import { type GraphQLEmitterOptions } from "./lib.js";
+import { GraphQLObjectType, GraphQLSchema, validateSchema } from "graphql";
+import {
+  annotateEnum,
+  annotateModel,
+  annotateModelProperty,
+  buildQueryFields,
+} from "./graphql-helpers.js";
+import type { GraphQLEmitterOptions } from "./lib.js";
 import type { Schema } from "./lib/schema.js";
-import { GraphQLTypeRegistry } from "./registry.js";
 
 class GraphQLSchemaEmitter {
   private tspSchema: Schema;
   private context: EmitContext<GraphQLEmitterOptions>;
   private options: GraphQLEmitterOptions;
   private diagnostics: DiagnosticCollector;
-  private registry: GraphQLTypeRegistry;
+  // private registry: GraphQLTypeRegistry;
+  // Registry removed: will use AST node state instead.
   constructor(
     tspSchema: Schema,
     context: EmitContext<GraphQLEmitterOptions>,
@@ -30,15 +34,25 @@ class GraphQLSchemaEmitter {
     this.context = context;
     this.options = options;
     this.diagnostics = createDiagnosticCollector();
-    this.registry = new GraphQLTypeRegistry(context.program);
+    // this.registry = new GraphQLTypeRegistry(context.program);
+    // Registry removed: will use AST node state instead.
   }
 
   async emitSchema(): Promise<[GraphQLSchema, Readonly<Diagnostic[]>] | undefined> {
     const schemaNamespace = this.tspSchema.type;
-    // Logic to emit the GraphQL schema
+    // Traverse and annotate all types
     navigateTypesInNamespace(schemaNamespace, this.semanticNodeListener());
-    const schemaConfig = this.registry.materializeSchemaConfig();
-    const schema = new GraphQLSchema(schemaConfig);
+
+    // Build root Query type fields from operations
+    const queryFields = buildQueryFields(this.context, schemaNamespace);
+    const QueryType = new GraphQLObjectType({
+      name: "Query",
+      fields: queryFields,
+    });
+    const schema = new GraphQLSchema({
+      query: QueryType,
+    });
+
     // validate the schema
     const validationErrors = validateSchema(schema);
     validationErrors.forEach((error) => {
@@ -53,22 +67,25 @@ class GraphQLSchemaEmitter {
   }
 
   semanticNodeListener() {
-    // TODO: Add GraphQL types to registry as the TSP nodes are visited
     return {
       namespace: (namespace: Namespace) => {
-        if (namespace.name === "TypeSpec" || namespace.name === "Reflection") {
+        if (["TypeSpec", "Reflection"].includes(namespace.name)) {
           return ListenerFlow.NoRecursion;
         }
         return;
       },
+      enum: (node: any) => {
+        annotateEnum(this.context, node);
+      },
       model: (node: Model) => {
-        this.registry.addModel(node);
+        annotateModel(this.context, node);
       },
       exitModel: (node: Model) => {
-        this.registry.materializeModel(node.name);
+        // Finalize model annotation if needed
+        // (if annotateModel handles everything, this can be a no-op)
       },
       modelProperty: (node: ModelProperty) => {
-        this.registry.addModelProperty(node);
+        annotateModelProperty(this.context, node);
       },
     };
   }

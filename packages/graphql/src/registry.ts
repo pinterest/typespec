@@ -14,6 +14,7 @@ import {
   type GraphQLInputType,
   type GraphQLOutputType,
   type GraphQLSchemaConfig,
+  type GraphQLType,
 } from "graphql";
 import { mapScalarToGraphQL } from "./lib/scalars.js";
 import { ObjectTypeMap, type TSPContext, type TypeKey } from "./type-maps.js";
@@ -96,7 +97,7 @@ export class GraphQLTypeRegistry {
    * Register a TSP Model
    */
   addModel(model: Model): void {
-    const model_context: TSPContext<Model> = {
+    const modelContext: TSPContext<Model> = {
       type: model,
       usageFlag: UsageFlags.Output,
       graphqlName: model.name,
@@ -104,14 +105,14 @@ export class GraphQLTypeRegistry {
     };
 
     // Check if the model name already exists in the global registry
-    const graphqlName = model_context.graphqlName as TypeKey;
+    const graphqlName = modelContext.graphqlName as TypeKey;
     if (GraphQLTypeRegistry.#globalNameRegistry.has(graphqlName)) {
       throw new Error(
         `GraphQL type name '${graphqlName}' is already registered. Type names must be unique across the entire schema.`,
       );
     }
 
-    this.#objectTypes.register(model_context);
+    this.#objectTypes.register(modelContext);
     GraphQLTypeRegistry.#globalNameRegistry.add(graphqlName);
 
     // TODO: Register input types for models
@@ -135,7 +136,7 @@ export class GraphQLTypeRegistry {
     }
 
     // Create a thunk for the property type that will be resolved later
-    const typeThunk = (): GraphQLOutputType | GraphQLInputType => {
+    const typeThunk = (): GraphQLType => {
       return this.#mapTypeSpecToGraphQL(property.type);
     };
 
