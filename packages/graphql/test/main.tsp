@@ -17,9 +17,21 @@ namespace MyLibrary {
     name: string;
     bio?: string;
     books: Book[];
-    booksGeneric: Array<Book>; // Explicit generic array
     friend: Author;
     age: int32;
+  }
+
+  model CreateBookRequest {
+    title: string;
+    authorId: string;
+    price: float32;
+    genre: Genre;
+  }
+
+  model UpdateAuthorRequest {
+    name?: string;
+    bio?: string;
+    age?: int32;
   }
 
   enum Genre {
@@ -30,7 +42,7 @@ namespace MyLibrary {
   }
 
   op Books(): Book[];
-  op BooksGeneric(): Array<Book>; // Explicit generic array
   op Authors(): Author[];
-  op SetAuthor(author: Author): void;
+  op createBook(request: CreateBookRequest): Book;
+  op updateAuthor(id: string, request: UpdateAuthorRequest): Author;
 }

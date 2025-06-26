@@ -10,6 +10,7 @@ import type {
 } from "@typespec/compiler";
 import { $ } from "@typespec/compiler/typekit";
 import { useStateMap } from "@typespec/compiler/utils";
+import { UsageFlags, resolveUsages, type UsageTracker } from "@typespec/compiler";
 import {
   GraphQLEnumType,
   GraphQLID,
@@ -85,6 +86,8 @@ export const [getTmpProps, setTmpProps] = useStateMap<Model, Array<{ name: strin
 export const [getGraphQLMeta, setGraphQLMeta] = useStateMap<Model, GraphQLModelMeta>(GRAPHQL_META);
 export const [getEnumMeta, setEnumMeta] = useStateMap<Enum, EnumMeta>(ENUM_META);
 
+
+
 export function collectOperations(ns: Namespace): Operation[] {
   const ops: Operation[] = [];
   function visit(n: Namespace) {
@@ -126,35 +129,45 @@ function buildModelFields(
   );
 }
 
-export function annotateModel(context: EmitContext<any>, node: Model) {
-  // Check and register GraphQL type name for output type
+export function annotateModel(context: EmitContext<any>, node: Model, usageTracker?: UsageTracker) {
+  // Skip Array types - they're handled as GraphQL Lists, not separate types
+  if (node.name === "Array") {
+    return;
+  }
+  
+  // NEW APPROACH: Determine type by model name (much simpler!)
+  const isInputModel = node.name.endsWith("Input");
+  const baseTypeName = isInputModel ? node.name.slice(0, -5) : node.name; // Remove "Input" suffix
+  
+  // Register GraphQL type name
   registerGraphQLTypeName(context, node.name, node);
-  // Check and register GraphQL type name for input type
-  registerGraphQLTypeName(context, node.name + "Input", node);
 
   setTmpProps(context.program, node, []);
   let memoizedGraphQLType: any;
-  let memoizedGraphQLInputType: any;
   const meta: GraphQLModelMeta = {
     typeName: node.name,
     fields: {},
     get graphQLType() {
       if (!memoizedGraphQLType) {
-        memoizedGraphQLType = new GraphQLObjectType({
-          name: node.name,
-          fields: () => buildModelFields(context, node, getGraphQLTypeForTspType),
-        });
+        if (isInputModel) {
+          // Create GraphQL Input Object Type
+          memoizedGraphQLType = new GraphQLInputObjectType({
+            name: node.name,
+            fields: () => buildModelFields(context, node, getGraphQLInputTypeForTspType),
+          });
+        } else {
+          // Create GraphQL Object Type (output)
+          memoizedGraphQLType = new GraphQLObjectType({
+            name: node.name,
+            fields: () => buildModelFields(context, node, getGraphQLTypeForTspType),
+          });
+        }
       }
       return memoizedGraphQLType;
     },
     get graphQLInputType() {
-      if (!memoizedGraphQLInputType) {
-        memoizedGraphQLInputType = new GraphQLInputObjectType({
-          name: node.name + "Input",
-          fields: () => buildModelFields(context, node, getGraphQLInputTypeForTspType),
-        });
-      }
-      return memoizedGraphQLInputType;
+      // For backward compatibility - return the same type if it's an input model
+      return isInputModel ? this.graphQLType : undefined;
     },
   };
   setGraphQLMeta(context.program, node, meta);
@@ -179,31 +192,7 @@ function getArrayElementType(type: any): any | undefined {
 }
 
 export function getGraphQLInputTypeForTspType(context: EmitContext<any>, type: Type): any {
-  if (type.kind === "Model") {
-    const meta = getGraphQLMeta(context.program, type as Model);
-    if (!meta) return undefined;
-    return meta.graphQLInputType;
-  }
-  // Handle enums (input enums are the same as output)
-  if (type.kind === "Enum") {
-    const meta = getEnumMeta(context.program, type as Enum);
-    return meta?.graphQLEnumType;
-  }
-  // Handle arrays (both representations)
-  const elementType = getArrayElementType(type);
-  if (elementType) {
-    const gqlElementType = getGraphQLInputTypeForTspType(context, elementType);
-    return gqlElementType ? new GraphQLList(gqlElementType) : undefined;
-  }
-  // Handle scalars
-  if (type.kind === "Scalar") {
-    if (type.name === "ID") {
-      return GraphQLID;
-    }
-    const typekit = $(context.program);
-    return mapScalarToGraphQL(type as any, typekit);
-  }
-  return undefined;
+  return getGraphQLTypeForTspTypeImpl(context, type, "input");
 }
 
 export function annotateModelProperty(context: EmitContext<any>, node: ModelProperty) {
@@ -226,8 +215,9 @@ export function buildQueryFields(
 
     // Handle arguments for operations with parameters
     const args: Record<string, any> = {};
-    if (op.parameters && op.parameters.properties) {
-      for (const [name, param] of Object.entries(op.parameters.properties)) {
+    if (op.parameters && op.parameters.properties && op.parameters.properties.size > 0) {
+      // op.parameters.properties is a RekeyableMap, need to iterate properly
+      for (const [name, param] of op.parameters.properties) {
         const inputType = getGraphQLInputTypeForTspType(context, param.type);
         if (inputType) {
           args[name] = { type: inputType };
@@ -243,37 +233,50 @@ export function buildQueryFields(
   return queryFields;
 }
 
-export function getGraphQLTypeForTspType(
+/**
+ * Internal implementation for both input and output type conversion
+ */
+function getGraphQLTypeForTspTypeImpl(
   context: EmitContext<any>,
   type: Type,
-): GraphQLOutputType | undefined {
-  if (type.kind === "Model") {
-    const arrayElement = getArrayElementType(type);
-    if (arrayElement) {
-      const elementType = getGraphQLTypeForTspType(context, arrayElement);
-      return elementType ? new GraphQLList(elementType) : undefined;
-    }
-    const gqlMeta = getGraphQLMeta(context.program, type as Model);
-    if (!gqlMeta) {
-      return undefined;
-    }
-    return gqlMeta.graphQLType;
+  variant: "input" | "output"
+): any {
+  // Handle arrays first (both representations)
+  const arrayElement = getArrayElementType(type);
+  if (arrayElement) {
+    const elementType = getGraphQLTypeForTspTypeImpl(context, arrayElement, variant);
+    return elementType ? new GraphQLList(elementType) : undefined;
   }
 
-  // Handle enums
+  if (type.kind === "Model") {
+    const model = type as Model;
+    
+    if (variant === "input") {
+      // For input variant, try to find the corresponding input model (with "Input" suffix)
+      const inputModelName = model.name + "Input";
+      const inputModel = model.namespace?.models.get(inputModelName);
+      if (inputModel) {
+        const inputMeta = getGraphQLMeta(context.program, inputModel);
+        return inputMeta?.graphQLType; // Input models store their type in graphQLType
+      }
+      
+      // Fallback: check if current model has an input type
+      const gqlMeta = getGraphQLMeta(context.program, model);
+      return gqlMeta?.graphQLInputType;
+    } else {
+      // For output variant, use the original model
+      const gqlMeta = getGraphQLMeta(context.program, model);
+      return gqlMeta?.graphQLType;
+    }
+  }
+
+  // Handle enums (same for both input and output)
   if (type.kind === "Enum") {
     const meta = getEnumMeta(context.program, type as Enum);
     return meta?.graphQLEnumType;
   }
 
-  // Handle arrays (both representations)
-  const elementType = getArrayElementType(type);
-  if (elementType) {
-    const gqlElementType = getGraphQLTypeForTspType(context, elementType);
-    return gqlElementType ? new GraphQLList(gqlElementType) : undefined;
-  }
-
-  // Handle scalars
+  // Handle scalars (same for both input and output)
   if (type.kind === "Scalar") {
     if (type.name === "ID") {
       return GraphQLID;
@@ -281,5 +284,13 @@ export function getGraphQLTypeForTspType(
     const typekit = $(context.program);
     return mapScalarToGraphQL(type as any, typekit);
   }
+  
   return undefined;
+}
+
+export function getGraphQLTypeForTspType(
+  context: EmitContext<any>,
+  type: Type,
+): GraphQLOutputType | undefined {
+  return getGraphQLTypeForTspTypeImpl(context, type, "output");
 }
