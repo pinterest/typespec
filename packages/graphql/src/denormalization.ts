@@ -1,4 +1,4 @@
-import type { Model, ModelProperty, Namespace } from "@typespec/compiler";
+import type { Model, ModelProperty, Namespace, Type } from "@typespec/compiler";
 import { UsageFlags, resolveUsages, type EmitContext, type UsageTracker } from "@typespec/compiler";
 import { $ } from "@typespec/compiler/typekit";
 
@@ -15,9 +15,9 @@ import { $ } from "@typespec/compiler/typekit";
 export class GraphQLTSPDenormalizer {
   private usageTracker: UsageTracker;
   private namespace: Namespace;
-  private context: EmitContext<any>;
+  private context: EmitContext<Record<string, never>>;
 
-  constructor(namespace: Namespace, context: EmitContext<any>) {
+  constructor(namespace: Namespace, context: EmitContext<Record<string, never>>) {
     this.namespace = namespace;
     this.context = context;
     this.usageTracker = resolveUsages(namespace);
@@ -44,11 +44,11 @@ export class GraphQLTSPDenormalizer {
       throw new Error(`Model name collision: ${inputName} already exists in namespace.`);
     }
     // Recursively transform nested model types to their input variants
-    const getInputType = (type: any): any => {
+    const getInputType = (type: Type): Type => {
       if (type.kind === "Model" && this.usageTracker.isUsedAs(type, UsageFlags.Input)) {
         const nestedInputName = type.name + "Input";
         if (this.namespace.models.has(nestedInputName)) {
-          return this.namespace.models.get(nestedInputName);
+          return this.namespace.models.get(nestedInputName)!;
         }
         
         // Create placeholder model first to prevent recursive creation
@@ -105,7 +105,7 @@ export class GraphQLTSPDenormalizer {
   private createInputModelVariant(
     outputModel: Model,
     typekit: ReturnType<typeof $>,
-    getInputType: (type: any) => any,
+    getInputType: (type: Type) => Type,
   ): Model {
     const inputProperties: Record<string, ModelProperty> = {};
     for (const [name, prop] of outputModel.properties) {
