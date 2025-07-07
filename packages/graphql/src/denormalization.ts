@@ -4,12 +4,6 @@ import { $ } from "@typespec/compiler/typekit";
 
 /**
  * Provides utilities to denormalize TypeSpec (TSP) model types for GraphQL emitters.
- *
- * This class analyzes model usage and creates GraphQL-compliant input model variants
- * (e.g., FooInput) for models used as input types. It mutates the provided namespace
- * in-place, recursively denormalizing nested model properties as needed.
- *
- * Name collisions will throw a JavaScript Error (consider using TypeSpec diagnostics in the future).
  * Optionally, a debug flag will print a mapping of original models to their denormalized variants.
  *
  * Example usage:
@@ -22,11 +16,6 @@ export class GraphQLDenormalizer {
   /**
    * Denormalizes TSP model types for GraphQL input usage.
    *
-   * - Mutates the provided namespace in-place.
-   * - Recursively creates input model variants (e.g., FooInput) for models used as input types.
-   * - Throws a JavaScript Error for name collisions (TODO: use TypeSpec diagnostics).
-   * - Optionally logs a debug mapping of original models to their denormalized variants.
-   *
    * @param namespace The TypeSpec namespace to mutate.
    * @param usageTracker UsageTracker for determining input usage.
    * @param context The TypeSpec emit context.
@@ -38,19 +27,16 @@ export class GraphQLDenormalizer {
     context: EmitContext<any>,
     debug: boolean = false,
   ): void {
-    if (debug) {
-      // eslint-disable-next-line no-console
-      console.log(`[GraphQLDenormalizer] Starting denormalization for namespace: ${namespace.name}`);
-    }
     for (const [_, model] of namespace.models) {
       this.expandInputOutputTypes(model, usageTracker, context, namespace, debug);
-      // ...other steps will be called here in the future...
+    // TODO: Call methods for additional denormalization steps such as resolving decorators, de-anonymizing unions, etc.
+
     }
   }
 
   /**
    * Expands input/output types by creating GraphQL-compliant input model variants (e.g., FooInput)
-   * for models used as input types. Mutates the namespace in-place.
+   * for models used as input types. Mutates the TypeSpec namespace in-place.
    * Throws on name collisions. Debug output prints mapping from TSP Model to TSP Model variants.
    */
   public static expandInputOutputTypes(
@@ -122,15 +108,5 @@ export class GraphQLDenormalizer {
     return inputModel;
   }
 
-  // --- Stubs for future denormalization steps ---
-  public static resolveDecorators(model: Model, context: EmitContext<any>, debug: boolean) {}
-  public static renameIdentifiers(model: Model, context: EmitContext<any>, debug: boolean) {}
-  public static transformBasicTypes(model: Model, context: EmitContext<any>, debug: boolean) {}
-  public static transformIntrinsicTypes(model: Model, context: EmitContext<any>, debug: boolean) {}
-  public static transformRecordTypes(model: Model, context: EmitContext<any>, debug: boolean) {}
-  public static deanonymizeUnions(model: Model, context: EmitContext<any>, debug: boolean) {}
-  public static materializeRootOperationTypes(model: Model, context: EmitContext<any>, debug: boolean) {}
-  public static resolveSubschemaSelection(model: Model, context: EmitContext<any>, debug: boolean) {}
-  public static makeFieldsOptionalByDefault(model: Model, context: EmitContext<any>, debug: boolean) {}
-  public static removeNullFromUnions(model: Model, context: EmitContext<any>, debug: boolean) {}
+  // TODO: Add methods for additional denormalization steps such as resolving decorators, de-anonymizing unions, etc.
 }
