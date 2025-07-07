@@ -21,14 +21,14 @@ namespace MyLibrary {
     age: int32;
   }
 
-  model CreateBookRequest {
+  model CreateBook {
     title: string;
     authorId: string;
     price: float32;
     genre: Genre;
   }
 
-  model UpdateAuthorRequest {
+  model UpdateAuthor {
     name?: string;
     bio?: string;
     age?: int32;
@@ -43,6 +43,6 @@ namespace MyLibrary {
 
   op Books(): Book[];
   op Authors(): Author[];
-  op createBook(request: CreateBookRequest): Book;
-  op updateAuthor(id: string, request: UpdateAuthorRequest): Author;
+  op createBook(request: CreateBook): Book;
+  op updateAuthor(id: string, request: UpdateAuthor): Author;
 }

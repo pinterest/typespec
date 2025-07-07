@@ -2,7 +2,8 @@ import type { Namespace } from "@typespec/compiler";
 import { expectDiagnosticEmpty } from "@typespec/compiler/testing";
 import { describe, expect, it } from "vitest";
 import { getSchema } from "../src/lib/schema.js";
-import { GraphQLTypeRegistry } from "../src/registry.js";
+// UNUSED: Legacy registry class was removed
+// import { GraphQLTypeRegistry } from "../src/registry.js";
 import { compileAndDiagnose } from "./test-host.js";
 
 describe("@schema", () => {
@@ -37,6 +38,9 @@ describe("@schema", () => {
   });
 });
 
+// UNUSED: Tests for the legacy GraphQLTypeRegistry class that was removed
+// TODO: Add tests for the new GraphQLEmitterRegistry if needed
+/*
 describe("GraphQLTypeRegistry - Collision Detection", () => {
   // Mock a basic TypeSpec Model for testing
   function createMockModel(name: string): any {
@@ -97,3 +101,4 @@ describe("GraphQLTypeRegistry - Collision Detection", () => {
     expect(() => registry.addModel(book)).not.toThrow();
   });
 });
+*/

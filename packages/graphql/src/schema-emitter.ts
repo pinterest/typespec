@@ -1,21 +1,15 @@
-import type { Model, ModelProperty, Namespace } from "@typespec/compiler";
+import type { Namespace } from "@typespec/compiler";
 import {
   createDiagnosticCollector,
-  ListenerFlow,
-  navigateProgram,
   type Diagnostic,
   type DiagnosticCollector,
   type EmitContext,
+  navigateProgram,
 } from "@typespec/compiler";
-import { $ } from "@typespec/compiler/typekit";
-import { UsageFlags, resolveUsages, type UsageTracker } from "@typespec/compiler";
+import { resolveUsages, type UsageTracker } from "@typespec/compiler";
 import { GraphQLObjectType, GraphQLSchema, validateSchema } from "graphql";
-import {
-  annotateEnum,
-  annotateModel,
-  annotateModelProperty,
-  buildQueryFields,
-} from "./graphql-helpers.js";
+import { GraphQLSchemaBuilder } from "./schema-builder.js";
+import { GraphQLDenormalizer } from "./denormalization.js";
 import type { GraphQLEmitterOptions } from "./lib.js";
 import type { Schema } from "./lib/schema.js";
 
@@ -25,6 +19,7 @@ class GraphQLSchemaEmitter {
   private options: GraphQLEmitterOptions;  
   private diagnostics: DiagnosticCollector;
   private usageTracker!: UsageTracker;
+  private schemaBuilder: GraphQLSchemaBuilder;
 
   constructor(
     tspSchema: Schema,
@@ -35,26 +30,44 @@ class GraphQLSchemaEmitter {
     this.context = context;
     this.options = options;
     this.diagnostics = createDiagnosticCollector();
+    this.schemaBuilder = new GraphQLSchemaBuilder(context.program);
   }
 
   async emitSchema(): Promise<[GraphQLSchema, Readonly<Diagnostic[]>] | undefined> {
     const schemaNamespace = this.tspSchema.type;
     
-    // Resolve usage flags using TypeSpec's built-in API directly
+    // Resolve usage flags using TypeSpec's built-in API
     this.usageTracker = resolveUsages(schemaNamespace);
     
-    // NEW: Create input models as real TSP types
-    this.createInputModels(schemaNamespace);
-    
-    // Modernized AST traversal using navigateProgram (like MCP/Zod)
-    navigateProgram(
-      this.context.program,
-      this.semanticNodeListener(),
-      { includeTemplateDeclaration: false }
-    );
+    // Denormalize models: create input variants for models used as inputs
+    // This creates real TSP types that integrate with normal processing
+    GraphQLDenormalizer.denormalize(schemaNamespace, this.usageTracker, this.context);
 
-    // Use existing working GraphQL generation logic
-    const queryFields = buildQueryFields(this.context, schemaNamespace);
+    // Explicitly traverse the AST and build GraphQL types
+    // This makes the type creation process visible and intentional
+    navigateProgram(this.context.program, {
+      model: (node) => {
+        if (node.namespace === schemaNamespace) {
+          // Explicitly create GraphQL types for models during traversal
+          this.schemaBuilder.registerModel(node);
+        }
+      },
+      enum: (node) => {
+        if (node.namespace === schemaNamespace) {
+          // Explicitly create GraphQL types for enums during traversal
+          this.schemaBuilder.registerEnum(node);
+        }
+      },
+      operation: (node) => {
+        if (node.namespace === schemaNamespace) {
+          // Explicitly process operations during traversal
+          this.schemaBuilder.registerOperation(node);
+        }
+      },
+    });
+
+    // Build GraphQL schema using the types created during traversal
+    const queryFields = this.schemaBuilder.buildQueryFields();
     const QueryType = new GraphQLObjectType({
       name: "Query",
       fields: queryFields,
@@ -76,79 +89,6 @@ class GraphQLSchemaEmitter {
     return [schema, this.diagnostics.diagnostics];
   }
 
-  /**
-   * Create input models as real TSP types for models that need input variants
-   */
-  private createInputModels(namespace: Namespace): void {
-    const typekit = $(this.context.program);
-    
-    // Collect models that need input types (to avoid modifying during iteration)
-    const modelsNeedingInput: Model[] = [];
-    for (const [name, model] of namespace.models) {
-      if (this.usageTracker.isUsedAs(model, UsageFlags.Input)) {
-        modelsNeedingInput.push(model);
-      }
-    }
-    
-    // Create input models
-    for (const model of modelsNeedingInput) {
-      const inputModel = this.createInputModelFromOutput(model, typekit);
-      namespace.models.set(model.name + "Input", inputModel);
-    }
-  }
-
-  /**
-   * Create an input model variant from an output model
-   */
-  private createInputModelFromOutput(outputModel: Model, typekit: ReturnType<typeof $>): Model {
-    // Create input model properties
-    const inputProperties: Record<string, ModelProperty> = {};
-    for (const [name, prop] of outputModel.properties) {
-      inputProperties[name] = typekit.modelProperty.create({
-        name: prop.name,
-        type: prop.type, // TODO: Transform nested model types to input variants
-        optional: prop.optional,
-      });
-    }
-    
-    // Create the input model with all properties
-    const inputModel = typekit.model.create({
-      name: outputModel.name + "Input",
-      properties: inputProperties,
-    });
-    
-    // Fix the parent-child relationship by setting the model property on each property
-    for (const [name, prop] of inputModel.properties) {
-      // Directly set the model field to establish the parent relationship
-      (prop as any).model = inputModel;
-    }
-    
-    return inputModel;
-  }
-
-  semanticNodeListener() {
-    return {
-      namespace: (namespace: Namespace) => {
-        if (["TypeSpec", "Reflection"].includes(namespace.name)) {
-          return ListenerFlow.NoRecursion;
-        }
-        return;
-      },
-      enum: (node: any) => {
-        annotateEnum(this.context, node);
-      },
-      model: (node: Model) => {
-        annotateModel(this.context, node, this.usageTracker);
-      },
-      exitModel: (node: Model) => {
-        // Finalize model annotation if needed
-        // (if annotateModel handles everything, this can be a no-op)
-      },
-      modelProperty: (node: ModelProperty) => {
-        annotateModelProperty(this.context, node);
-      },
-    };
-  }
 }
 
 export function createSchemaEmitter(
