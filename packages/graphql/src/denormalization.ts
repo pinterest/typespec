@@ -1,5 +1,5 @@
 import type { Model, ModelProperty, Namespace } from "@typespec/compiler";
-import { UsageFlags, type EmitContext, type UsageTracker } from "@typespec/compiler";
+import { UsageFlags, resolveUsages, type EmitContext, type UsageTracker } from "@typespec/compiler";
 import { $ } from "@typespec/compiler/typekit";
 
 /**
@@ -8,73 +8,90 @@ import { $ } from "@typespec/compiler/typekit";
  *
  * Example usage:
  * ```typescript
- * const usageTracker = resolveUsages(namespace);
- * GraphQLDenormalizer.denormalize(namespace, usageTracker, context, true); // debug output enabled
+ * const denormalizer = new GraphQLTSPDenormalizer(namespace, context);
+ * denormalizer.denormalize(true); // with debug output
  * ```
  */
-export class GraphQLDenormalizer {
-  /**
-   * Denormalizes TSP model types for GraphQL input usage.
-   *
-   * @param namespace The TypeSpec namespace to mutate.
-   * @param usageTracker UsageTracker for determining input usage.
-   * @param context The TypeSpec emit context.
-   * @param debug If true, logs a mapping of original to denormalized models.
-   */
-  static denormalize(
-    namespace: Namespace,
-    usageTracker: UsageTracker,
-    context: EmitContext<any>,
-    debug: boolean = false,
-  ): void {
-    for (const [_, model] of namespace.models) {
-      this.expandInputOutputTypes(model, usageTracker, context, namespace, debug);
-    // TODO: Call methods for additional denormalization steps such as resolving decorators, de-anonymizing unions, etc.
+export class GraphQLTSPDenormalizer {
+  private usageTracker: UsageTracker;
+  private namespace: Namespace;
+  private context: EmitContext<any>;
 
+  constructor(namespace: Namespace, context: EmitContext<any>) {
+    this.namespace = namespace;
+    this.context = context;
+    this.usageTracker = resolveUsages(namespace);
+  }
+
+  denormalize(debug: boolean = false): void {
+    for (const [_, model] of this.namespace.models) {
+      this.expandInputOutputTypes(model, debug);
+      // TODO: Call methods for additional denormalization steps such as resolving decorators, de-anonymizing unions, etc.
     }
   }
 
   /**
-   * Expands input/output types by creating GraphQL-compliant input model variants (e.g., FooInput)
-   * for models used as input types. Mutates the TypeSpec namespace in-place.
-   * Throws on name collisions. Debug output prints mapping from TSP Model to TSP Model variants.
+   * Creates an input variant for a model if it's used as input (e.g., User -> UserInput).
+   * Recursively processes nested models. Mutates namespace in-place.
+   * Throws on name collisions.
    */
-  public static expandInputOutputTypes(
-    model: Model,
-    usageTracker: UsageTracker,
-    context: EmitContext<any>,
-    namespace: Namespace,
-    debug: boolean
-  ) {
-    const typekit = $(context.program);
+  expandInputOutputTypes(model: Model, debug: boolean) {
+    const typekit = $(this.context.program);
     // Only process if this model is used as input
-    if (!usageTracker.isUsedAs(model, UsageFlags.Input)) return;
+    if (!this.usageTracker.isUsedAs(model, UsageFlags.Input)) return;
     const inputName = model.name + "Input";
-    if (namespace.models.has(inputName)) {
+    if (this.namespace.models.has(inputName)) {
       throw new Error(`Model name collision: ${inputName} already exists in namespace.`);
     }
-    // Helper to recursively denormalize nested model properties
-    function getInputType(type: any): any {
-      if (type.kind === "Model" && usageTracker.isUsedAs(type, UsageFlags.Input)) {
+    // Recursively transform nested model types to their input variants
+    const getInputType = (type: any): any => {
+      if (type.kind === "Model" && this.usageTracker.isUsedAs(type, UsageFlags.Input)) {
         const nestedInputName = type.name + "Input";
-        if (namespace.models.has(nestedInputName)) {
-          return namespace.models.get(nestedInputName);
+        if (this.namespace.models.has(nestedInputName)) {
+          return this.namespace.models.get(nestedInputName);
         }
-        const inputModel = GraphQLDenormalizer.createInputModelVariant(type, typekit, getInputType);
-        if (namespace.models.has(nestedInputName)) {
-          throw new Error(`Model name collision: ${nestedInputName} already exists in namespace.`);
+        
+        // Create placeholder model first to prevent recursive creation
+        const placeholderModel = typekit.model.create({
+          name: nestedInputName,
+          properties: {},
+        });
+        this.namespace.models.set(nestedInputName, placeholderModel);
+        
+        // Now populate the properties with recursive transformation
+        const inputProperties: Record<string, ModelProperty> = {};
+        for (const [name, prop] of type.properties) {
+          inputProperties[name] = typekit.modelProperty.create({
+            name: prop.name,
+            type: getInputType(prop.type),
+            optional: prop.optional,
+          });
         }
-        namespace.models.set(nestedInputName, inputModel);
+        
+        // Create the final input model with all properties
+        const inputModel = typekit.model.create({
+          name: nestedInputName,
+          properties: inputProperties,
+        });
+        
+        // Replace the placeholder with the fully populated model
+        this.namespace.models.set(nestedInputName, inputModel);
+        for (const [_, prop] of inputModel.properties) {
+          (prop as any).model = inputModel;
+        }
+        
         if (debug) {
           // eslint-disable-next-line no-console
-          console.log(`[GraphQLDenormalizer] Created input model: ${type.name} -> ${nestedInputName}`);
+          console.log(
+            `[GraphQLDenormalizer] Created input model: ${type.name} -> ${nestedInputName}`,
+          );
         }
         return inputModel;
       }
       return type;
-    }
-    const inputModel = GraphQLDenormalizer.createInputModelVariant(model, typekit, getInputType);
-    namespace.models.set(inputName, inputModel);
+    };
+    const inputModel = this.createInputModelVariant(model, typekit, getInputType);
+    this.namespace.models.set(inputName, inputModel);
     if (debug) {
       // eslint-disable-next-line no-console
       console.log(`[GraphQLDenormalizer] Created input model: ${model.name} -> ${inputName}`);
@@ -82,10 +99,10 @@ export class GraphQLDenormalizer {
   }
 
   /**
-   * Creates an input model variant from an output model.
-   * Recursively transforms nested model types to their input variants using getInputType.
+   * Creates an input model variant with transformed properties.
+   * Uses getInputType to recursively transform nested model references.
    */
-  public static createInputModelVariant(
+  private createInputModelVariant(
     outputModel: Model,
     typekit: ReturnType<typeof $>,
     getInputType: (type: any) => any,
