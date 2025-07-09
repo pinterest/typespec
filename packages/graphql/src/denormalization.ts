@@ -1,6 +1,7 @@
 import type { Model, ModelProperty, Namespace, Type } from "@typespec/compiler";
 import { UsageFlags, resolveUsages, type EmitContext, type UsageTracker } from "@typespec/compiler";
 import { $ } from "@typespec/compiler/typekit";
+import type { GraphQLEmitterOptions } from "./lib.js";
 
 /**
  * Provides utilities to denormalize TypeSpec (TSP) model types for GraphQL emitters.
@@ -15,9 +16,9 @@ import { $ } from "@typespec/compiler/typekit";
 export class GraphQLTSPDenormalizer {
   private usageTracker: UsageTracker;
   private namespace: Namespace;
-  private context: EmitContext<Record<string, never>>;
+  private context: EmitContext<GraphQLEmitterOptions>;
 
-  constructor(namespace: Namespace, context: EmitContext<Record<string, never>>) {
+  constructor(namespace: Namespace, context: EmitContext<GraphQLEmitterOptions>) {
     this.namespace = namespace;
     this.context = context;
     this.usageTracker = resolveUsages(namespace);
@@ -37,6 +38,8 @@ export class GraphQLTSPDenormalizer {
    */
   expandInputOutputTypes(model: Model, debug: boolean) {
     const typekit = $(this.context.program);
+    // Skip Array types - they're handled as GraphQL Lists, not input types
+    if (model.name === "Array") return;
     // Only process if this model is used as input
     if (!this.usageTracker.isUsedAs(model, UsageFlags.Input)) return;
     const inputName = model.name + "Input";
@@ -46,6 +49,10 @@ export class GraphQLTSPDenormalizer {
     // Recursively transform nested model types to their input variants
     const getInputType = (type: Type): Type => {
       if (type.kind === "Model" && this.usageTracker.isUsedAs(type, UsageFlags.Input)) {
+        // Skip Array types - they're handled as GraphQL Lists, not input types
+        if (type.name === "Array") {
+          return type;
+        }
         const nestedInputName = type.name + "Input";
         if (this.namespace.models.has(nestedInputName)) {
           return this.namespace.models.get(nestedInputName)!;
@@ -56,6 +63,7 @@ export class GraphQLTSPDenormalizer {
           name: nestedInputName,
           properties: {},
         });
+        (placeholderModel as any).namespace = this.namespace;
         this.namespace.models.set(nestedInputName, placeholderModel);
         
         // Now populate the properties with recursive transformation
@@ -74,7 +82,8 @@ export class GraphQLTSPDenormalizer {
           properties: inputProperties,
         });
         
-        // Replace the placeholder with the fully populated model
+        // Set namespace and replace the placeholder with the fully populated model
+        (inputModel as any).namespace = this.namespace;
         this.namespace.models.set(nestedInputName, inputModel);
         for (const [_, prop] of inputModel.properties) {
           (prop as any).model = inputModel;
@@ -119,6 +128,7 @@ export class GraphQLTSPDenormalizer {
       name: outputModel.name + "Input",
       properties: inputProperties,
     });
+    (inputModel as any).namespace = this.namespace;
     for (const [_, prop] of inputModel.properties) {
       (prop as any).model = inputModel;
     }

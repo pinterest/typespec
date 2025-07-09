@@ -1,44 +1,95 @@
+import type { Namespace } from "@typespec/compiler";
 import {
   createDiagnosticCollector,
-  navigateTypesInNamespace,
   type Diagnostic,
   type DiagnosticCollector,
   type EmitContext,
-  type Enum,
-  type Model,
+  ListenerFlow,
+  navigateProgram,
 } from "@typespec/compiler";
-import { GraphQLSchema, validateSchema } from "graphql";
-import { type GraphQLEmitterOptions } from "./lib.js";
+import { resolveUsages, type UsageTracker } from "@typespec/compiler";
+import { GraphQLObjectType, GraphQLSchema, validateSchema } from "graphql";
+import { GraphQLSchemaBuilder } from "./schema-builder.js";
+import { GraphQLTSPDenormalizer } from "./denormalization.js";
+import type { GraphQLEmitterOptions } from "./lib.js";
 import type { Schema } from "./lib/schema.js";
-import { GraphQLTypeRegistry } from "./registry.js";
-import { exit } from "node:process";
 
 class GraphQLSchemaEmitter {
   private tspSchema: Schema;
   private context: EmitContext<GraphQLEmitterOptions>;
-  private options: GraphQLEmitterOptions;
+  private options: GraphQLEmitterOptions;  
   private diagnostics: DiagnosticCollector;
-  private registry: GraphQLTypeRegistry;
+  private usageTracker!: UsageTracker;
+  private schemaBuilder: GraphQLSchemaBuilder;
+
   constructor(
     tspSchema: Schema,
     context: EmitContext<GraphQLEmitterOptions>,
     options: GraphQLEmitterOptions,
   ) {
-    // Initialize any properties if needed, including the registry
     this.tspSchema = tspSchema;
     this.context = context;
     this.options = options;
     this.diagnostics = createDiagnosticCollector();
-    this.registry = new GraphQLTypeRegistry();
+    this.schemaBuilder = new GraphQLSchemaBuilder(context.program);
   }
 
   async emitSchema(): Promise<[GraphQLSchema, Readonly<Diagnostic[]>] | undefined> {
     const schemaNamespace = this.tspSchema.type;
-    // Logic to emit the GraphQL schema
-    navigateTypesInNamespace(schemaNamespace, this.semanticNodeListener());
-    const schemaConfig = this.registry.materializeSchemaConfig();
-    const schema = new GraphQLSchema(schemaConfig);
-    // validate the schema
+
+    // Denormalize TSP types into GraphQL friendly TSP types
+    const denormalizer = new GraphQLTSPDenormalizer(schemaNamespace, this.context);
+    denormalizer.denormalize();
+
+    // Explicitly traverse the updated program (including denormalized types)
+    // This makes the type creation process visible and intentional
+    navigateProgram(this.context.program, {
+      namespace: (namespace) => {
+        if (["TypeSpec", "Reflection"].includes(namespace.name)) {    
+          return ListenerFlow.NoRecursion;
+        }
+        return undefined; // Continue recursion for other namespaces
+      },
+      model: (node) => {
+        if (node.namespace === schemaNamespace) {
+          this.schemaBuilder.registerModel(node);
+        }
+      },
+      modelProperty: (prop) => {
+        if (prop.model && prop.model.namespace === schemaNamespace) {
+          // Explicitly register model properties during traversal
+          this.schemaBuilder.registerModelProperty(prop);
+        }
+      },
+      enum: (node) => {
+        if (node.namespace === schemaNamespace) {
+          // Explicitly create GraphQL types for enums during traversal
+          this.schemaBuilder.registerEnum(node);
+        }
+      },
+      operation: (node) => {
+        if (node.namespace === schemaNamespace) {
+          // Basic operation processing to create query fields
+          this.schemaBuilder.registerOperation(node);
+        }
+      },
+    });
+
+    // Build GraphQL schema using the types created during traversal
+    const queryFields = this.schemaBuilder.buildQueryFields();
+    const QueryType = new GraphQLObjectType({
+      name: "Query",
+      fields: queryFields,
+    });
+    
+    // Include all registered types in the schema
+    const allTypes = this.schemaBuilder.getAllMaterialized();
+    const schema = new GraphQLSchema({
+      query: QueryType,
+      types: allTypes,
+    });
+
+    // Validate the schema
     const validationErrors = validateSchema(schema);
     validationErrors.forEach((error) => {
       this.diagnostics.add({
@@ -51,23 +102,6 @@ class GraphQLSchemaEmitter {
     return [schema, this.diagnostics.diagnostics];
   }
 
-  semanticNodeListener() {
-    // TODO: Add GraphQL types to registry as the TSP nodes are visited
-    return {
-      enum: (node: Enum) => {
-        this.registry.addEnum(node);
-      },
-      model: (node: Model) => {
-        // Add logic to handle the model node
-      },
-      exitEnum: (node: Enum) => {
-        this.registry.materializeEnum(node.name);
-      },
-      exitModel: (node: Model) => {
-        // Add logic to handle the exit of the model node
-      },
-    };
-  }
 }
 
 export function createSchemaEmitter(
@@ -78,5 +112,4 @@ export function createSchemaEmitter(
   // Placeholder for creating a GraphQL schema emitter
   return new GraphQLSchemaEmitter(schema, context, options);
 }
-
 export type { GraphQLSchemaEmitter };
