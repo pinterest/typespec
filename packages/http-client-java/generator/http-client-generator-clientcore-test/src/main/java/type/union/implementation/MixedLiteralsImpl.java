@@ -13,6 +13,7 @@ import io.clientcore.core.http.models.HttpResponseException;
 import io.clientcore.core.http.models.RequestContext;
 import io.clientcore.core.http.models.Response;
 import io.clientcore.core.http.pipeline.HttpPipeline;
+import io.clientcore.core.instrumentation.Instrumentation;
 import java.lang.reflect.InvocationTargetException;
 import type.union.GetResponse8;
 import type.union.MixedLiteralsCases;
@@ -32,6 +33,11 @@ public final class MixedLiteralsImpl {
     private final UnionClientImpl client;
 
     /**
+     * The instance of instrumentation to report telemetry.
+     */
+    private final Instrumentation instrumentation;
+
+    /**
      * Initializes an instance of MixedLiteralsImpl.
      * 
      * @param client the instance of the service client containing this operation class.
@@ -39,6 +45,7 @@ public final class MixedLiteralsImpl {
     MixedLiteralsImpl(UnionClientImpl client) {
         this.service = MixedLiteralsService.getNewInstance(client.getHttpPipeline());
         this.client = client;
+        this.instrumentation = client.getInstrumentation();
     }
 
     /**
@@ -87,20 +94,11 @@ public final class MixedLiteralsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<GetResponse8> getWithResponse(RequestContext requestContext) {
-        final String accept = "application/json";
-        return service.get(this.client.getEndpoint(), accept, requestContext);
-    }
-
-    /**
-     * The get operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return the response.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public GetResponse8 get() {
-        return getWithResponse(RequestContext.none()).getValue();
+        return this.instrumentation.instrumentWithResponse("Type.Union.MixedLiterals.get", requestContext,
+            updatedContext -> {
+                final String accept = "application/json";
+                return service.get(this.client.getEndpoint(), accept, updatedContext);
+            });
     }
 
     /**
@@ -115,21 +113,11 @@ public final class MixedLiteralsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> sendWithResponse(MixedLiteralsCases prop, RequestContext requestContext) {
-        final String contentType = "application/json";
-        SendRequest8 sendRequest8 = new SendRequest8(prop);
-        return service.send(this.client.getEndpoint(), contentType, sendRequest8, requestContext);
-    }
-
-    /**
-     * The send operation.
-     * 
-     * @param prop The prop parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void send(MixedLiteralsCases prop) {
-        sendWithResponse(prop, RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("Type.Union.MixedLiterals.send", requestContext,
+            updatedContext -> {
+                final String contentType = "application/json";
+                SendRequest8 sendRequest8 = new SendRequest8(prop);
+                return service.send(this.client.getEndpoint(), contentType, sendRequest8, updatedContext);
+            });
     }
 }

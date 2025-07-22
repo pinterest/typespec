@@ -15,6 +15,7 @@ import io.clientcore.core.http.models.Response;
 import io.clientcore.core.http.paging.PagedIterable;
 import io.clientcore.core.http.paging.PagedResponse;
 import io.clientcore.core.http.pipeline.HttpPipeline;
+import io.clientcore.core.instrumentation.Instrumentation;
 import io.clientcore.core.instrumentation.logging.ClientLogger;
 import java.lang.reflect.InvocationTargetException;
 import payload.pageable.Pet;
@@ -35,6 +36,11 @@ public final class ServerDrivenPaginationsImpl {
     private final PageableClientImpl client;
 
     /**
+     * The instance of instrumentation to report telemetry.
+     */
+    private final Instrumentation instrumentation;
+
+    /**
      * Initializes an instance of ServerDrivenPaginationsImpl.
      * 
      * @param client the instance of the service client containing this operation class.
@@ -42,6 +48,7 @@ public final class ServerDrivenPaginationsImpl {
     ServerDrivenPaginationsImpl(PageableClientImpl client) {
         this.service = ServerDrivenPaginationsService.getNewInstance(client.getHttpPipeline());
         this.client = client;
+        this.instrumentation = client.getInstrumentation();
     }
 
     /**
@@ -86,10 +93,14 @@ public final class ServerDrivenPaginationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public PagedResponse<Pet> linkSinglePage() {
-        final String accept = "application/json";
-        Response<LinkResponse> res = service.link(this.client.getEndpoint(), accept, RequestContext.none());
-        return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(), res.getValue().getPets(),
-            null, res.getValue().getNext(), null, null, null);
+        return this.instrumentation.instrumentWithResponse("Payload.Pageable.ServerDrivenPagination.link",
+            RequestContext.none(), updatedContext -> {
+                final String accept = "application/json";
+                Response<LinkResponse> res = service.link(this.client.getEndpoint(), accept, updatedContext);
+                return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(),
+                    res.getValue().getPets(), null, res.getValue().getNext() != null ? res.getValue().getNext() : null,
+                    null, null, null);
+            });
     }
 
     /**
@@ -103,48 +114,14 @@ public final class ServerDrivenPaginationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public PagedResponse<Pet> linkSinglePage(RequestContext requestContext) {
-        final String accept = "application/json";
-        Response<LinkResponse> res = service.link(this.client.getEndpoint(), accept, requestContext);
-        return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(), res.getValue().getPets(),
-            null, res.getValue().getNext(), null, null, null);
-    }
-
-    /**
-     * The link operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return the response.
-     */
-    @ServiceMethod(returns = ReturnType.COLLECTION)
-    public PagedIterable<Pet> link() {
-        return new PagedIterable<>((pagingOptions) -> {
-            if (pagingOptions.getOffset() != null) {
-                throw LOGGER.throwableAtError()
-                    .addKeyValue("propertyName", "offset")
-                    .addKeyValue("methodName", "link")
-                    .log("Not a supported paging option in this API", IllegalArgumentException::new);
-            }
-            if (pagingOptions.getPageSize() != null) {
-                throw LOGGER.throwableAtError()
-                    .addKeyValue("propertyName", "pageSize")
-                    .addKeyValue("methodName", "link")
-                    .log("Not a supported paging option in this API", IllegalArgumentException::new);
-            }
-            if (pagingOptions.getPageIndex() != null) {
-                throw LOGGER.throwableAtError()
-                    .addKeyValue("propertyName", "pageIndex")
-                    .addKeyValue("methodName", "link")
-                    .log("Not a supported paging option in this API", IllegalArgumentException::new);
-            }
-            if (pagingOptions.getContinuationToken() != null) {
-                throw LOGGER.throwableAtError()
-                    .addKeyValue("propertyName", "continuationToken")
-                    .addKeyValue("methodName", "link")
-                    .log("Not a supported paging option in this API", IllegalArgumentException::new);
-            }
-            return linkSinglePage();
-        }, (pagingOptions, nextLink) -> linkNextSinglePage(nextLink));
+        return this.instrumentation.instrumentWithResponse("Payload.Pageable.ServerDrivenPagination.link",
+            requestContext, updatedContext -> {
+                final String accept = "application/json";
+                Response<LinkResponse> res = service.link(this.client.getEndpoint(), accept, updatedContext);
+                return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(),
+                    res.getValue().getPets(), null, res.getValue().getNext() != null ? res.getValue().getNext() : null,
+                    null, null, null);
+            });
     }
 
     /**
@@ -199,11 +176,15 @@ public final class ServerDrivenPaginationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public PagedResponse<Pet> linkNextSinglePage(String nextLink) {
-        final String accept = "application/json";
-        Response<LinkResponse> res
-            = service.linkNext(nextLink, this.client.getEndpoint(), accept, RequestContext.none());
-        return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(), res.getValue().getPets(),
-            null, res.getValue().getNext(), null, null, null);
+        return this.instrumentation.instrumentWithResponse("Payload.Pageable.ServerDrivenPagination.link",
+            RequestContext.none(), updatedContext -> {
+                final String accept = "application/json";
+                Response<LinkResponse> res
+                    = service.linkNext(nextLink, this.client.getEndpoint(), accept, updatedContext);
+                return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(),
+                    res.getValue().getPets(), null, res.getValue().getNext() != null ? res.getValue().getNext() : null,
+                    null, null, null);
+            });
     }
 
     /**
@@ -218,10 +199,15 @@ public final class ServerDrivenPaginationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public PagedResponse<Pet> linkNextSinglePage(String nextLink, RequestContext requestContext) {
-        final String accept = "application/json";
-        Response<LinkResponse> res = service.linkNext(nextLink, this.client.getEndpoint(), accept, requestContext);
-        return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(), res.getValue().getPets(),
-            null, res.getValue().getNext(), null, null, null);
+        return this.instrumentation.instrumentWithResponse("Payload.Pageable.ServerDrivenPagination.link",
+            requestContext, updatedContext -> {
+                final String accept = "application/json";
+                Response<LinkResponse> res
+                    = service.linkNext(nextLink, this.client.getEndpoint(), accept, updatedContext);
+                return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(),
+                    res.getValue().getPets(), null, res.getValue().getNext() != null ? res.getValue().getNext() : null,
+                    null, null, null);
+            });
     }
 
     private static final ClientLogger LOGGER = new ClientLogger(ServerDrivenPaginationsImpl.class);

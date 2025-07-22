@@ -13,6 +13,7 @@ import io.clientcore.core.http.models.HttpResponseException;
 import io.clientcore.core.http.models.RequestContext;
 import io.clientcore.core.http.models.Response;
 import io.clientcore.core.http.pipeline.HttpPipeline;
+import io.clientcore.core.instrumentation.Instrumentation;
 import java.lang.reflect.InvocationTargetException;
 import type.enumnamespace.fixed.DaysOfWeekEnum;
 
@@ -31,6 +32,11 @@ public final class StringOperationsImpl {
     private final FixedClientImpl client;
 
     /**
+     * The instance of instrumentation to report telemetry.
+     */
+    private final Instrumentation instrumentation;
+
+    /**
      * Initializes an instance of StringOperationsImpl.
      * 
      * @param client the instance of the service client containing this operation class.
@@ -38,6 +44,7 @@ public final class StringOperationsImpl {
     StringOperationsImpl(FixedClientImpl client) {
         this.service = StringOperationsService.getNewInstance(client.getHttpPipeline());
         this.client = client;
+        this.instrumentation = client.getInstrumentation();
     }
 
     /**
@@ -96,20 +103,11 @@ public final class StringOperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<DaysOfWeekEnum> getKnownValueWithResponse(RequestContext requestContext) {
-        final String accept = "application/json";
-        return service.getKnownValue(this.client.getEndpoint(), accept, requestContext);
-    }
-
-    /**
-     * getKnownValue.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return days of the week.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public DaysOfWeekEnum getKnownValue() {
-        return getKnownValueWithResponse(RequestContext.none()).getValue();
+        return this.instrumentation.instrumentWithResponse("Type.Enum.Fixed.String.getKnownValue", requestContext,
+            updatedContext -> {
+                final String accept = "application/json";
+                return service.getKnownValue(this.client.getEndpoint(), accept, updatedContext);
+            });
     }
 
     /**
@@ -124,21 +122,11 @@ public final class StringOperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> putKnownValueWithResponse(DaysOfWeekEnum body, RequestContext requestContext) {
-        final String contentType = "application/json";
-        return service.putKnownValue(this.client.getEndpoint(), contentType, body, requestContext);
-    }
-
-    /**
-     * putKnownValue.
-     * 
-     * @param body _.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void putKnownValue(DaysOfWeekEnum body) {
-        putKnownValueWithResponse(body, RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("Type.Enum.Fixed.String.putKnownValue", requestContext,
+            updatedContext -> {
+                final String contentType = "application/json";
+                return service.putKnownValue(this.client.getEndpoint(), contentType, body, updatedContext);
+            });
     }
 
     /**
@@ -153,20 +141,10 @@ public final class StringOperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> putUnknownValueWithResponse(DaysOfWeekEnum body, RequestContext requestContext) {
-        final String contentType = "application/json";
-        return service.putUnknownValue(this.client.getEndpoint(), contentType, body, requestContext);
-    }
-
-    /**
-     * putUnknownValue.
-     * 
-     * @param body _.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void putUnknownValue(DaysOfWeekEnum body) {
-        putUnknownValueWithResponse(body, RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("Type.Enum.Fixed.String.putUnknownValue", requestContext,
+            updatedContext -> {
+                final String contentType = "application/json";
+                return service.putUnknownValue(this.client.getEndpoint(), contentType, body, updatedContext);
+            });
     }
 }

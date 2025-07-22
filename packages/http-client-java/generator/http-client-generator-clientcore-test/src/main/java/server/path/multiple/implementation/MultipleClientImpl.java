@@ -12,6 +12,7 @@ import io.clientcore.core.http.models.HttpResponseException;
 import io.clientcore.core.http.models.RequestContext;
 import io.clientcore.core.http.models.Response;
 import io.clientcore.core.http.pipeline.HttpPipeline;
+import io.clientcore.core.instrumentation.Instrumentation;
 import java.lang.reflect.InvocationTargetException;
 import server.path.multiple.MultipleServiceVersion;
 
@@ -67,14 +68,31 @@ public final class MultipleClientImpl {
     }
 
     /**
+     * The instance of instrumentation to report telemetry.
+     */
+    private final Instrumentation instrumentation;
+
+    /**
+     * Gets The instance of instrumentation to report telemetry.
+     * 
+     * @return the instrumentation value.
+     */
+    public Instrumentation getInstrumentation() {
+        return this.instrumentation;
+    }
+
+    /**
      * Initializes an instance of MultipleClient client.
      * 
      * @param httpPipeline The HTTP pipeline to send requests through.
+     * @param instrumentation The instance of instrumentation to report telemetry.
      * @param endpoint Pass in http://localhost:3000 for endpoint.
      * @param serviceVersion Service version.
      */
-    public MultipleClientImpl(HttpPipeline httpPipeline, String endpoint, MultipleServiceVersion serviceVersion) {
+    public MultipleClientImpl(HttpPipeline httpPipeline, Instrumentation instrumentation, String endpoint,
+        MultipleServiceVersion serviceVersion) {
         this.httpPipeline = httpPipeline;
+        this.instrumentation = instrumentation;
         this.endpoint = endpoint;
         this.serviceVersion = serviceVersion;
         this.service = MultipleClientService.getNewInstance(this.httpPipeline);
@@ -120,18 +138,11 @@ public final class MultipleClientImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> noOperationParamsWithResponse(RequestContext requestContext) {
-        return service.noOperationParams(this.getEndpoint(), this.getServiceVersion().getVersion(), requestContext);
-    }
-
-    /**
-     * The noOperationParams operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void noOperationParams() {
-        noOperationParamsWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("Server.Path.Multiple.noOperationParams", requestContext,
+            updatedContext -> {
+                return service.noOperationParams(this.getEndpoint(), this.getServiceVersion().getVersion(),
+                    updatedContext);
+            });
     }
 
     /**
@@ -146,20 +157,10 @@ public final class MultipleClientImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> withOperationPathParamWithResponse(String keyword, RequestContext requestContext) {
-        return service.withOperationPathParam(this.getEndpoint(), this.getServiceVersion().getVersion(), keyword,
-            requestContext);
-    }
-
-    /**
-     * The withOperationPathParam operation.
-     * 
-     * @param keyword The keyword parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void withOperationPathParam(String keyword) {
-        withOperationPathParamWithResponse(keyword, RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("Server.Path.Multiple.withOperationPathParam",
+            requestContext, updatedContext -> {
+                return service.withOperationPathParam(this.getEndpoint(), this.getServiceVersion().getVersion(),
+                    keyword, updatedContext);
+            });
     }
 }

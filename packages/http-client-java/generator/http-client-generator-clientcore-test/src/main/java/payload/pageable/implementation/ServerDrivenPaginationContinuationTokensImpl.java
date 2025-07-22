@@ -16,6 +16,7 @@ import io.clientcore.core.http.models.Response;
 import io.clientcore.core.http.paging.PagedIterable;
 import io.clientcore.core.http.paging.PagedResponse;
 import io.clientcore.core.http.pipeline.HttpPipeline;
+import io.clientcore.core.instrumentation.Instrumentation;
 import io.clientcore.core.instrumentation.logging.ClientLogger;
 import java.lang.reflect.InvocationTargetException;
 import payload.pageable.Pet;
@@ -37,6 +38,11 @@ public final class ServerDrivenPaginationContinuationTokensImpl {
     private final PageableClientImpl client;
 
     /**
+     * The instance of instrumentation to report telemetry.
+     */
+    private final Instrumentation instrumentation;
+
+    /**
      * Initializes an instance of ServerDrivenPaginationContinuationTokensImpl.
      * 
      * @param client the instance of the service client containing this operation class.
@@ -44,6 +50,7 @@ public final class ServerDrivenPaginationContinuationTokensImpl {
     ServerDrivenPaginationContinuationTokensImpl(PageableClientImpl client) {
         this.service = ServerDrivenPaginationContinuationTokensService.getNewInstance(client.getHttpPipeline());
         this.client = client;
+        this.instrumentation = client.getInstrumentation();
     }
 
     /**
@@ -116,11 +123,17 @@ public final class ServerDrivenPaginationContinuationTokensImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public PagedResponse<Pet> requestQueryResponseBodySinglePage(String token, String foo, String bar) {
-        final String accept = "application/json";
-        Response<RequestQueryResponseBodyResponse> res = service.requestQueryResponseBody(this.client.getEndpoint(),
-            token, foo, bar, accept, RequestContext.none());
-        return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(), res.getValue().getPets(),
-            res.getValue().getNextToken(), null, null, null, null);
+        return this.instrumentation.instrumentWithResponse(
+            "Payload.Pageable.ServerDrivenPagination.ContinuationToken.requestQueryResponseBody", RequestContext.none(),
+            updatedContext -> {
+                final String accept = "application/json";
+                Response<RequestQueryResponseBodyResponse> res = service
+                    .requestQueryResponseBody(this.client.getEndpoint(), token, foo, bar, accept, updatedContext);
+                return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(),
+                    res.getValue().getPets(),
+                    res.getValue().getNextToken() != null ? res.getValue().getNextToken() : null, null, null, null,
+                    null);
+            });
     }
 
     /**
@@ -138,11 +151,17 @@ public final class ServerDrivenPaginationContinuationTokensImpl {
     @ServiceMethod(returns = ReturnType.SINGLE)
     public PagedResponse<Pet> requestQueryResponseBodySinglePage(String token, String foo, String bar,
         RequestContext requestContext) {
-        final String accept = "application/json";
-        Response<RequestQueryResponseBodyResponse> res
-            = service.requestQueryResponseBody(this.client.getEndpoint(), token, foo, bar, accept, requestContext);
-        return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(), res.getValue().getPets(),
-            res.getValue().getNextToken(), null, null, null, null);
+        return this.instrumentation.instrumentWithResponse(
+            "Payload.Pageable.ServerDrivenPagination.ContinuationToken.requestQueryResponseBody", requestContext,
+            updatedContext -> {
+                final String accept = "application/json";
+                Response<RequestQueryResponseBodyResponse> res = service
+                    .requestQueryResponseBody(this.client.getEndpoint(), token, foo, bar, accept, updatedContext);
+                return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(),
+                    res.getValue().getPets(),
+                    res.getValue().getNextToken() != null ? res.getValue().getNextToken() : null, null, null, null,
+                    null);
+            });
     }
 
     /**
@@ -158,41 +177,6 @@ public final class ServerDrivenPaginationContinuationTokensImpl {
      */
     @ServiceMethod(returns = ReturnType.COLLECTION)
     public PagedIterable<Pet> requestQueryResponseBody(String foo, String bar) {
-        return new PagedIterable<>((pagingOptions) -> {
-            if (pagingOptions.getOffset() != null) {
-                throw LOGGER.throwableAtError()
-                    .addKeyValue("propertyName", "offset")
-                    .addKeyValue("methodName", "requestQueryResponseBody")
-                    .log("Not a supported paging option in this API", IllegalArgumentException::new);
-            }
-            if (pagingOptions.getPageSize() != null) {
-                throw LOGGER.throwableAtError()
-                    .addKeyValue("propertyName", "pageSize")
-                    .addKeyValue("methodName", "requestQueryResponseBody")
-                    .log("Not a supported paging option in this API", IllegalArgumentException::new);
-            }
-            if (pagingOptions.getPageIndex() != null) {
-                throw LOGGER.throwableAtError()
-                    .addKeyValue("propertyName", "pageIndex")
-                    .addKeyValue("methodName", "requestQueryResponseBody")
-                    .log("Not a supported paging option in this API", IllegalArgumentException::new);
-            }
-            String token = pagingOptions.getContinuationToken();
-            return requestQueryResponseBodySinglePage(token, foo, bar);
-        });
-    }
-
-    /**
-     * The requestQueryResponseBody operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return the response.
-     */
-    @ServiceMethod(returns = ReturnType.COLLECTION)
-    public PagedIterable<Pet> requestQueryResponseBody() {
-        final String foo = null;
-        final String bar = null;
         return new PagedIterable<>((pagingOptions) -> {
             if (pagingOptions.getOffset() != null) {
                 throw LOGGER.throwableAtError()
@@ -268,11 +252,17 @@ public final class ServerDrivenPaginationContinuationTokensImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public PagedResponse<Pet> requestHeaderResponseBodySinglePage(String token, String foo, String bar) {
-        final String accept = "application/json";
-        Response<RequestHeaderResponseBodyResponse> res = service.requestHeaderResponseBody(this.client.getEndpoint(),
-            token, foo, bar, accept, RequestContext.none());
-        return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(), res.getValue().getPets(),
-            res.getValue().getNextToken(), null, null, null, null);
+        return this.instrumentation.instrumentWithResponse(
+            "Payload.Pageable.ServerDrivenPagination.ContinuationToken.requestHeaderResponseBody",
+            RequestContext.none(), updatedContext -> {
+                final String accept = "application/json";
+                Response<RequestHeaderResponseBodyResponse> res = service
+                    .requestHeaderResponseBody(this.client.getEndpoint(), token, foo, bar, accept, updatedContext);
+                return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(),
+                    res.getValue().getPets(),
+                    res.getValue().getNextToken() != null ? res.getValue().getNextToken() : null, null, null, null,
+                    null);
+            });
     }
 
     /**
@@ -290,11 +280,17 @@ public final class ServerDrivenPaginationContinuationTokensImpl {
     @ServiceMethod(returns = ReturnType.SINGLE)
     public PagedResponse<Pet> requestHeaderResponseBodySinglePage(String token, String foo, String bar,
         RequestContext requestContext) {
-        final String accept = "application/json";
-        Response<RequestHeaderResponseBodyResponse> res
-            = service.requestHeaderResponseBody(this.client.getEndpoint(), token, foo, bar, accept, requestContext);
-        return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(), res.getValue().getPets(),
-            res.getValue().getNextToken(), null, null, null, null);
+        return this.instrumentation.instrumentWithResponse(
+            "Payload.Pageable.ServerDrivenPagination.ContinuationToken.requestHeaderResponseBody", requestContext,
+            updatedContext -> {
+                final String accept = "application/json";
+                Response<RequestHeaderResponseBodyResponse> res = service
+                    .requestHeaderResponseBody(this.client.getEndpoint(), token, foo, bar, accept, updatedContext);
+                return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(),
+                    res.getValue().getPets(),
+                    res.getValue().getNextToken() != null ? res.getValue().getNextToken() : null, null, null, null,
+                    null);
+            });
     }
 
     /**
@@ -310,41 +306,6 @@ public final class ServerDrivenPaginationContinuationTokensImpl {
      */
     @ServiceMethod(returns = ReturnType.COLLECTION)
     public PagedIterable<Pet> requestHeaderResponseBody(String foo, String bar) {
-        return new PagedIterable<>((pagingOptions) -> {
-            if (pagingOptions.getOffset() != null) {
-                throw LOGGER.throwableAtError()
-                    .addKeyValue("propertyName", "offset")
-                    .addKeyValue("methodName", "requestHeaderResponseBody")
-                    .log("Not a supported paging option in this API", IllegalArgumentException::new);
-            }
-            if (pagingOptions.getPageSize() != null) {
-                throw LOGGER.throwableAtError()
-                    .addKeyValue("propertyName", "pageSize")
-                    .addKeyValue("methodName", "requestHeaderResponseBody")
-                    .log("Not a supported paging option in this API", IllegalArgumentException::new);
-            }
-            if (pagingOptions.getPageIndex() != null) {
-                throw LOGGER.throwableAtError()
-                    .addKeyValue("propertyName", "pageIndex")
-                    .addKeyValue("methodName", "requestHeaderResponseBody")
-                    .log("Not a supported paging option in this API", IllegalArgumentException::new);
-            }
-            String token = pagingOptions.getContinuationToken();
-            return requestHeaderResponseBodySinglePage(token, foo, bar);
-        });
-    }
-
-    /**
-     * The requestHeaderResponseBody operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return the response.
-     */
-    @ServiceMethod(returns = ReturnType.COLLECTION)
-    public PagedIterable<Pet> requestHeaderResponseBody() {
-        final String foo = null;
-        final String bar = null;
         return new PagedIterable<>((pagingOptions) -> {
             if (pagingOptions.getOffset() != null) {
                 throw LOGGER.throwableAtError()
@@ -420,11 +381,16 @@ public final class ServerDrivenPaginationContinuationTokensImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public PagedResponse<Pet> requestQueryResponseHeaderSinglePage(String token, String foo, String bar) {
-        final String accept = "application/json";
-        Response<RequestQueryResponseHeaderResponse> res = service.requestQueryResponseHeader(this.client.getEndpoint(),
-            token, foo, bar, accept, RequestContext.none());
-        return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(), res.getValue().getPets(),
-            res.getHeaders().getValue(HttpHeaderName.fromString("next-token")), null, null, null, null);
+        return this.instrumentation.instrumentWithResponse(
+            "Payload.Pageable.ServerDrivenPagination.ContinuationToken.requestQueryResponseHeader",
+            RequestContext.none(), updatedContext -> {
+                final String accept = "application/json";
+                Response<RequestQueryResponseHeaderResponse> res = service
+                    .requestQueryResponseHeader(this.client.getEndpoint(), token, foo, bar, accept, updatedContext);
+                return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(),
+                    res.getValue().getPets(), res.getHeaders().getValue(HttpHeaderName.fromString("next-token")), null,
+                    null, null, null);
+            });
     }
 
     /**
@@ -442,11 +408,16 @@ public final class ServerDrivenPaginationContinuationTokensImpl {
     @ServiceMethod(returns = ReturnType.SINGLE)
     public PagedResponse<Pet> requestQueryResponseHeaderSinglePage(String token, String foo, String bar,
         RequestContext requestContext) {
-        final String accept = "application/json";
-        Response<RequestQueryResponseHeaderResponse> res
-            = service.requestQueryResponseHeader(this.client.getEndpoint(), token, foo, bar, accept, requestContext);
-        return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(), res.getValue().getPets(),
-            res.getHeaders().getValue(HttpHeaderName.fromString("next-token")), null, null, null, null);
+        return this.instrumentation.instrumentWithResponse(
+            "Payload.Pageable.ServerDrivenPagination.ContinuationToken.requestQueryResponseHeader", requestContext,
+            updatedContext -> {
+                final String accept = "application/json";
+                Response<RequestQueryResponseHeaderResponse> res = service
+                    .requestQueryResponseHeader(this.client.getEndpoint(), token, foo, bar, accept, updatedContext);
+                return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(),
+                    res.getValue().getPets(), res.getHeaders().getValue(HttpHeaderName.fromString("next-token")), null,
+                    null, null, null);
+            });
     }
 
     /**
@@ -462,41 +433,6 @@ public final class ServerDrivenPaginationContinuationTokensImpl {
      */
     @ServiceMethod(returns = ReturnType.COLLECTION)
     public PagedIterable<Pet> requestQueryResponseHeader(String foo, String bar) {
-        return new PagedIterable<>((pagingOptions) -> {
-            if (pagingOptions.getOffset() != null) {
-                throw LOGGER.throwableAtError()
-                    .addKeyValue("propertyName", "offset")
-                    .addKeyValue("methodName", "requestQueryResponseHeader")
-                    .log("Not a supported paging option in this API", IllegalArgumentException::new);
-            }
-            if (pagingOptions.getPageSize() != null) {
-                throw LOGGER.throwableAtError()
-                    .addKeyValue("propertyName", "pageSize")
-                    .addKeyValue("methodName", "requestQueryResponseHeader")
-                    .log("Not a supported paging option in this API", IllegalArgumentException::new);
-            }
-            if (pagingOptions.getPageIndex() != null) {
-                throw LOGGER.throwableAtError()
-                    .addKeyValue("propertyName", "pageIndex")
-                    .addKeyValue("methodName", "requestQueryResponseHeader")
-                    .log("Not a supported paging option in this API", IllegalArgumentException::new);
-            }
-            String token = pagingOptions.getContinuationToken();
-            return requestQueryResponseHeaderSinglePage(token, foo, bar);
-        });
-    }
-
-    /**
-     * The requestQueryResponseHeader operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return the response.
-     */
-    @ServiceMethod(returns = ReturnType.COLLECTION)
-    public PagedIterable<Pet> requestQueryResponseHeader() {
-        final String foo = null;
-        final String bar = null;
         return new PagedIterable<>((pagingOptions) -> {
             if (pagingOptions.getOffset() != null) {
                 throw LOGGER.throwableAtError()
@@ -572,11 +508,16 @@ public final class ServerDrivenPaginationContinuationTokensImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public PagedResponse<Pet> requestHeaderResponseHeaderSinglePage(String token, String foo, String bar) {
-        final String accept = "application/json";
-        Response<RequestHeaderResponseHeaderResponse> res = service
-            .requestHeaderResponseHeader(this.client.getEndpoint(), token, foo, bar, accept, RequestContext.none());
-        return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(), res.getValue().getPets(),
-            res.getHeaders().getValue(HttpHeaderName.fromString("next-token")), null, null, null, null);
+        return this.instrumentation.instrumentWithResponse(
+            "Payload.Pageable.ServerDrivenPagination.ContinuationToken.requestHeaderResponseHeader",
+            RequestContext.none(), updatedContext -> {
+                final String accept = "application/json";
+                Response<RequestHeaderResponseHeaderResponse> res = service
+                    .requestHeaderResponseHeader(this.client.getEndpoint(), token, foo, bar, accept, updatedContext);
+                return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(),
+                    res.getValue().getPets(), res.getHeaders().getValue(HttpHeaderName.fromString("next-token")), null,
+                    null, null, null);
+            });
     }
 
     /**
@@ -594,11 +535,16 @@ public final class ServerDrivenPaginationContinuationTokensImpl {
     @ServiceMethod(returns = ReturnType.SINGLE)
     public PagedResponse<Pet> requestHeaderResponseHeaderSinglePage(String token, String foo, String bar,
         RequestContext requestContext) {
-        final String accept = "application/json";
-        Response<RequestHeaderResponseHeaderResponse> res
-            = service.requestHeaderResponseHeader(this.client.getEndpoint(), token, foo, bar, accept, requestContext);
-        return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(), res.getValue().getPets(),
-            res.getHeaders().getValue(HttpHeaderName.fromString("next-token")), null, null, null, null);
+        return this.instrumentation.instrumentWithResponse(
+            "Payload.Pageable.ServerDrivenPagination.ContinuationToken.requestHeaderResponseHeader", requestContext,
+            updatedContext -> {
+                final String accept = "application/json";
+                Response<RequestHeaderResponseHeaderResponse> res = service
+                    .requestHeaderResponseHeader(this.client.getEndpoint(), token, foo, bar, accept, updatedContext);
+                return new PagedResponse<>(res.getRequest(), res.getStatusCode(), res.getHeaders(),
+                    res.getValue().getPets(), res.getHeaders().getValue(HttpHeaderName.fromString("next-token")), null,
+                    null, null, null);
+            });
     }
 
     /**
@@ -614,41 +560,6 @@ public final class ServerDrivenPaginationContinuationTokensImpl {
      */
     @ServiceMethod(returns = ReturnType.COLLECTION)
     public PagedIterable<Pet> requestHeaderResponseHeader(String foo, String bar) {
-        return new PagedIterable<>((pagingOptions) -> {
-            if (pagingOptions.getOffset() != null) {
-                throw LOGGER.throwableAtError()
-                    .addKeyValue("propertyName", "offset")
-                    .addKeyValue("methodName", "requestHeaderResponseHeader")
-                    .log("Not a supported paging option in this API", IllegalArgumentException::new);
-            }
-            if (pagingOptions.getPageSize() != null) {
-                throw LOGGER.throwableAtError()
-                    .addKeyValue("propertyName", "pageSize")
-                    .addKeyValue("methodName", "requestHeaderResponseHeader")
-                    .log("Not a supported paging option in this API", IllegalArgumentException::new);
-            }
-            if (pagingOptions.getPageIndex() != null) {
-                throw LOGGER.throwableAtError()
-                    .addKeyValue("propertyName", "pageIndex")
-                    .addKeyValue("methodName", "requestHeaderResponseHeader")
-                    .log("Not a supported paging option in this API", IllegalArgumentException::new);
-            }
-            String token = pagingOptions.getContinuationToken();
-            return requestHeaderResponseHeaderSinglePage(token, foo, bar);
-        });
-    }
-
-    /**
-     * The requestHeaderResponseHeader operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return the response.
-     */
-    @ServiceMethod(returns = ReturnType.COLLECTION)
-    public PagedIterable<Pet> requestHeaderResponseHeader() {
-        final String foo = null;
-        final String bar = null;
         return new PagedIterable<>((pagingOptions) -> {
             if (pagingOptions.getOffset() != null) {
                 throw LOGGER.throwableAtError()

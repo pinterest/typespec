@@ -13,6 +13,7 @@ import io.clientcore.core.http.models.HttpResponseException;
 import io.clientcore.core.http.models.RequestContext;
 import io.clientcore.core.http.models.Response;
 import io.clientcore.core.http.pipeline.HttpPipeline;
+import io.clientcore.core.instrumentation.Instrumentation;
 import java.lang.reflect.InvocationTargetException;
 
 /**
@@ -53,13 +54,29 @@ public final class CustomClientImpl {
     }
 
     /**
+     * The instance of instrumentation to report telemetry.
+     */
+    private final Instrumentation instrumentation;
+
+    /**
+     * Gets The instance of instrumentation to report telemetry.
+     * 
+     * @return the instrumentation value.
+     */
+    public Instrumentation getInstrumentation() {
+        return this.instrumentation;
+    }
+
+    /**
      * Initializes an instance of CustomClient client.
      * 
      * @param httpPipeline The HTTP pipeline to send requests through.
+     * @param instrumentation The instance of instrumentation to report telemetry.
      * @param endpoint Service host.
      */
-    public CustomClientImpl(HttpPipeline httpPipeline, String endpoint) {
+    public CustomClientImpl(HttpPipeline httpPipeline, Instrumentation instrumentation, String endpoint) {
         this.httpPipeline = httpPipeline;
+        this.instrumentation = instrumentation;
         this.endpoint = endpoint;
         this.service = CustomClientService.getNewInstance(this.httpPipeline);
     }
@@ -109,18 +126,10 @@ public final class CustomClientImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> validWithResponse(RequestContext requestContext) {
-        return service.valid(this.getEndpoint(), requestContext);
-    }
-
-    /**
-     * Check whether client is authenticated.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void valid() {
-        validWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("Authentication.Http.Custom.valid", requestContext,
+            updatedContext -> {
+                return service.valid(this.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -134,18 +143,10 @@ public final class CustomClientImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> invalidWithResponse(RequestContext requestContext) {
-        final String accept = "application/json";
-        return service.invalid(this.getEndpoint(), accept, requestContext);
-    }
-
-    /**
-     * Check whether client is authenticated.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void invalid() {
-        invalidWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("Authentication.Http.Custom.invalid", requestContext,
+            updatedContext -> {
+                final String accept = "application/json";
+                return service.invalid(this.getEndpoint(), accept, updatedContext);
+            });
     }
 }

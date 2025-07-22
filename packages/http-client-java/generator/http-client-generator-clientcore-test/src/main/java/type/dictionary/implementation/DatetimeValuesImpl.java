@@ -13,6 +13,7 @@ import io.clientcore.core.http.models.HttpResponseException;
 import io.clientcore.core.http.models.RequestContext;
 import io.clientcore.core.http.models.Response;
 import io.clientcore.core.http.pipeline.HttpPipeline;
+import io.clientcore.core.instrumentation.Instrumentation;
 import java.lang.reflect.InvocationTargetException;
 import java.time.OffsetDateTime;
 import java.util.Map;
@@ -32,6 +33,11 @@ public final class DatetimeValuesImpl {
     private final DictionaryClientImpl client;
 
     /**
+     * The instance of instrumentation to report telemetry.
+     */
+    private final Instrumentation instrumentation;
+
+    /**
      * Initializes an instance of DatetimeValuesImpl.
      * 
      * @param client the instance of the service client containing this operation class.
@@ -39,6 +45,7 @@ public final class DatetimeValuesImpl {
     DatetimeValuesImpl(DictionaryClientImpl client) {
         this.service = DatetimeValuesService.getNewInstance(client.getHttpPipeline());
         this.client = client;
+        this.instrumentation = client.getInstrumentation();
     }
 
     /**
@@ -88,20 +95,11 @@ public final class DatetimeValuesImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Map<String, OffsetDateTime>> getWithResponse(RequestContext requestContext) {
-        final String accept = "application/json";
-        return service.get(this.client.getEndpoint(), accept, requestContext);
-    }
-
-    /**
-     * The get operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return the response.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public Map<String, OffsetDateTime> get() {
-        return getWithResponse(RequestContext.none()).getValue();
+        return this.instrumentation.instrumentWithResponse("Type.Dictionary.DatetimeValue.get", requestContext,
+            updatedContext -> {
+                final String accept = "application/json";
+                return service.get(this.client.getEndpoint(), accept, updatedContext);
+            });
     }
 
     /**
@@ -116,20 +114,10 @@ public final class DatetimeValuesImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> putWithResponse(Map<String, OffsetDateTime> body, RequestContext requestContext) {
-        final String contentType = "application/json";
-        return service.put(this.client.getEndpoint(), contentType, body, requestContext);
-    }
-
-    /**
-     * The put operation.
-     * 
-     * @param body The body parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void put(Map<String, OffsetDateTime> body) {
-        putWithResponse(body, RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("Type.Dictionary.DatetimeValue.put", requestContext,
+            updatedContext -> {
+                final String contentType = "application/json";
+                return service.put(this.client.getEndpoint(), contentType, body, updatedContext);
+            });
     }
 }

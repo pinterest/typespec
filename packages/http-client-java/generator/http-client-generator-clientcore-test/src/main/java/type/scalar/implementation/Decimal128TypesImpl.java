@@ -14,6 +14,7 @@ import io.clientcore.core.http.models.HttpResponseException;
 import io.clientcore.core.http.models.RequestContext;
 import io.clientcore.core.http.models.Response;
 import io.clientcore.core.http.pipeline.HttpPipeline;
+import io.clientcore.core.instrumentation.Instrumentation;
 import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
 
@@ -32,6 +33,11 @@ public final class Decimal128TypesImpl {
     private final ScalarClientImpl client;
 
     /**
+     * The instance of instrumentation to report telemetry.
+     */
+    private final Instrumentation instrumentation;
+
+    /**
      * Initializes an instance of Decimal128TypesImpl.
      * 
      * @param client the instance of the service client containing this operation class.
@@ -39,6 +45,7 @@ public final class Decimal128TypesImpl {
     Decimal128TypesImpl(ScalarClientImpl client) {
         this.service = Decimal128TypesService.getNewInstance(client.getHttpPipeline());
         this.client = client;
+        this.instrumentation = client.getInstrumentation();
     }
 
     /**
@@ -96,20 +103,11 @@ public final class Decimal128TypesImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<BigDecimal> responseBodyWithResponse(RequestContext requestContext) {
-        final String accept = "application/json";
-        return service.responseBody(this.client.getEndpoint(), accept, requestContext);
-    }
-
-    /**
-     * The responseBody operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return a 128-bit decimal number.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public BigDecimal responseBody() {
-        return responseBodyWithResponse(RequestContext.none()).getValue();
+        return this.instrumentation.instrumentWithResponse("Type.Scalar.Decimal128Type.responseBody", requestContext,
+            updatedContext -> {
+                final String accept = "application/json";
+                return service.responseBody(this.client.getEndpoint(), accept, updatedContext);
+            });
     }
 
     /**
@@ -124,21 +122,11 @@ public final class Decimal128TypesImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> requestBodyWithResponse(BigDecimal body, RequestContext requestContext) {
-        final String contentType = "application/json";
-        return service.requestBody(this.client.getEndpoint(), contentType, body, requestContext);
-    }
-
-    /**
-     * The requestBody operation.
-     * 
-     * @param body The body parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void requestBody(BigDecimal body) {
-        requestBodyWithResponse(body, RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("Type.Scalar.Decimal128Type.requestBody", requestContext,
+            updatedContext -> {
+                final String contentType = "application/json";
+                return service.requestBody(this.client.getEndpoint(), contentType, body, updatedContext);
+            });
     }
 
     /**
@@ -153,19 +141,9 @@ public final class Decimal128TypesImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> requestParameterWithResponse(BigDecimal value, RequestContext requestContext) {
-        return service.requestParameter(this.client.getEndpoint(), value, requestContext);
-    }
-
-    /**
-     * The requestParameter operation.
-     * 
-     * @param value The value parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void requestParameter(BigDecimal value) {
-        requestParameterWithResponse(value, RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("Type.Scalar.Decimal128Type.requestParameter",
+            requestContext, updatedContext -> {
+                return service.requestParameter(this.client.getEndpoint(), value, updatedContext);
+            });
     }
 }

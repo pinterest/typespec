@@ -17,6 +17,7 @@ import io.clientcore.core.http.models.HttpResponseException;
 import io.clientcore.core.http.models.RequestContext;
 import io.clientcore.core.http.models.Response;
 import io.clientcore.core.http.pipeline.HttpPipeline;
+import io.clientcore.core.instrumentation.Instrumentation;
 import java.lang.reflect.InvocationTargetException;
 
 /**
@@ -34,6 +35,11 @@ public final class PropertiesImpl {
     private final BytesClientImpl client;
 
     /**
+     * The instance of instrumentation to report telemetry.
+     */
+    private final Instrumentation instrumentation;
+
+    /**
      * Initializes an instance of PropertiesImpl.
      * 
      * @param client the instance of the service client containing this operation class.
@@ -41,6 +47,7 @@ public final class PropertiesImpl {
     PropertiesImpl(BytesClientImpl client) {
         this.service = PropertiesService.getNewInstance(client.getHttpPipeline());
         this.client = client;
+        this.instrumentation = client.getInstrumentation();
     }
 
     /**
@@ -110,23 +117,12 @@ public final class PropertiesImpl {
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<DefaultBytesProperty> defaultMethodWithResponse(DefaultBytesProperty body,
         RequestContext requestContext) {
-        final String contentType = "application/json";
-        final String accept = "application/json";
-        return service.defaultMethod(this.client.getEndpoint(), contentType, accept, body, requestContext);
-    }
-
-    /**
-     * The defaultMethod operation.
-     * 
-     * @param body The body parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return the response.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public DefaultBytesProperty defaultMethod(DefaultBytesProperty body) {
-        return defaultMethodWithResponse(body, RequestContext.none()).getValue();
+        return this.instrumentation.instrumentWithResponse("Encode.Bytes.Property.default", requestContext,
+            updatedContext -> {
+                final String contentType = "application/json";
+                final String accept = "application/json";
+                return service.defaultMethod(this.client.getEndpoint(), contentType, accept, body, updatedContext);
+            });
     }
 
     /**
@@ -141,23 +137,12 @@ public final class PropertiesImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Base64BytesProperty> base64WithResponse(Base64BytesProperty body, RequestContext requestContext) {
-        final String contentType = "application/json";
-        final String accept = "application/json";
-        return service.base64(this.client.getEndpoint(), contentType, accept, body, requestContext);
-    }
-
-    /**
-     * The base64 operation.
-     * 
-     * @param body The body parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return the response.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public Base64BytesProperty base64(Base64BytesProperty body) {
-        return base64WithResponse(body, RequestContext.none()).getValue();
+        return this.instrumentation.instrumentWithResponse("Encode.Bytes.Property.base64", requestContext,
+            updatedContext -> {
+                final String contentType = "application/json";
+                final String accept = "application/json";
+                return service.base64(this.client.getEndpoint(), contentType, accept, body, updatedContext);
+            });
     }
 
     /**
@@ -173,23 +158,12 @@ public final class PropertiesImpl {
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Base64urlBytesProperty> base64urlWithResponse(Base64urlBytesProperty body,
         RequestContext requestContext) {
-        final String contentType = "application/json";
-        final String accept = "application/json";
-        return service.base64url(this.client.getEndpoint(), contentType, accept, body, requestContext);
-    }
-
-    /**
-     * The base64url operation.
-     * 
-     * @param body The body parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return the response.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public Base64urlBytesProperty base64url(Base64urlBytesProperty body) {
-        return base64urlWithResponse(body, RequestContext.none()).getValue();
+        return this.instrumentation.instrumentWithResponse("Encode.Bytes.Property.base64url", requestContext,
+            updatedContext -> {
+                final String contentType = "application/json";
+                final String accept = "application/json";
+                return service.base64url(this.client.getEndpoint(), contentType, accept, body, updatedContext);
+            });
     }
 
     /**
@@ -205,22 +179,11 @@ public final class PropertiesImpl {
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Base64urlArrayBytesProperty> base64urlArrayWithResponse(Base64urlArrayBytesProperty body,
         RequestContext requestContext) {
-        final String contentType = "application/json";
-        final String accept = "application/json";
-        return service.base64urlArray(this.client.getEndpoint(), contentType, accept, body, requestContext);
-    }
-
-    /**
-     * The base64urlArray operation.
-     * 
-     * @param body The body parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return the response.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public Base64urlArrayBytesProperty base64urlArray(Base64urlArrayBytesProperty body) {
-        return base64urlArrayWithResponse(body, RequestContext.none()).getValue();
+        return this.instrumentation.instrumentWithResponse("Encode.Bytes.Property.base64urlArray", requestContext,
+            updatedContext -> {
+                final String contentType = "application/json";
+                final String accept = "application/json";
+                return service.base64urlArray(this.client.getEndpoint(), contentType, accept, body, updatedContext);
+            });
     }
 }

@@ -57,7 +57,22 @@ namespace Microsoft.TypeSpec.Generator.ClientModel.Providers
 
         public ParameterProvider? ClientOptionsParameter { get; }
 
-        protected override FormattableString BuildDescription() => DocHelpers.GetFormattableDescription(_inputClient.Summary, _inputClient.Doc) ?? FormattableStringHelpers.Empty;
+        protected override FormattableString BuildDescription()
+        {
+            var description = DocHelpers.GetFormattableDescription(_inputClient.Summary, _inputClient.Doc);
+            if (description != null)
+            {
+                return description;
+            }
+
+            if (_inputClient.Parent is null)
+            {
+                // Clients will always have the Client suffix appended.
+                return $"The {Name}.";
+            }
+
+            return $"The {Name} sub-client.";
+        }
 
         // for mocking
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
@@ -68,6 +83,8 @@ namespace Microsoft.TypeSpec.Generator.ClientModel.Providers
 
         public ClientProvider(InputClient inputClient)
         {
+            CleanOperationNames(inputClient);
+
             _inputClient = inputClient;
             _inputAuth = ScmCodeModelGenerator.Instance.InputLibrary.InputNamespace.Auth;
             _endpointParameter = BuildClientEndpointParameter();
@@ -148,10 +165,31 @@ namespace Microsoft.TypeSpec.Generator.ClientModel.Providers
 
             _endpointParameterName = new(GetEndpointParameterName);
             _additionalClientFields = new(BuildAdditionalClientFields);
-            _allClientParameters = _inputClient.Parameters.Concat(_inputClient.Methods.SelectMany(m => m.Operation.Parameters).Where(p => p.Kind == InputParameterKind.Client)).DistinctBy(p => p.Name).ToArray();
             _subClientInternalConstructorParams = new(GetSubClientInternalConstructorParameters);
             _clientParameters = new(GetClientParameters);
             _subClients = new(GetSubClients);
+            _allClientParameters = GetAllClientParameters();
+        }
+
+        private static void CleanOperationNames(InputClient inputClient)
+        {
+            foreach (var serviceMethod in inputClient.Methods)
+            {
+                var updatedOperationName = GetCleanOperationName(serviceMethod);
+                serviceMethod.Update(name: updatedOperationName);
+                serviceMethod.Operation.Update(name: updatedOperationName);
+            }
+        }
+
+        private static string GetCleanOperationName(InputServiceMethod serviceMethod)
+        {
+            var operationName = serviceMethod.Operation.Name.ToIdentifierName();
+            // Replace List with Get as .NET convention is to use Get for list operations.
+            if (operationName.StartsWith("List", StringComparison.Ordinal))
+            {
+                operationName = $"Get{operationName.Substring(4)}";
+            }
+            return operationName;
         }
 
         private string? _namespace;
@@ -701,6 +739,22 @@ namespace Microsoft.TypeSpec.Generator.ClientModel.Providers
             }
 
             return subClients;
+        }
+
+        private IReadOnlyList<InputParameter> GetAllClientParameters()
+        {
+            // Get all parameters from the client and its methods
+            var parameters = _inputClient.Parameters.Concat(
+                _inputClient.Methods.SelectMany(m => m.Operation.Parameters)
+                    .Where(p => p.Kind == InputParameterKind.Client)).DistinctBy(p => p.Name).ToArray();
+
+            foreach (var subClient in _subClients.Value)
+            {
+                // Add parameters from sub-clients
+                parameters = parameters.Concat(subClient.GetAllClientParameters()).DistinctBy(p => p.Name).ToArray();
+            }
+
+            return parameters;
         }
     }
 }
