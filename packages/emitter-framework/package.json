@@ -55,6 +55,7 @@
   "peerDependencies": {
     "@alloy-js/core": "^0.19.0",
     "@alloy-js/csharp": "^0.19.0",
+    "@alloy-js/python": "^0.0.1",
     "@alloy-js/typescript": "^0.19.0",
     "@typespec/compiler": "workspace:^",
     "@typespec/http": "workspace:^",
@@ -63,6 +64,7 @@
   "devDependencies": {
     "@alloy-js/cli": "^0.19.0",
     "@alloy-js/core": "^0.19.0",
+    "@alloy-js/python": "^0.0.1",
     "@alloy-js/rollup-plugin": "^0.1.0",
     "@alloy-js/typescript": "^0.19.0",
     "@typespec/compiler": "workspace:^",
