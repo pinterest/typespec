@@ -1,8 +1,5 @@
 import * as py from "@alloy-js/python";
 import type { Model, Operation } from "@typespec/compiler";
-import { useTsp } from "../../core/index.js";
-import { buildParameterDescriptors, getReturnType } from "../utils/operation.js";
-import { declarationRefkeys } from "../utils/refkey.js";
 
 export interface FunctionDeclarationPropsWithType
   extends Omit<py.FunctionDeclarationProps, "name"> {

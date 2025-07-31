@@ -1,9 +1,9 @@
-import { SourceFile } from "@alloy-js/python";
-import { beforeAll, expect, it } from "vitest";
-import { $ } from "@typespec/compiler/typekit";
 import { Output } from "@alloy-js/core";
-import { Atom } from "../../index.js";
+import { SourceFile } from "@alloy-js/python";
 import type { Program, Value } from "@typespec/compiler";
+import { $ } from "@typespec/compiler/typekit";
+import { beforeAll, expect, it } from "vitest";
+import { Atom } from "../../index.js";
 import { getProgram } from "../../test-host.js";
 
 let program: Program;

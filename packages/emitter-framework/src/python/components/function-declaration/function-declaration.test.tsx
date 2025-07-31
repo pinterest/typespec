@@ -1,5 +1,3 @@
-import { code } from "@alloy-js/core";
-import { d } from "@alloy-js/core/testing";
 import { SourceFile } from "@alloy-js/typescript";
 import type { Namespace } from "@typespec/compiler";
 import { describe, expect, it } from "vitest";
