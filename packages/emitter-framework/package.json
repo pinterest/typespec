@@ -29,6 +29,9 @@
     "./typescript": {
       "import": "./dist/src/typescript/index.js"
     },
+    "./python": {
+      "import": "./dist/src/python/index.js"
+    },
     "./testing": {
       "import": "./dist/src/testing/index.js"
     }
@@ -46,6 +49,10 @@
     "#typescript/*": {
       "development": "./src/typescript/*",
       "default": "./dist/src/typescript/*"
+    },
+    "#python/*": {
+      "development": "./src/python/*",
+      "default": "./dist/src/python/*"
     }
   },
   "keywords": [],
