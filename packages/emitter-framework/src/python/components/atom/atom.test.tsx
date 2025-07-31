@@ -1,36 +1,31 @@
-import { Tester } from "#test/test-host.js";
-import { type Children } from "@alloy-js/core";
-import { createPythonNamePolicy, SourceFile } from "@alloy-js/python";
-import { t, type TesterInstance } from "@typespec/compiler/testing";
-import { beforeEach, expect, it } from "vitest";
-import { Output } from "../../../core/index.js";
+import { SourceFile } from "@alloy-js/python";
+import { beforeAll, expect, it } from "vitest";
+import { $ } from "@typespec/compiler/typekit";
+import { Output } from "@alloy-js/core";
 import { Atom } from "../../index.js";
+import type { Program, Value } from "@typespec/compiler";
+import { getProgram } from "../../test-host.js";
 
-let runner: TesterInstance;
-
-beforeEach(async () => {
-  runner = await Tester.createInstance();
+let program: Program;
+beforeAll(async () => {
+  program = await getProgram("");
 });
 
-function Wrapper(props: { children: Children }) {
-  const policy = createPythonNamePolicy();
-  return (
-    <Output program={runner.program} namePolicy={policy}>
-      <SourceFile path="test.py">{props.children}</SourceFile>
-    </Output>
-  );
-}
+it("renders strings", async () => {
+  const value = $(program).value.createString("test");
 
-it("renders a class declaration with properties", async () => {
-  const TestValue = await runner.compile(t.code`
-    ${t.value("test")}
-  `);
+  await testValueExpression(value, `"test"`);
+});
 
+/**
+ * Helper that renders a value expression and checks the output against the expected value.
+ */
+async function testValueExpression(value: Value, expected: string) {
   expect(
-    <Wrapper>
-      <Atom value={TestValue.test} />
-    </Wrapper>,
-  ).toRenderTo(`
-    "test"
-  `);
-});
+    <Output>
+      <SourceFile path="test.py">
+        <Atom value={value} />
+      </SourceFile>
+    </Output>,
+  ).toRenderTo(`${expected}`);
+}
