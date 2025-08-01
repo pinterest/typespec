@@ -18,6 +18,7 @@ import io.clientcore.core.http.models.HttpResponseException;
 import io.clientcore.core.http.models.RequestContext;
 import io.clientcore.core.http.models.Response;
 import io.clientcore.core.http.pipeline.HttpPipeline;
+import io.clientcore.core.instrumentation.Instrumentation;
 import java.lang.reflect.InvocationTargetException;
 
 /**
@@ -35,6 +36,11 @@ public final class PropertiesImpl {
     private final DatetimeClientImpl client;
 
     /**
+     * The instance of instrumentation to report telemetry.
+     */
+    private final Instrumentation instrumentation;
+
+    /**
      * Initializes an instance of PropertiesImpl.
      * 
      * @param client the instance of the service client containing this operation class.
@@ -42,6 +48,7 @@ public final class PropertiesImpl {
     PropertiesImpl(DatetimeClientImpl client) {
         this.service = PropertiesService.getNewInstance(client.getHttpPipeline());
         this.client = client;
+        this.instrumentation = client.getInstrumentation();
     }
 
     /**
@@ -120,23 +127,12 @@ public final class PropertiesImpl {
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<DefaultDatetimeProperty> defaultMethodWithResponse(DefaultDatetimeProperty body,
         RequestContext requestContext) {
-        final String contentType = "application/json";
-        final String accept = "application/json";
-        return service.defaultMethod(this.client.getEndpoint(), contentType, accept, body, requestContext);
-    }
-
-    /**
-     * The defaultMethod operation.
-     * 
-     * @param body The body parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return the response.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public DefaultDatetimeProperty defaultMethod(DefaultDatetimeProperty body) {
-        return defaultMethodWithResponse(body, RequestContext.none()).getValue();
+        return this.instrumentation.instrumentWithResponse("Encode.Datetime.Property.default", requestContext,
+            updatedContext -> {
+                final String contentType = "application/json";
+                final String accept = "application/json";
+                return service.defaultMethod(this.client.getEndpoint(), contentType, accept, body, updatedContext);
+            });
     }
 
     /**
@@ -152,23 +148,12 @@ public final class PropertiesImpl {
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Rfc3339DatetimeProperty> rfc3339WithResponse(Rfc3339DatetimeProperty body,
         RequestContext requestContext) {
-        final String contentType = "application/json";
-        final String accept = "application/json";
-        return service.rfc3339(this.client.getEndpoint(), contentType, accept, body, requestContext);
-    }
-
-    /**
-     * The rfc3339 operation.
-     * 
-     * @param body The body parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return the response.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public Rfc3339DatetimeProperty rfc3339(Rfc3339DatetimeProperty body) {
-        return rfc3339WithResponse(body, RequestContext.none()).getValue();
+        return this.instrumentation.instrumentWithResponse("Encode.Datetime.Property.rfc3339", requestContext,
+            updatedContext -> {
+                final String contentType = "application/json";
+                final String accept = "application/json";
+                return service.rfc3339(this.client.getEndpoint(), contentType, accept, body, updatedContext);
+            });
     }
 
     /**
@@ -184,23 +169,12 @@ public final class PropertiesImpl {
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Rfc7231DatetimeProperty> rfc7231WithResponse(Rfc7231DatetimeProperty body,
         RequestContext requestContext) {
-        final String contentType = "application/json";
-        final String accept = "application/json";
-        return service.rfc7231(this.client.getEndpoint(), contentType, accept, body, requestContext);
-    }
-
-    /**
-     * The rfc7231 operation.
-     * 
-     * @param body The body parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return the response.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public Rfc7231DatetimeProperty rfc7231(Rfc7231DatetimeProperty body) {
-        return rfc7231WithResponse(body, RequestContext.none()).getValue();
+        return this.instrumentation.instrumentWithResponse("Encode.Datetime.Property.rfc7231", requestContext,
+            updatedContext -> {
+                final String contentType = "application/json";
+                final String accept = "application/json";
+                return service.rfc7231(this.client.getEndpoint(), contentType, accept, body, updatedContext);
+            });
     }
 
     /**
@@ -216,23 +190,12 @@ public final class PropertiesImpl {
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<UnixTimestampDatetimeProperty> unixTimestampWithResponse(UnixTimestampDatetimeProperty body,
         RequestContext requestContext) {
-        final String contentType = "application/json";
-        final String accept = "application/json";
-        return service.unixTimestamp(this.client.getEndpoint(), contentType, accept, body, requestContext);
-    }
-
-    /**
-     * The unixTimestamp operation.
-     * 
-     * @param body The body parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return the response.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public UnixTimestampDatetimeProperty unixTimestamp(UnixTimestampDatetimeProperty body) {
-        return unixTimestampWithResponse(body, RequestContext.none()).getValue();
+        return this.instrumentation.instrumentWithResponse("Encode.Datetime.Property.unixTimestamp", requestContext,
+            updatedContext -> {
+                final String contentType = "application/json";
+                final String accept = "application/json";
+                return service.unixTimestamp(this.client.getEndpoint(), contentType, accept, body, updatedContext);
+            });
     }
 
     /**
@@ -248,22 +211,11 @@ public final class PropertiesImpl {
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<UnixTimestampArrayDatetimeProperty>
         unixTimestampArrayWithResponse(UnixTimestampArrayDatetimeProperty body, RequestContext requestContext) {
-        final String contentType = "application/json";
-        final String accept = "application/json";
-        return service.unixTimestampArray(this.client.getEndpoint(), contentType, accept, body, requestContext);
-    }
-
-    /**
-     * The unixTimestampArray operation.
-     * 
-     * @param body The body parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return the response.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public UnixTimestampArrayDatetimeProperty unixTimestampArray(UnixTimestampArrayDatetimeProperty body) {
-        return unixTimestampArrayWithResponse(body, RequestContext.none()).getValue();
+        return this.instrumentation.instrumentWithResponse("Encode.Datetime.Property.unixTimestampArray",
+            requestContext, updatedContext -> {
+                final String contentType = "application/json";
+                final String accept = "application/json";
+                return service.unixTimestampArray(this.client.getEndpoint(), contentType, accept, body, updatedContext);
+            });
     }
 }

@@ -12,6 +12,7 @@ import io.clientcore.core.http.models.HttpResponseException;
 import io.clientcore.core.http.models.RequestContext;
 import io.clientcore.core.http.models.Response;
 import io.clientcore.core.http.pipeline.HttpPipeline;
+import io.clientcore.core.instrumentation.Instrumentation;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +34,11 @@ public final class PathParametersPathExpansionExplodesImpl {
     private final RoutesClientImpl client;
 
     /**
+     * The instance of instrumentation to report telemetry.
+     */
+    private final Instrumentation instrumentation;
+
+    /**
      * Initializes an instance of PathParametersPathExpansionExplodesImpl.
      * 
      * @param client the instance of the service client containing this operation class.
@@ -40,6 +46,7 @@ public final class PathParametersPathExpansionExplodesImpl {
     PathParametersPathExpansionExplodesImpl(RoutesClientImpl client) {
         this.service = PathParametersPathExpansionExplodesService.getNewInstance(client.getHttpPipeline());
         this.client = client;
+        this.instrumentation = client.getInstrumentation();
     }
 
     /**
@@ -98,20 +105,10 @@ public final class PathParametersPathExpansionExplodesImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> primitiveWithResponse(String param, RequestContext requestContext) {
-        return service.primitive(this.client.getEndpoint(), param, requestContext);
-    }
-
-    /**
-     * The primitive operation.
-     * 
-     * @param param The param parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void primitive(String param) {
-        primitiveWithResponse(param, RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("Routes.PathParameters.PathExpansion.Explode.primitive",
+            requestContext, updatedContext -> {
+                return service.primitive(this.client.getEndpoint(), param, updatedContext);
+            });
     }
 
     /**
@@ -126,23 +123,13 @@ public final class PathParametersPathExpansionExplodesImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> arrayWithResponse(List<String> param, RequestContext requestContext) {
-        String paramConverted = param.stream()
-            .map(paramItemValue -> Objects.toString(paramItemValue, ""))
-            .collect(Collectors.joining(","));
-        return service.array(this.client.getEndpoint(), paramConverted, requestContext);
-    }
-
-    /**
-     * The array operation.
-     * 
-     * @param param The param parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void array(List<String> param) {
-        arrayWithResponse(param, RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("Routes.PathParameters.PathExpansion.Explode.array",
+            requestContext, updatedContext -> {
+                String paramConverted = param.stream()
+                    .map(paramItemValue -> Objects.toString(paramItemValue, ""))
+                    .collect(Collectors.joining(","));
+                return service.array(this.client.getEndpoint(), paramConverted, updatedContext);
+            });
     }
 
     /**
@@ -157,19 +144,9 @@ public final class PathParametersPathExpansionExplodesImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> recordWithResponse(Map<String, Integer> param, RequestContext requestContext) {
-        return service.record(this.client.getEndpoint(), param, requestContext);
-    }
-
-    /**
-     * The record operation.
-     * 
-     * @param param The param parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void record(Map<String, Integer> param) {
-        recordWithResponse(param, RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("Routes.PathParameters.PathExpansion.Explode.record",
+            requestContext, updatedContext -> {
+                return service.record(this.client.getEndpoint(), param, updatedContext);
+            });
     }
 }

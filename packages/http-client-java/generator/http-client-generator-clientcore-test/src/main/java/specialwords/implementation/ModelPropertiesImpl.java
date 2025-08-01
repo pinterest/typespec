@@ -13,6 +13,7 @@ import io.clientcore.core.http.models.HttpResponseException;
 import io.clientcore.core.http.models.RequestContext;
 import io.clientcore.core.http.models.Response;
 import io.clientcore.core.http.pipeline.HttpPipeline;
+import io.clientcore.core.instrumentation.Instrumentation;
 import java.lang.reflect.InvocationTargetException;
 import specialwords.modelproperties.SameAsModel;
 
@@ -31,6 +32,11 @@ public final class ModelPropertiesImpl {
     private final SpecialWordsClientImpl client;
 
     /**
+     * The instance of instrumentation to report telemetry.
+     */
+    private final Instrumentation instrumentation;
+
+    /**
      * Initializes an instance of ModelPropertiesImpl.
      * 
      * @param client the instance of the service client containing this operation class.
@@ -38,6 +44,7 @@ public final class ModelPropertiesImpl {
     ModelPropertiesImpl(SpecialWordsClientImpl client) {
         this.service = ModelPropertiesService.getNewInstance(client.getHttpPipeline());
         this.client = client;
+        this.instrumentation = client.getInstrumentation();
     }
 
     /**
@@ -80,20 +87,10 @@ public final class ModelPropertiesImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> sameAsModelWithResponse(SameAsModel body, RequestContext requestContext) {
-        final String contentType = "application/json";
-        return service.sameAsModel(this.client.getEndpoint(), contentType, body, requestContext);
-    }
-
-    /**
-     * The sameAsModel operation.
-     * 
-     * @param body The body parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void sameAsModel(SameAsModel body) {
-        sameAsModelWithResponse(body, RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.ModelProperties.sameAsModel", requestContext,
+            updatedContext -> {
+                final String contentType = "application/json";
+                return service.sameAsModel(this.client.getEndpoint(), contentType, body, updatedContext);
+            });
     }
 }

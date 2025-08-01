@@ -12,6 +12,7 @@ import io.clientcore.core.http.models.HttpResponseException;
 import io.clientcore.core.http.models.RequestContext;
 import io.clientcore.core.http.models.Response;
 import io.clientcore.core.http.pipeline.HttpPipeline;
+import io.clientcore.core.instrumentation.Instrumentation;
 import java.lang.reflect.InvocationTargetException;
 import parameters.bodyoptionality.BodyModel;
 
@@ -30,6 +31,11 @@ public final class OptionalExplicitsImpl {
     private final BodyOptionalityClientImpl client;
 
     /**
+     * The instance of instrumentation to report telemetry.
+     */
+    private final Instrumentation instrumentation;
+
+    /**
      * Initializes an instance of OptionalExplicitsImpl.
      * 
      * @param client the instance of the service client containing this operation class.
@@ -37,6 +43,7 @@ public final class OptionalExplicitsImpl {
     OptionalExplicitsImpl(BodyOptionalityClientImpl client) {
         this.service = OptionalExplicitsService.getNewInstance(client.getHttpPipeline());
         this.client = client;
+        this.instrumentation = client.getInstrumentation();
     }
 
     /**
@@ -87,32 +94,10 @@ public final class OptionalExplicitsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> setWithResponse(BodyModel body, RequestContext requestContext) {
-        return service.set(this.client.getEndpoint(), body, requestContext);
-    }
-
-    /**
-     * The set operation.
-     * 
-     * @param body The body parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void set(BodyModel body) {
-        setWithResponse(body, RequestContext.none());
-    }
-
-    /**
-     * The set operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void set() {
-        final BodyModel body = null;
-        setWithResponse(body, RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("Parameters.BodyOptionality.OptionalExplicit.set",
+            requestContext, updatedContext -> {
+                return service.set(this.client.getEndpoint(), body, updatedContext);
+            });
     }
 
     /**
@@ -127,31 +112,9 @@ public final class OptionalExplicitsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> omitWithResponse(BodyModel body, RequestContext requestContext) {
-        return service.omit(this.client.getEndpoint(), body, requestContext);
-    }
-
-    /**
-     * The omit operation.
-     * 
-     * @param body The body parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void omit(BodyModel body) {
-        omitWithResponse(body, RequestContext.none());
-    }
-
-    /**
-     * The omit operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void omit() {
-        final BodyModel body = null;
-        omitWithResponse(body, RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("Parameters.BodyOptionality.OptionalExplicit.omit",
+            requestContext, updatedContext -> {
+                return service.omit(this.client.getEndpoint(), body, updatedContext);
+            });
     }
 }

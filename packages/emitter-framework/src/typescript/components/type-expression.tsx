@@ -1,7 +1,7 @@
 import { For } from "@alloy-js/core";
 import { Reference, ValueExpression } from "@alloy-js/typescript";
-import { IntrinsicType, Model, Scalar, Type } from "@typespec/compiler";
-import { Typekit } from "@typespec/compiler/typekit";
+import type { IntrinsicType, Model, Scalar, Type } from "@typespec/compiler";
+import type { Typekit } from "@typespec/compiler/typekit";
 import "@typespec/http/experimental/typekit";
 import { useTsp } from "../../core/context/tsp-context.js";
 import { reportTypescriptDiagnostic } from "../../typescript/lib.js";
@@ -10,7 +10,7 @@ import { ArrayExpression } from "./array-expression.js";
 import { FunctionType } from "./function-type.js";
 import { InterfaceExpression } from "./interface-declaration.js";
 import { RecordExpression } from "./record-expression.js";
-import { UnionExpression } from "./union-expression.js";
+import { UnionExpression } from "./union/expression.js";
 
 export interface TypeExpressionProps {
   type: Type;

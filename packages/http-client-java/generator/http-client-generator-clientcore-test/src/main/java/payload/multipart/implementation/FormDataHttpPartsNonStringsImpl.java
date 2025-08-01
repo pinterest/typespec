@@ -13,6 +13,7 @@ import io.clientcore.core.http.models.HttpResponseException;
 import io.clientcore.core.http.models.RequestContext;
 import io.clientcore.core.http.models.Response;
 import io.clientcore.core.http.pipeline.HttpPipeline;
+import io.clientcore.core.instrumentation.Instrumentation;
 import java.lang.reflect.InvocationTargetException;
 import payload.multipart.formdata.httpparts.nonstring.FloatRequest;
 
@@ -31,6 +32,11 @@ public final class FormDataHttpPartsNonStringsImpl {
     private final MultiPartClientImpl client;
 
     /**
+     * The instance of instrumentation to report telemetry.
+     */
+    private final Instrumentation instrumentation;
+
+    /**
      * Initializes an instance of FormDataHttpPartsNonStringsImpl.
      * 
      * @param client the instance of the service client containing this operation class.
@@ -38,6 +44,7 @@ public final class FormDataHttpPartsNonStringsImpl {
     FormDataHttpPartsNonStringsImpl(MultiPartClientImpl client) {
         this.service = FormDataHttpPartsNonStringsService.getNewInstance(client.getHttpPipeline());
         this.client = client;
+        this.instrumentation = client.getInstrumentation();
     }
 
     /**
@@ -82,20 +89,10 @@ public final class FormDataHttpPartsNonStringsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> floatMethodWithResponse(FloatRequest body, RequestContext requestContext) {
-        final String contentType = "multipart/form-data";
-        return service.floatMethod(this.client.getEndpoint(), contentType, body, requestContext);
-    }
-
-    /**
-     * Test content-type: multipart/form-data for non string.
-     * 
-     * @param body The body parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void floatMethod(FloatRequest body) {
-        floatMethodWithResponse(body, RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("Payload.MultiPart.FormData.HttpParts.NonString.float",
+            requestContext, updatedContext -> {
+                final String contentType = "multipart/form-data";
+                return service.floatMethod(this.client.getEndpoint(), contentType, body, updatedContext);
+            });
     }
 }

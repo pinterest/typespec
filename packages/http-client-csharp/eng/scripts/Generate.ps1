@@ -23,7 +23,7 @@ if (-not $LaunchOnly) {
 
         Write-Host "Installing SampleTypeSpec plugins" -ForegroundColor Cyan
 
-        Invoke "npm install" $sampleDir
+        Invoke "npm install --force" $sampleDir
 
         Write-Host "Generating SampleTypeSpec using plugins" -ForegroundColor Cyan
 
@@ -83,6 +83,7 @@ $failingSpecs = @(
     Join-Path 'http' 'type' 'model' 'templated'
     Join-Path 'http' 'client' 'naming' # pending until https://github.com/microsoft/typespec/issues/5653 is resolved
     Join-Path 'http' 'streaming' 'jsonl'
+    Join-Path 'http' 'payload' 'pageable' # pending until https://github.com/microsoft/typespec/issues/8009 is resolved
 )
 
 $azureAllowSpecs = @(
@@ -210,7 +211,5 @@ if ($null -eq $filter) {
     }
 
     # Write the launch settings to the launchSettings.json file
-    $launchSettingsPath = Join-Path $solutionDir "Microsoft.TypeSpec.Generator" "src" "Properties" "launchSettings.json"
-    # Write the settings to JSON and normalize line endings to Unix style (LF)
-    $sortedLaunchSettings | ConvertTo-Json | ForEach-Object { ($_ -replace "`r`n", "`n") + "`n" } | Set-Content -NoNewLine $launchSettingsPath
+    Set-LaunchSettings $sortedLaunchSettings
 }

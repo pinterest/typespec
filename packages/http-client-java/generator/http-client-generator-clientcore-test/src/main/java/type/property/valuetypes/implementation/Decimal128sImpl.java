@@ -13,6 +13,7 @@ import io.clientcore.core.http.models.HttpResponseException;
 import io.clientcore.core.http.models.RequestContext;
 import io.clientcore.core.http.models.Response;
 import io.clientcore.core.http.pipeline.HttpPipeline;
+import io.clientcore.core.instrumentation.Instrumentation;
 import java.lang.reflect.InvocationTargetException;
 import type.property.valuetypes.Decimal128Property;
 
@@ -31,6 +32,11 @@ public final class Decimal128sImpl {
     private final ValueTypesClientImpl client;
 
     /**
+     * The instance of instrumentation to report telemetry.
+     */
+    private final Instrumentation instrumentation;
+
+    /**
      * Initializes an instance of Decimal128sImpl.
      * 
      * @param client the instance of the service client containing this operation class.
@@ -38,6 +44,7 @@ public final class Decimal128sImpl {
     Decimal128sImpl(ValueTypesClientImpl client) {
         this.service = Decimal128sService.getNewInstance(client.getHttpPipeline());
         this.client = client;
+        this.instrumentation = client.getInstrumentation();
     }
 
     /**
@@ -86,20 +93,11 @@ public final class Decimal128sImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Decimal128Property> getWithResponse(RequestContext requestContext) {
-        final String accept = "application/json";
-        return service.get(this.client.getEndpoint(), accept, requestContext);
-    }
-
-    /**
-     * Get call.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return call.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public Decimal128Property get() {
-        return getWithResponse(RequestContext.none()).getValue();
+        return this.instrumentation.instrumentWithResponse("Type.Property.ValueTypes.Decimal128.get", requestContext,
+            updatedContext -> {
+                final String accept = "application/json";
+                return service.get(this.client.getEndpoint(), accept, updatedContext);
+            });
     }
 
     /**
@@ -114,20 +112,10 @@ public final class Decimal128sImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> putWithResponse(Decimal128Property body, RequestContext requestContext) {
-        final String contentType = "application/json";
-        return service.put(this.client.getEndpoint(), contentType, body, requestContext);
-    }
-
-    /**
-     * Put operation.
-     * 
-     * @param body body.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void put(Decimal128Property body) {
-        putWithResponse(body, RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("Type.Property.ValueTypes.Decimal128.put", requestContext,
+            updatedContext -> {
+                final String contentType = "application/json";
+                return service.put(this.client.getEndpoint(), contentType, body, updatedContext);
+            });
     }
 }

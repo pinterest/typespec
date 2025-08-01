@@ -11,6 +11,7 @@ import io.clientcore.core.http.models.HttpResponseException;
 import io.clientcore.core.http.models.RequestContext;
 import io.clientcore.core.http.models.Response;
 import io.clientcore.core.http.pipeline.HttpPipeline;
+import io.clientcore.core.instrumentation.Instrumentation;
 import java.lang.reflect.InvocationTargetException;
 
 /**
@@ -28,6 +29,11 @@ public final class OperationsImpl {
     private final SpecialWordsClientImpl client;
 
     /**
+     * The instance of instrumentation to report telemetry.
+     */
+    private final Instrumentation instrumentation;
+
+    /**
      * Initializes an instance of OperationsImpl.
      * 
      * @param client the instance of the service client containing this operation class.
@@ -35,6 +41,7 @@ public final class OperationsImpl {
     OperationsImpl(SpecialWordsClientImpl client) {
         this.service = OperationsService.getNewInstance(client.getHttpPipeline());
         this.client = client;
+        this.instrumentation = client.getInstrumentation();
     }
 
     /**
@@ -297,18 +304,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> andWithResponse(RequestContext requestContext) {
-        return service.and(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The and operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void and() {
-        andWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.and", requestContext,
+            updatedContext -> {
+                return service.and(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -322,18 +321,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> asWithResponse(RequestContext requestContext) {
-        return service.as(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The as operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void as() {
-        asWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.as", requestContext,
+            updatedContext -> {
+                return service.as(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -347,18 +338,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> assertMethodWithResponse(RequestContext requestContext) {
-        return service.assertMethod(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The assertMethod operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void assertMethod() {
-        assertMethodWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.assert", requestContext,
+            updatedContext -> {
+                return service.assertMethod(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -372,18 +355,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> asyncWithResponse(RequestContext requestContext) {
-        return service.async(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The async operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void async() {
-        asyncWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.async", requestContext,
+            updatedContext -> {
+                return service.async(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -397,18 +372,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> awaitWithResponse(RequestContext requestContext) {
-        return service.await(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The await operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void await() {
-        awaitWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.await", requestContext,
+            updatedContext -> {
+                return service.await(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -422,18 +389,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> breakMethodWithResponse(RequestContext requestContext) {
-        return service.breakMethod(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The breakMethod operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void breakMethod() {
-        breakMethodWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.break", requestContext,
+            updatedContext -> {
+                return service.breakMethod(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -447,18 +406,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> classMethodWithResponse(RequestContext requestContext) {
-        return service.classMethod(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The classMethod operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void classMethod() {
-        classMethodWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.class", requestContext,
+            updatedContext -> {
+                return service.classMethod(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -472,18 +423,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> constructorWithResponse(RequestContext requestContext) {
-        return service.constructor(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The constructor operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void constructor() {
-        constructorWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.constructor", requestContext,
+            updatedContext -> {
+                return service.constructor(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -497,18 +440,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> continueMethodWithResponse(RequestContext requestContext) {
-        return service.continueMethod(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The continueMethod operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void continueMethod() {
-        continueMethodWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.continue", requestContext,
+            updatedContext -> {
+                return service.continueMethod(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -522,18 +457,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> defWithResponse(RequestContext requestContext) {
-        return service.def(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The def operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void def() {
-        defWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.def", requestContext,
+            updatedContext -> {
+                return service.def(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -547,18 +474,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> delWithResponse(RequestContext requestContext) {
-        return service.del(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The del operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void del() {
-        delWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.del", requestContext,
+            updatedContext -> {
+                return service.del(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -572,18 +491,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> elifWithResponse(RequestContext requestContext) {
-        return service.elif(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The elif operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void elif() {
-        elifWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.elif", requestContext,
+            updatedContext -> {
+                return service.elif(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -597,18 +508,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> elseMethodWithResponse(RequestContext requestContext) {
-        return service.elseMethod(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The elseMethod operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void elseMethod() {
-        elseMethodWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.else", requestContext,
+            updatedContext -> {
+                return service.elseMethod(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -622,18 +525,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> exceptWithResponse(RequestContext requestContext) {
-        return service.except(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The except operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void except() {
-        exceptWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.except", requestContext,
+            updatedContext -> {
+                return service.except(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -647,18 +542,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> execWithResponse(RequestContext requestContext) {
-        return service.exec(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The exec operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void exec() {
-        execWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.exec", requestContext,
+            updatedContext -> {
+                return service.exec(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -672,18 +559,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> finallyMethodWithResponse(RequestContext requestContext) {
-        return service.finallyMethod(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The finallyMethod operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void finallyMethod() {
-        finallyMethodWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.finally", requestContext,
+            updatedContext -> {
+                return service.finallyMethod(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -697,18 +576,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> forMethodWithResponse(RequestContext requestContext) {
-        return service.forMethod(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The forMethod operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void forMethod() {
-        forMethodWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.for", requestContext,
+            updatedContext -> {
+                return service.forMethod(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -722,18 +593,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> fromWithResponse(RequestContext requestContext) {
-        return service.from(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The from operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void from() {
-        fromWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.from", requestContext,
+            updatedContext -> {
+                return service.from(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -747,18 +610,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> globalWithResponse(RequestContext requestContext) {
-        return service.global(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The global operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void global() {
-        globalWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.global", requestContext,
+            updatedContext -> {
+                return service.global(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -772,18 +627,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> ifMethodWithResponse(RequestContext requestContext) {
-        return service.ifMethod(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The ifMethod operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void ifMethod() {
-        ifMethodWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.if", requestContext,
+            updatedContext -> {
+                return service.ifMethod(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -797,18 +644,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> importMethodWithResponse(RequestContext requestContext) {
-        return service.importMethod(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The importMethod operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void importMethod() {
-        importMethodWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.import", requestContext,
+            updatedContext -> {
+                return service.importMethod(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -822,18 +661,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> inWithResponse(RequestContext requestContext) {
-        return service.in(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The in operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void in() {
-        inWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.in", requestContext,
+            updatedContext -> {
+                return service.in(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -847,18 +678,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> isWithResponse(RequestContext requestContext) {
-        return service.is(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The is operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void is() {
-        isWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.is", requestContext,
+            updatedContext -> {
+                return service.is(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -872,18 +695,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> lambdaWithResponse(RequestContext requestContext) {
-        return service.lambda(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The lambda operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void lambda() {
-        lambdaWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.lambda", requestContext,
+            updatedContext -> {
+                return service.lambda(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -897,18 +712,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> notWithResponse(RequestContext requestContext) {
-        return service.not(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The not operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void not() {
-        notWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.not", requestContext,
+            updatedContext -> {
+                return service.not(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -922,18 +729,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> orWithResponse(RequestContext requestContext) {
-        return service.or(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The or operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void or() {
-        orWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.or", requestContext,
+            updatedContext -> {
+                return service.or(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -947,18 +746,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> passWithResponse(RequestContext requestContext) {
-        return service.pass(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The pass operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void pass() {
-        passWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.pass", requestContext,
+            updatedContext -> {
+                return service.pass(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -972,18 +763,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> raiseWithResponse(RequestContext requestContext) {
-        return service.raise(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The raise operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void raise() {
-        raiseWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.raise", requestContext,
+            updatedContext -> {
+                return service.raise(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -997,18 +780,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> returnMethodWithResponse(RequestContext requestContext) {
-        return service.returnMethod(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The returnMethod operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void returnMethod() {
-        returnMethodWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.return", requestContext,
+            updatedContext -> {
+                return service.returnMethod(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -1022,18 +797,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> tryMethodWithResponse(RequestContext requestContext) {
-        return service.tryMethod(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The tryMethod operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void tryMethod() {
-        tryMethodWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.try", requestContext,
+            updatedContext -> {
+                return service.tryMethod(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -1047,18 +814,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> whileMethodWithResponse(RequestContext requestContext) {
-        return service.whileMethod(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The whileMethod operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void whileMethod() {
-        whileMethodWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.while", requestContext,
+            updatedContext -> {
+                return service.whileMethod(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -1072,18 +831,10 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> withWithResponse(RequestContext requestContext) {
-        return service.with(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The with operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void with() {
-        withWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.with", requestContext,
+            updatedContext -> {
+                return service.with(this.client.getEndpoint(), updatedContext);
+            });
     }
 
     /**
@@ -1097,17 +848,9 @@ public final class OperationsImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> yieldWithResponse(RequestContext requestContext) {
-        return service.yield(this.client.getEndpoint(), requestContext);
-    }
-
-    /**
-     * The yield operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void yield() {
-        yieldWithResponse(RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("SpecialWords.Operations.yield", requestContext,
+            updatedContext -> {
+                return service.yield(this.client.getEndpoint(), updatedContext);
+            });
     }
 }
