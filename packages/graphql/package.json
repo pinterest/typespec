@@ -36,9 +36,6 @@
     "documents": "test/**/*.{js,ts}"
   },
   "dependencies": {
-    "@alloy-js/core": "^0.18.2",
-    "@alloy-js/typescript": "^0.18.0",
-    "@typespec/emitter-framework": "workspace:^",
     "graphql": "^16.9.0"
   },
   "scripts": {
@@ -56,13 +53,18 @@
     "!dist/test/**"
   ],
   "peerDependencies": {
+    "@alloy-js/core": "^0.19.0",
+    "@alloy-js/typescript": "^0.19.0",
     "@typespec/compiler": "workspace:~",
-    "@typespec/http": "workspace:~",
-    "@typespec/emitter-framework": "^0.5.0"
+    "@typespec/emitter-framework": "latest",
+    "@typespec/http": "workspace:~"
   },
   "devDependencies": {
+    "@alloy-js/core": "^0.19.0",
     "@alloy-js/rollup-plugin": "^0.1.0",
+    "@alloy-js/typescript": "^0.19.0",
     "@types/node": "~22.13.13",
+    "@typespec/emitter-framework": "latest",
     "rimraf": "~6.0.1",
     "source-map-support": "~0.5.21",
     "typescript": "~5.8.2",
