@@ -136,6 +136,24 @@ export const libDef = {
         default: paramMessage`Property \`${"property"}\` is incompatible with \`${"interface"}\`.`,
       },
     },
+    "unknown-scalar-encoding": {
+      severity: "warning",
+      messages: {
+        default: paramMessage`Encoding '${"encoding"}' is not supported for scalar type '${"scalarType"}'. Falling back to default mapping.`,
+      },
+    },
+    "unknown-scalar-type": {
+      severity: "warning",
+      messages: {
+        default: paramMessage`Unknown scalar type '${"scalarType"}'. Using 'Unknown' scalar as fallback.`,
+      },
+    },
+    "scalar-mapping-error": {
+      severity: "error",
+      messages: {
+        default: paramMessage`Error mapping scalar type '${"scalarType"}': ${"error"}. Using 'Unknown' scalar as fallback.`,
+      },
+    },
   },
   emitter: {
     options: EmitterOptionsSchema as JSONSchemaType<GraphQLEmitterOptions>,
