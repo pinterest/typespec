@@ -1,9 +1,11 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "useDefineForClassFields": true,
-    "rootDir": ".",
+    "jsx": "preserve",
+    "jsxImportSource": "@alloy-js/core",
     "outDir": "dist",
+    "rootDir": ".",
+    "useDefineForClassFields": true,
     "verbatimModuleSyntax": true
   },
   "include": ["src", "test"]
