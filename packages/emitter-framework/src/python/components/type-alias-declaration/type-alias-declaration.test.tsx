@@ -6,8 +6,8 @@ import { getProgram } from "../../test-host.js";
 import { getExternals } from "../../test-utils.js";
 import { TypeAliasDeclaration } from "./type-alias-declaration.jsx";
 
-describe("Typescript Type Alias Declaration", () => {
-  describe("Type Alias bound to Typespec Scalar", () => {
+describe("Python Declaration equivalency to Type Alias", () => {
+  describe("Type Alias Declaration bound to Typespec Scalar", () => {
     describe("Scalar extends utcDateTime", () => {
       it("creates a type alias declaration for a utcDateTime without encoding", async () => {
         const program = await getProgram(`
@@ -137,7 +137,7 @@ describe("Typescript Type Alias Declaration", () => {
         expect(
           <Output program={program} externals={getExternals()}>
             <SourceFile path="test.py">
-              <TypeAliasDeclaration export type={scalar} />
+              <TypeAliasDeclaration type={scalar} />
             </SourceFile>
           </Output>,
         ).toRenderTo(`
