@@ -1,11 +1,17 @@
 import { Output } from "@alloy-js/core";
 import { SourceFile } from "@alloy-js/python";
-import { Numeric, type EnumValue, type Model, type Namespace, type NullType, type NullValue, type NumericValue, type Program, type Value } from "@typespec/compiler";
+import {
+  type EnumValue,
+  type Model,
+  type Namespace,
+  type NullValue,
+  type Program,
+  type Value,
+} from "@typespec/compiler";
 import { $ } from "@typespec/compiler/typekit";
 import { assert, beforeAll, describe, expect, it } from "vitest";
 import { Atom } from "../../index.js";
 import { getProgram } from "../../test-host.js";
-import { dedent } from "@alloy-js/core/testing";
 
 let program: Program;
 beforeAll(async () => {
@@ -116,7 +122,10 @@ describe("ScalarValue", () => {
     const dateRange = (namespace as Namespace).models.get("DateRange");
     const minDate = dateRange?.properties.get("minDate")?.defaultValue;
     assert.exists(minDate, "unable to find minDate property");
-    await testValueExpression(minDate, `"datetime.datetime(2024, 2, 15, 18, 36, 3, tzinfo=datetime.timezone.utc)"`);
+    await testValueExpression(
+      minDate,
+      `"datetime.datetime(2024, 2, 15, 18, 36, 3, tzinfo=datetime.timezone.utc)"`,
+    );
   });
 
   it("Unsupported scalar constructor", async () => {
