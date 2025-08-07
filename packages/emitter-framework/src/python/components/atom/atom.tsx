@@ -1,5 +1,4 @@
 import { type Children } from "@alloy-js/core";
-import { Property } from "@alloy-js/csharp";
 import * as py from "@alloy-js/python";
 import { compilerAssert, type Value } from "@typespec/compiler";
 
@@ -27,7 +26,13 @@ export function Atom(props: Readonly<AtomProps>): Children {
     case "NumericValue":
       return <py.Atom jsValue={props.value.value.asNumber()} />;
     case "ArrayValue":
-      return <py.Atom jsValue={props.value.values.map((v) => <Atom value={v} />)} />;
+      return (
+        <py.Atom
+          jsValue={props.value.values.map((v) => (
+            <Atom value={v} />
+          ))}
+        />
+      );
     case "ScalarValue":
       compilerAssert(
         props.value.value.name === "fromISO",
@@ -43,22 +48,22 @@ export function Atom(props: Readonly<AtomProps>): Children {
       return <py.Atom jsValue={jsProperties} />;
     case "EnumValue":
       return <py.Atom jsValue={props.value.value.value ?? props.value.value.name} />;
-    }
   }
+}
 
-  /**
-   * Handles the conversion of ISO date strings to Python datetime objects.
-   * @param value the TypeSpec value containing the ISO string
-   * @returns {@link Children} representing the Python datetime expression
-   */
-  function handleISOStringValue(value: Value & { valueKind: "ScalarValue" }): Children {
-    const arg0 = value.value.args[0];
-    if (arg0.valueKind !== "StringValue") {
-      throw new Error("Expected arg0 to be a StringValue");
-    }
-    const isoString = arg0.value;
-    const date = new Date(isoString);
-    // Convert datetime to a module
-    const pyDatetime = `datetime.datetime(${date.getUTCFullYear()}, ${date.getUTCMonth() + 1}, ${date.getUTCDate()}, ${date.getUTCHours()}, ${date.getUTCMinutes()}, ${date.getUTCSeconds()}, tzinfo=datetime.timezone.utc)`;
-    return <py.Atom jsValue={pyDatetime} />;
+/**
+ * Handles the conversion of ISO date strings to Python datetime objects.
+ * @param value the TypeSpec value containing the ISO string
+ * @returns {@link Children} representing the Python datetime expression
+ */
+function handleISOStringValue(value: Value & { valueKind: "ScalarValue" }): Children {
+  const arg0 = value.value.args[0];
+  if (arg0.valueKind !== "StringValue") {
+    throw new Error("Expected arg0 to be a StringValue");
   }
+  const isoString = arg0.value;
+  const date = new Date(isoString);
+  // Convert datetime to a module
+  const pyDatetime = `datetime.datetime(${date.getUTCFullYear()}, ${date.getUTCMonth() + 1}, ${date.getUTCDate()}, ${date.getUTCHours()}, ${date.getUTCMinutes()}, ${date.getUTCSeconds()}, tzinfo=datetime.timezone.utc)`;
+  return <py.Atom jsValue={pyDatetime} />;
+}
