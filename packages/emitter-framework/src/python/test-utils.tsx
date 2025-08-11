@@ -1,8 +1,10 @@
 import { type Children, type OutputDirectory, render } from "@alloy-js/core";
 import { Output as StcOutput, SourceFile as StcSourceFile } from "@alloy-js/core/stc";
+import { createPythonNamePolicy, SourceFile } from "@alloy-js/python";
 import type { Program } from "@typespec/compiler";
 import { type ModelProperty } from "@typespec/compiler";
 import type { BasicTestRunner } from "@typespec/compiler/testing";
+import { Output } from "../../src/core/components/output.jsx";
 import { assert } from "vitest";
 import { datetimeModule, decimalModule, typingModule } from "./builtins.js";
 import { getProgram } from "./test-host.js";
@@ -25,6 +27,18 @@ export function assertFileContents(res: OutputDirectory, contents: string) {
   assert(testFile, "test.py file not rendered");
   assert("contents" in testFile, "test.py file does not have contents");
   assert.equal(testFile.contents, contents);
+}
+
+export function getOutput(
+  program: Program,
+  children: Children[],
+): Children {
+  const policy = createPythonNamePolicy();
+  return <Output program={program} externals={getExternals()} namePolicy={policy}>
+    <SourceFile path="test.py">
+      {children}
+    </SourceFile>
+  </Output>;
 }
 
 export function getExternals() {
