@@ -29,6 +29,10 @@ export function assertFileContents(res: OutputDirectory, contents: string) {
   assert.equal(testFile.contents, contents);
 }
 
+function getExternals() {
+  return [datetimeModule, decimalModule, typingModule];
+}
+
 export function getOutput(program: Program, children: Children[]): Children {
   const policy = createPythonNamePolicy();
   return (
@@ -38,16 +42,12 @@ export function getOutput(program: Program, children: Children[]): Children {
   );
 }
 
-export function getExternals() {
-  return [datetimeModule, decimalModule, typingModule];
-}
-
-export async function compileCode(code: string, runner: BasicTestRunner) {
+async function compileCode(code: string, runner: BasicTestRunner) {
   const { test } = await runner.compile(code);
   return test;
 }
 
-export async function compileCodeModelProperty(code: string, runner: BasicTestRunner) {
+async function compileCodeModelProperty(code: string, runner: BasicTestRunner) {
   const test = await compileCode(code, runner);
   return test as ModelProperty;
 }
