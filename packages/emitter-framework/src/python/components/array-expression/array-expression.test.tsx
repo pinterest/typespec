@@ -15,9 +15,7 @@ describe("map array expression to Python list", () => {
   it.each([["string[]", "list[str]"]])("%s => %s", async (tspType, pythonType) => {
     const type = await compileModelPropertyType(tspType, runner);
 
-    expect(
-      getOutput(runner.program, [<TypeExpression type={type} />])
-    ).toRenderTo(d`
+    expect(getOutput(runner.program, [<TypeExpression type={type} />])).toRenderTo(d`
       ${pythonType}
     `);
   });

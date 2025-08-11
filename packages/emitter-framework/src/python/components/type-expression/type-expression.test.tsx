@@ -1,4 +1,4 @@
-import { render, type Children } from "@alloy-js/core";
+import { render } from "@alloy-js/core";
 import { d } from "@alloy-js/core/testing";
 import type { BasicTestRunner } from "@typespec/compiler/testing";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -53,11 +53,9 @@ describe("map Typespec types to Python built-in types", () => {
     const type = await compileModelPropertyType(tspType, runner);
     const extraImportText = extraImport ? `${extraImport}\n\n` : "";
 
-    expect(
-      getOutput(runner.program, [<TypeExpression type={type} />])
-    ).toRenderTo(d`
+    expect(getOutput(runner.program, [<TypeExpression type={type} />])).toRenderTo(d`
       ${extraImportText}${pythonType}
-    `,);
+    `);
   });
 });
 
@@ -88,13 +86,11 @@ describe("map tuple to Python types", () => {
   it.each([["[int32, int32]", "Tuple[int, int]"]])("%s => %s", async (tspType, pythonType) => {
     const type = await compileModelPropertyType(tspType, runner);
 
-    expect(
-      getOutput(runner.program, [<TypeExpression type={type} />])
-    ).toRenderTo(d`
+    expect(getOutput(runner.program, [<TypeExpression type={type} />])).toRenderTo(d`
       from typing import Tuple
 
       ${pythonType}
-    `,);
+    `);
   });
 });
 
@@ -102,12 +98,10 @@ describe("correctly solves a ModelProperty to Python types", () => {
   it.each([["[int32, int32]", "Tuple[int, int]"]])("%s => %s", async (tspType, pythonType) => {
     const type = await compileModelProperty(tspType, runner);
 
-    expect(
-      getOutput(runner.program, [<TypeExpression type={type} />])
-    ).toRenderTo(d`
+    expect(getOutput(runner.program, [<TypeExpression type={type} />])).toRenderTo(d`
       from typing import Tuple
 
       ${pythonType}
-    `,);
+    `);
   });
 });

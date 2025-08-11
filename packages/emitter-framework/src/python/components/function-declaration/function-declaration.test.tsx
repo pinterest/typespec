@@ -16,8 +16,7 @@ describe("Typescript Function Declaration", () => {
         const [namespace] = program.resolveTypeReference("DemoService");
         const operation = Array.from((namespace as Namespace).operations.values())[0];
 
-        expect(getOutput(program, [<FunctionDeclaration type={operation} />])
-        ).toRenderTo(`
+        expect(getOutput(program, [<FunctionDeclaration type={operation} />])).toRenderTo(`
           def get_name(id: str) -> str:
             pass
           

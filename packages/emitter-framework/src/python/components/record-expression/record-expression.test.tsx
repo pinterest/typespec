@@ -15,11 +15,8 @@ describe("map Record to Python dict", () => {
   it.each([["Record<boolean>", "dict[str, bool]"]])("%s => %s", async (tspType, pythonType) => {
     const type = await compileModelPropertyType(tspType, runner);
 
-    expect(
-      getOutput(runner.program, [<TypeExpression type={type} />])
-    ).toRenderTo(d`
+    expect(getOutput(runner.program, [<TypeExpression type={type} />])).toRenderTo(d`
       ${pythonType}
     `);
   });
 });
-

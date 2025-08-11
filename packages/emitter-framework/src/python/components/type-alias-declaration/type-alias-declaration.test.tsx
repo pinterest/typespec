@@ -16,8 +16,7 @@ describe("Python Declaration equivalency to Type Alias", () => {
         const [namespace] = program.resolveTypeReference("DemoService");
         const scalar = Array.from((namespace as Namespace).scalars.values())[0];
 
-        expect(getOutput(program, [<TypeAliasDeclaration type={scalar} />])
-        ).toRenderTo(`
+        expect(getOutput(program, [<TypeAliasDeclaration type={scalar} />])).toRenderTo(`
           from datetime import datetime
 
           my_date: datetime`);
@@ -35,8 +34,7 @@ describe("Python Declaration equivalency to Type Alias", () => {
         const [namespace] = program.resolveTypeReference("DemoService");
         const scalar = Array.from((namespace as Namespace).scalars.values())[0];
 
-        expect(getOutput(program, [<TypeAliasDeclaration type={scalar} />])
-        ).toRenderTo(`
+        expect(getOutput(program, [<TypeAliasDeclaration type={scalar} />])).toRenderTo(`
           from datetime import datetime
 
           # Type to represent a date
@@ -55,8 +53,8 @@ describe("Python Declaration equivalency to Type Alias", () => {
         const [namespace] = program.resolveTypeReference("DemoService");
         const scalar = Array.from((namespace as Namespace).scalars.values())[0];
 
-        expect(getOutput(program, [<TypeAliasDeclaration doc={"Overridden Doc"} type={scalar} />])
-        ).toRenderTo(`
+        expect(getOutput(program, [<TypeAliasDeclaration doc={"Overridden Doc"} type={scalar} />]))
+          .toRenderTo(`
           from datetime import datetime
 
           # Overridden Doc
@@ -73,8 +71,7 @@ describe("Python Declaration equivalency to Type Alias", () => {
         const [namespace] = program.resolveTypeReference("DemoService");
         const scalar = Array.from((namespace as Namespace).scalars.values())[0];
 
-        expect(getOutput(program, [<TypeAliasDeclaration type={scalar} />])
-        ).toRenderTo(`
+        expect(getOutput(program, [<TypeAliasDeclaration type={scalar} />])).toRenderTo(`
           from datetime import datetime
 
           my_date: datetime`);
@@ -90,8 +87,7 @@ describe("Python Declaration equivalency to Type Alias", () => {
         const [namespace] = program.resolveTypeReference("DemoService");
         const scalar = Array.from((namespace as Namespace).scalars.values())[0];
 
-        expect(getOutput(program, [<TypeAliasDeclaration type={scalar} />])
-        ).toRenderTo(`
+        expect(getOutput(program, [<TypeAliasDeclaration type={scalar} />])).toRenderTo(`
           from datetime import datetime
 
           my_date: datetime`);
@@ -107,8 +103,7 @@ describe("Python Declaration equivalency to Type Alias", () => {
         const [namespace] = program.resolveTypeReference("DemoService");
         const scalar = Array.from((namespace as Namespace).scalars.values())[0];
 
-        expect(getOutput(program, [<TypeAliasDeclaration type={scalar} />])
-        ).toRenderTo(`
+        expect(getOutput(program, [<TypeAliasDeclaration type={scalar} />])).toRenderTo(`
           from datetime import datetime
 
           my_date: datetime`);
