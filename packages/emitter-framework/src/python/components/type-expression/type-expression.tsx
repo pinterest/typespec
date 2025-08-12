@@ -91,7 +91,7 @@ const intrinsicNameToPythonType = new Map<string, string | null>([
   ["integer", "int"], // Broad integer category, maps to `int`
   ["float", "float"], // Broad float category, maps to `float`
   ["decimal", "Decimal"], // Broad decimal category, maps to `Decimal`
-  ["decimal128", "Decimal"], // We could use numpy.float128 for true 128-bit precision, but Python's Decimal is more common
+  ["decimal128", "Decimal"], // 128-bit decimal category, maps to `Decimal`
   ["int64", "int"], // Use `int` to handle large 64-bit integers
   ["int32", "int"], // 32-bit integer fits in Python's `int`
   ["int16", "int"], // 16-bit integer
@@ -138,7 +138,6 @@ function getScalarIntrinsicExpression($: Typekit, type: Scalar | IntrinsicType):
           break;
       }
     }
-
     intrinsicName = $.scalar.getStdBase(type)?.name ?? "";
   } else {
     intrinsicName = type.name;
