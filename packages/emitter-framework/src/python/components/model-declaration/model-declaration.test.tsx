@@ -33,12 +33,12 @@ describe("Python Model Declaration", () => {
         ))}
       </List>
     ])).toRenderTo(`
-      class Foo:
-        """
-        This is a test with multiple lines
-        """
-        known_prop
-      
+          class Foo:
+            """
+            This is a test with multiple lines
+            """
+            known_prop
+          
       `,
     );
   });
@@ -227,7 +227,7 @@ describe("Python Model Declaration", () => {
       
       `);
   });
-  it("creates a model that extends an spread model", async () => {
+  it("creates a model that extends a spread model", async () => {
     const program = await getProgram(`
       namespace DemoService;
 

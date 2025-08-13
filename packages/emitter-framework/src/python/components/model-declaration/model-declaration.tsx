@@ -1,10 +1,13 @@
 import * as py from "@alloy-js/python";
-import { isNeverType, type Model, type ModelProperty, type Operation, type RekeyableMap } from "@typespec/compiler";
+import { isNeverType, type Interface, type Model, type ModelProperty, type Operation, type RekeyableMap } from "@typespec/compiler";
 import { useTsp } from "../../../core/context/tsp-context.js";
 import { reportDiagnostic } from "../../../lib.js";
-import { For, Prose, type Children } from "@alloy-js/core";
+import { For, mapJoin, Prose, Show, type Children } from "@alloy-js/core";
 import { createRekeyableMap } from "@typespec/compiler/utils";
+import { declarationRefkeys, efRefkey } from "../../utils/refkey.js";
 import { getHttpPart } from "@typespec/http";
+import type { Typekit } from "@typespec/compiler/typekit";
+import { TypeExpression } from "../type-expression/type-expression.jsx";
 
 
 export interface ModelDeclarationProps extends Omit<py.ClassDeclarationProps, "name"> {
@@ -74,14 +77,61 @@ export function ModelDeclaration(props: ModelDeclarationProps) {
     );
   }
 
+  const refkeys = declarationRefkeys(props.refkey, props.type);
+  const basesType = props.bases ?? getExtendsType($, props.type);
+
   return (
     <py.ClassDeclaration
       doc={docElement}
       name={name}
+      bases={basesType ? [basesType] : undefined}
+      refkey={refkeys}
     >
       {modelTypeMembers}
       {props.children}
     </py.ClassDeclaration>
+  );
+}
+
+function getExtendsType($: Typekit, type: Model | Interface): Children | undefined {
+  if (!$.model.is(type)) {
+    return undefined;
+  }
+
+  const extending: Children[] = [];
+
+  if (type.baseModel) {
+    if ($.array.is(type.baseModel)) {
+      extending.push(<TypeExpression type={type.baseModel} />);
+    } else if ($.record.is(type.baseModel)) {
+      // Here we are in the additional properties land.
+      // Instead of extending we need to create an envelope property
+      // do nothing here.
+    } else {
+      extending.push(efRefkey(type.baseModel));
+    }
+  }
+
+  const indexType = $.model.getIndexType(type);
+  if (indexType) {
+    // When extending a record we need to override the element type to be unknown to avoid type errors
+    if ($.record.is(indexType)) {
+      // Here we are in the additional properties land.
+      // Instead of extending we need to create an envelope property
+      // do nothing here.
+    } else {
+      extending.push(<TypeExpression type={indexType} />);
+    }
+  }
+
+  if (extending.length === 0) {
+    return undefined;
+  }
+
+  return mapJoin(
+    () => extending,
+    (ext) => ext,
+    { joiner: "," },
   );
 }
 
@@ -94,6 +144,8 @@ export interface ModelMemberProps {
 export function ModelMember(props: ModelMemberProps) {
   const { $ } = useTsp();
   const doc = props.doc ?? $.type.getDoc(props.type);
+  const namePolicy = py.usePythonNamePolicy();
+  const name = namePolicy.getName(props.type.name, "class-member");
 
   if ($.modelProperty.is(props.type)) {
     if (isNeverType(props.type.type)) {
@@ -109,7 +161,7 @@ export function ModelMember(props: ModelMemberProps) {
     return (
       <py.VariableDeclaration
         doc={doc}
-        name={props.type.name}
+        name={name}
         omitNone={true}
       />
     );

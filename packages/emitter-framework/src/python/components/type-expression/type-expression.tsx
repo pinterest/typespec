@@ -65,8 +65,7 @@ export function TypeExpression(props: TypeExpressionProps) {
         return <TypeExpression type={partType} />;
       }
 
-    // TODO: Models will be implemented separately
-    // return <InterfaceExpression type={type} />;
+      // return <InterfaceExpression type={type} />;
     // TODO: Functions will be implemented separately
     // case "Operation":
     //   return <FunctionType type={type} />;
