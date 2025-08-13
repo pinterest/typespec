@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { Output } from "../../../core/components/output.jsx";
 import { getProgram } from "../../test-host.js";
 import { ModelDeclaration } from "../../index.jsx";
+import { getOutput } from "../../test-utils.js";
 import { For, List } from "@alloy-js/core";
 
 describe("Python Model Declaration", () => {
@@ -23,30 +24,25 @@ describe("Python Model Declaration", () => {
     const [namespace] = program.resolveTypeReference("DemoService");
     const models = Array.from((namespace as Namespace).models.values());
 
-    expect(
-      <Output program={program}>
-        <SourceFile path="test.py">
-          <List hardline>
-            {models.map((model) => (
-              <ModelDeclaration
-                type={model}
-              />
-            ))}
-          </List>
-        </SourceFile>
-      </Output>,
-    ).toRenderTo(
-      `
-          class Foo:
-            """
-            This is a test with multiple lines
-            """
-            known_prop
-          
-          `,
+    expect(getOutput(program, [
+      <List hardline>
+        {models.map((model) => (
+          <ModelDeclaration
+            type={model}
+          />
+        ))}
+      </List>
+    ])).toRenderTo(`
+      class Foo:
+        """
+        This is a test with multiple lines
+        """
+        known_prop
+      
+      `,
     );
   });
-  it("declares an interface with multi line docs, explicit docs passed", async () => {
+  it("declares an interface with multi line docs, docs overridden", async () => {
     const program = await getProgram(`
         namespace DemoService;
 
@@ -62,28 +58,23 @@ describe("Python Model Declaration", () => {
     const [namespace] = program.resolveTypeReference("DemoService");
     const models = Array.from((namespace as Namespace).models.values());
 
-    expect(
-      <Output program={program}>
-        <SourceFile path="test.py">
-          <List hardline>
-            {models.map((model) => (
-              <ModelDeclaration
-                type={model}
-                doc={["This is an overridden doc comment\nwith multiple lines"]}
-              />
-            ))}
-          </List>
-        </SourceFile>
-      </Output>,
-    ).toRenderTo(
-      `
-          class Foo:
-            """
-            This is an overridden doc comment with multiple lines
-            """
-            known_prop
-          
-          `,
+    expect(getOutput(program, [
+      <List hardline>
+        {models.map((model) => (
+          <ModelDeclaration
+            type={model}
+            doc={["This is an overridden doc comment\nwith multiple lines"]}
+          />
+        ))}
+      </List>
+    ])).toRenderTo(`
+      class Foo:
+        """
+        This is an overridden doc comment with multiple lines
+        """
+        known_prop
+      
+      `,
     );
   });
   it("declares a model with @doc", async () => {
@@ -99,25 +90,20 @@ describe("Python Model Declaration", () => {
     const [namespace] = program.resolveTypeReference("DemoService");
     const models = Array.from((namespace as Namespace).models.values());
 
-    expect(
-      <Output program={program}>
-        <SourceFile path="test.py">
-          <List hardline>
-            {models.map((model) => (
-              <ModelDeclaration type={model} />
-            ))}
-          </List>
-        </SourceFile>
-      </Output>,
-    ).toRenderTo(
-      `
-          class Foo:
-            """
-            This is a test
-            """
-            known_prop
-          
-          `,
+    expect(getOutput(program, [
+      <List hardline>
+        {models.map((model) => (
+          <ModelDeclaration type={model} />
+        ))}
+      </List>
+    ])).toRenderTo(`
+      class Foo:
+        """
+        This is a test
+        """
+        known_prop
+      
+      `,
     );
   });
   it("declares a model with a property that has doc", async () => {
@@ -136,26 +122,21 @@ describe("Python Model Declaration", () => {
     const [namespace] = program.resolveTypeReference("DemoService");
     const models = Array.from((namespace as Namespace).models.values());
 
-    expect(
-      <Output program={program}>
-        <SourceFile path="test.py">
-          <List hardline>
-            {models.map((model) => (
+    expect(getOutput(program, [
+      <List hardline>
+        {models.map((model) => (
               <ModelDeclaration type={model} />
-            ))}
-          </List>
-        </SourceFile>
-      </Output>,
-    ).toRenderTo(
-      `
-          class Foo:
-            """
-            This is a test
-            """
-            # This is a known property
-            known_prop
-          
-          `,
+        ))}
+      </List>
+    ])).toRenderTo(`
+      class Foo:
+        """
+        This is a test
+        """
+        # This is a known property
+        known_prop
+      
+      `,
     );
   });
   it("creates a model that extends a model for Record spread", async () => {
@@ -171,22 +152,18 @@ describe("Python Model Declaration", () => {
     const [namespace] = program.resolveTypeReference("DemoService");
     const models = Array.from((namespace as Namespace).models.values());
 
-    expect(
-      <Output program={program}>
-        <SourceFile path="test.py">
-          <List hardline>
-            {models.map((model) => (
+    expect(getOutput(program, [
+      <List hardline>
+        {models.map((model) => (
               <ModelDeclaration type={model} />
-            ))}
-          </List>
-        </SourceFile>
-      </Output>,
-    ).toRenderTo(`
-        class DifferentSpreadModelRecord:
-          known_prop
-          additional_properties
-        
-        `);
+        ))}
+      </List>
+    ])).toRenderTo(`
+      class DifferentSpreadModelRecord:
+        known_prop
+        additional_properties
+      
+      `);
   });
   it("creates a model for a model that 'is' an array", async () => {
     const program = await getProgram(`
@@ -198,16 +175,12 @@ describe("Python Model Declaration", () => {
     const [namespace] = program.resolveTypeReference("DemoService");
     const models = (namespace as Namespace).models;
 
-    expect(
-      <Output program={program}>
-        <SourceFile path="test.py">
-          <For each={Array.from(models.values())} hardline>
-            {(model) => <ModelDeclaration type={model} />}
-          </For>
-        </SourceFile>
-      </Output>,
-    ).toRenderTo(`
-      class Foo:
+    expect(getOutput(program, [
+      <For each={Array.from(models.values())} hardline>
+        {(model) => <ModelDeclaration type={model} />}
+      </For>
+    ])).toRenderTo(`
+      class Foo(list[str]):
         pass
 
       `);
@@ -222,15 +195,11 @@ describe("Python Model Declaration", () => {
     const [namespace] = program.resolveTypeReference("DemoService");
     const models = (namespace as Namespace).models;
 
-    expect(
-      <Output program={program}>
-        <SourceFile path="test.py">
-          <For each={Array.from(models.values())} hardline>
-            {(model) => <ModelDeclaration type={model} />}
-          </For>
-        </SourceFile>
-      </Output>,
-    ).toRenderTo(`
+    expect(getOutput(program, [
+      <For each={Array.from(models.values())} hardline>
+        {(model) => <ModelDeclaration type={model} />}
+      </For>
+    ])).toRenderTo(`
       class Foo:
         additional_properties
       
@@ -248,15 +217,11 @@ describe("Python Model Declaration", () => {
     const [namespace] = program.resolveTypeReference("DemoService");
     const models = (namespace as Namespace).models;
 
-    expect(
-      <Output program={program}>
-        <SourceFile path="test.ts">
-          <For each={Array.from(models.values())} hardline>
-            {(model) => <ModelDeclaration type={model} />}
-          </For>
-        </SourceFile>
-      </Output>,
-    ).toRenderTo(`
+    expect(getOutput(program, [
+      <For each={Array.from(models.values())} hardline>
+        {(model) => <ModelDeclaration type={model} />}
+      </For>
+    ])).toRenderTo(`
       class Foo:
         additional_properties
       
@@ -283,15 +248,11 @@ describe("Python Model Declaration", () => {
     const [namespace] = program.resolveTypeReference("DemoService");
     const models = (namespace as Namespace).models;
 
-    expect(
-      <Output program={program}>
-        <SourceFile path="test.py">
-          <For each={Array.from(models.values())} hardline>
-            {(model) => <ModelDeclaration type={model} />}
-          </For>
-        </SourceFile>
-      </Output>,
-    ).toRenderTo(`
+    expect(getOutput(program, [
+      <For each={Array.from(models.values())} hardline>
+        {(model) => <ModelDeclaration type={model} />}
+      </For>
+    ])).toRenderTo(`
       class ModelForRecord:
         state
 
@@ -302,6 +263,7 @@ describe("Python Model Declaration", () => {
       class DifferentSpreadModelDerived(DifferentSpreadModelRecord):
         derived_prop
         additional_properties
+      
       `);
   });
 });
