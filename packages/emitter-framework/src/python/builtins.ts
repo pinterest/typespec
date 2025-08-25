@@ -11,6 +11,13 @@ export const datetimeModule = createModule({
   },
 });
 
+export const dataclassesModule = createModule({
+  name: "dataclasses",
+  descriptor: {
+    ".": ["dataclass", "field"],
+  },
+});
+
 export const decimalModule = createModule({
   name: "decimal",
   descriptor: {
@@ -22,5 +29,12 @@ export const typingModule = createModule({
   name: "typing",
   descriptor: {
     ".": ["Any", "NoReturn", "Tuple"],
+  },
+});
+
+export const typingExtensionsModule = createModule({
+  name: "typing_extensions",
+  descriptor: {
+    ".": ["TypedDict"],
   },
 });

@@ -62,7 +62,7 @@
   "peerDependencies": {
     "@alloy-js/core": "^0.19.0",
     "@alloy-js/csharp": "^0.19.0",
-    "@alloy-js/python": "^0.0.1",
+    "@alloy-js/python": "0.1.0-dev.3",
     "@alloy-js/typescript": "^0.19.0",
     "@typespec/compiler": "workspace:^",
     "@typespec/http": "workspace:^",
@@ -71,7 +71,7 @@
   "devDependencies": {
     "@alloy-js/cli": "^0.19.0",
     "@alloy-js/core": "^0.19.0",
-    "@alloy-js/python": "^0.0.1",
+    "@alloy-js/python": "0.1.0-dev.3",
     "@alloy-js/rollup-plugin": "^0.1.0",
     "@alloy-js/typescript": "^0.19.0",
     "@typespec/compiler": "workspace:^",
@@ -88,5 +88,8 @@
     "typescript": "~5.8.2",
     "vitest": "^3.1.2",
     "web-tree-sitter": "^0.25.4"
+  },
+  "overrides": {
+    "@alloy-js/python": "0.1.0-dev.3"
   }
 }
