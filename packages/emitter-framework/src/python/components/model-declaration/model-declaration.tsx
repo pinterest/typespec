@@ -2,18 +2,21 @@ import { code, For, mapJoin, Prose, Show, type Children } from "@alloy-js/core";
 import * as py from "@alloy-js/python";
 import {
   isNeverType,
+  type BooleanValue,
   type Interface,
   type Model,
   type ModelProperty,
+  type NumericValue,
   type Operation,
   type RekeyableMap,
+  type StringValue,
 } from "@typespec/compiler";
 import type { Typekit } from "@typespec/compiler/typekit";
 import { createRekeyableMap } from "@typespec/compiler/utils";
 import { getHttpPart } from "@typespec/http";
 import { useTsp } from "../../../core/context/tsp-context.js";
 import { reportDiagnostic } from "../../../lib.js";
-import { dataclassesModule, typingExtensionsModule } from "../../builtins.js";
+import { dataclassesModule, typingExtensionsModule, typingModule } from "../../builtins.js";
 import { declarationRefkeys, efRefkey } from "../../utils/refkey.js";
 import { Atom } from "../atom/atom.jsx";
 import { TypeExpression } from "../type-expression/type-expression.jsx";
@@ -43,27 +46,13 @@ export function ModelDeclaration(props: ModelDeclarationProps) {
 
   let typeMembers: RekeyableMap<string, ModelProperty | Operation> | undefined;
   if ($.model.is(props.type)) {
+    // Model
     typeMembers = $.model.getProperties(props.type);
-    const additionalProperties = $.model.getAdditionalPropertiesRecord(props.type);
-    const indexType = $.model.getIndexType(props.type);
-    const isNotRecord = !indexType || (indexType && !$.record.is(indexType));
-    const doesntExtendsRecord = props.type.baseModel && !$.record.is(props.type.baseModel);
-    if (additionalProperties && doesntExtendsRecord && isNotRecord) {
-      typeMembers.set(
-        "additionalProperties",
-        $.modelProperty.create({
-          name: "additionalProperties",
-          optional: true,
-          type: additionalProperties,
-        }),
-      );
-    }
-  } else if ("operations" in props.type) {
+  } else {
+    // Interface
     typeMembers = createRekeyableMap(
       (props.type as { operations: Map<string, Operation> }).operations,
     );
-  } else {
-    typeMembers = createRekeyableMap(new Map());
   }
 
   // Ensure that we have members to render, otherwise skip rendering the ender property.
@@ -74,7 +63,6 @@ export function ModelDeclaration(props: ModelDeclarationProps) {
     return true;
   });
   let modelTypeMembers = null;
-  // See how to check for field optionality
   if (validTypeMembers.length > 0) {
     modelTypeMembers = (
       <For each={validTypeMembers} line>
@@ -89,10 +77,7 @@ export function ModelDeclaration(props: ModelDeclarationProps) {
   const basesType = props.bases ?? getExtendsType($, props.type);
   // Assign dataclass if TypedDict isn't one of the basesType
   let dataclass: any = null;
-
-  const basesTypeStr = basesType?.toString() ?? "";
-  const hasTypedDict = basesTypeStr.includes("TypedDict");
-  if ($.model.is(props.type) && !hasTypedDict) {
+  if ($.model.is(props.type)) {
     dataclass = dataclassesModule["."]["dataclass"];
   }
 
@@ -172,6 +157,9 @@ export function ModelMember(props: ModelMemberProps) {
     }
 
     let unpackedType = props.type.type;
+    let unionType = undefined;
+    let otherProps = {};
+
     const part = getHttpPart($.program, props.type.type);
     if (part) {
       unpackedType = part.type;
@@ -179,35 +167,51 @@ export function ModelMember(props: ModelMemberProps) {
     let elements = [];
     if (unpackedType.kind === "Union") {
       elements = (unpackedType as any).options.map((opt: any) => {
-        console.log(opt.name, opt.kind);
         return <TypeExpression type={opt} noReference />;
       });
-    } else if (unpackedType.kind === "Scalar") {
+    } else if ($.literal.is(unpackedType)) {
+      const typingElements = <TypeExpression type={unpackedType} noReference />;
+      elements = [code`${typingModule["."]["Literal"]}[${typingElements}]`];
+    } else {
       elements = [<TypeExpression type={unpackedType} noReference />];
     }
-    const unionType = <py.UnionTypeExpression>{elements}</py.UnionTypeExpression>;
-    let otherProps = {};
-    if (props.optional || props.type.optional) {
-      // Optional field with no default value, use a default_factory to object
-      // as we can't represent a non-required field in Python's dataclasses
-      let fieldValue = code`default_factory=object`;
-      if (props.type.defaultValue) {
-        // Optional field with default value, default to value
-        fieldValue = code`default=${(<Atom value={props.type.defaultValue} />)}`;
-      }
-      // If one of the union types is null, set default to None
-      if (
-        unpackedType.kind === "Union" &&
-        Array.isArray((unpackedType as any).options) &&
-        (unpackedType as any).options.some(
-          (opt: any) => opt && opt.kind === "Intrinsic" && opt.name === "null",
-        )
-      ) {
-        fieldValue = code`default=None`;
+    unionType = <py.UnionTypeExpression>{elements}</py.UnionTypeExpression>;
+
+    if ($.literal.is(unpackedType)) {
+      let value: StringValue | NumericValue | BooleanValue;
+      if (typeof unpackedType.value === "string") {
+        value = $.value.createString(unpackedType.value);
+      } else if (typeof unpackedType.value === "number") {
+        value = $.value.createNumeric(unpackedType.value);
+      } else {
+        value = $.value.createBoolean(unpackedType.value);
       }
       otherProps = {
-        initializer: code`${dataclassesModule["."]["field"]}(${fieldValue})`,
+        initializer: code`${(<Atom value={value} />)}`,
       };
+    } else {
+      if (props.optional || props.type.optional) {
+        // Optional field with no default value, use a default_factory to object
+        // as we can't represent a non-required field in Python's dataclasses
+        let fieldValue = code`default_factory=object`;
+        if (props.type.defaultValue) {
+          // Optional field with default value, default to value
+          fieldValue = code`default=${(<Atom value={props.type.defaultValue} />)}`;
+        }
+        // If one of the union types is null, set default to None
+        if (
+          unpackedType.kind === "Union" &&
+          Array.isArray((unpackedType as any).options) &&
+          (unpackedType as any).options.some(
+            (opt: any) => opt && opt.kind === "Intrinsic" && opt.name === "null",
+          )
+        ) {
+          fieldValue = code`default=None`;
+        }
+        otherProps = {
+          initializer: code`${dataclassesModule["."]["field"]}(${fieldValue})`,
+        };
+      }
     }
 
     return (
