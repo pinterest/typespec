@@ -1,7 +1,7 @@
 import {
-  NoTarget,
   getNamespaceFullName,
   getTypeName,
+  isTemplateDeclaration,
   isTemplateInstance,
   isType,
   navigateProgram,
@@ -33,6 +33,14 @@ import {
   getVersions,
 } from "./versioning.js";
 
+const relationCacheKey = Symbol.for("TypeSpec.Versioning.NamespaceRelationCache");
+
+export function getCachedNamespaceDependencies(
+  program: Program,
+): Map<Namespace | undefined, Set<Namespace>> | undefined {
+  return (program as any)[relationCacheKey];
+}
+
 export function $onValidate(program: Program) {
   const namespaceDependencies = new Map<Namespace | undefined, Set<Namespace>>();
 
@@ -46,6 +54,7 @@ export function $onValidate(program: Program) {
     }
     namespaceDependencies.set(source, set);
   }
+  (program as any)[relationCacheKey] = namespaceDependencies;
 
   navigateProgram(
     program,
@@ -53,6 +62,10 @@ export function $onValidate(program: Program) {
       model: (model) => {
         // If this is an instantiated type we don't want to keep the mapping.
         if (isTemplateInstance(model)) {
+          return;
+        }
+        // Decorators are not run on declaration so can't validate reference
+        if (isTemplateDeclaration(model)) {
           return;
         }
         addNamespaceDependency(model.namespace, model.sourceModel);
@@ -86,6 +99,10 @@ export function $onValidate(program: Program) {
         if (isTemplateInstance(union)) {
           return;
         }
+        // Decorators are not run on declaration so can't validate reference
+        if (isTemplateDeclaration(union)) {
+          return;
+        }
         if (union.namespace === undefined) {
           return;
         }
@@ -97,6 +114,10 @@ export function $onValidate(program: Program) {
       operation: (op) => {
         // If this is an instantiated type we don't want to keep the mapping.
         if (isTemplateInstance(op)) {
+          return;
+        }
+        // Decorators are not run on declaration so can't validate reference
+        if (isTemplateDeclaration(op)) {
           return;
         }
 
@@ -129,6 +150,10 @@ export function $onValidate(program: Program) {
         }
       },
       interface: (iface) => {
+        // Decorators are not run on declaration so can't validate reference
+        if (isTemplateDeclaration(iface)) {
+          return;
+        }
         for (const source of iface.sourceInterfaces) {
           validateReference(program, iface, source);
         }
@@ -147,12 +172,6 @@ export function $onValidate(program: Program) {
             if (usingUseDependency) {
               reportDiagnostic(program, {
                 code: "incompatible-versioned-namespace-use-dependency",
-                target: namespace,
-              });
-            } else if (!(value instanceof Map)) {
-              reportDiagnostic(program, {
-                code: "versioned-dependency-record-not-mapping",
-                format: { dependency: getNamespaceFullName(dependencyNs) },
                 target: namespace,
               });
             }
@@ -191,7 +210,6 @@ export function $onValidate(program: Program) {
     },
     { includeTemplateDeclaration: true },
   );
-  validateVersionedNamespaceUsage(program, namespaceDependencies);
 }
 
 /**
@@ -403,34 +421,6 @@ function validateVersionEnumValuesUnique(program: Program, namespace: Namespace)
   }
 }
 
-function validateVersionedNamespaceUsage(
-  program: Program,
-  namespaceDependencies: Map<Namespace | undefined, Set<Namespace>>,
-) {
-  for (const [source, targets] of namespaceDependencies.entries()) {
-    const dependencies = source && getVersionDependencies(program, source);
-    for (const target of targets) {
-      const targetVersionedNamespace = findVersionedNamespace(program, target);
-      const sourceVersionedNamespace = source && findVersionedNamespace(program, source);
-      if (
-        targetVersionedNamespace !== undefined &&
-        !(source && (isSubNamespace(target, source) || isSubNamespace(source, target))) &&
-        sourceVersionedNamespace !== targetVersionedNamespace &&
-        dependencies?.get(targetVersionedNamespace) === undefined
-      ) {
-        reportDiagnostic(program, {
-          code: "using-versioned-library",
-          format: {
-            sourceNs: source ? getNamespaceFullName(source) : "global",
-            targetNs: getNamespaceFullName(target),
-          },
-          target: source ?? NoTarget,
-        });
-      }
-    }
-  }
-}
-
 function validateVersionedPropertyNames(program: Program, source: Type) {
   const allVersions = getAllVersions(program, source);
   if (allVersions === undefined) return;
@@ -477,19 +467,6 @@ function validateVersionedPropertyNames(program: Program, source: Type) {
       }
     }
   }
-}
-
-function isSubNamespace(parent: Namespace, child: Namespace): boolean {
-  let current: Namespace | undefined = child;
-
-  while (current && current.name !== "") {
-    if (current === parent) {
-      return true;
-    }
-    current = current.namespace;
-  }
-
-  return false;
 }
 
 function validateMadeOptional(program: Program, target: Type) {

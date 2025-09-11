@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+using System.Collections.Generic;
 using Microsoft.TypeSpec.Generator.Expressions;
 using Microsoft.TypeSpec.Generator.Primitives;
 using Microsoft.TypeSpec.Generator.Statements;
@@ -34,7 +35,11 @@ namespace Microsoft.TypeSpec.Generator.Providers
         /// <param name="bodyStatements">The method body.</param>
         /// <param name="enclosingType">The enclosing type.</param>
         /// <param name="xmlDocProvider">The XML documentation provider.</param>
-        public MethodProvider(MethodSignature signature, MethodBodyStatement bodyStatements, TypeProvider enclosingType, XmlDocProvider? xmlDocProvider = default)
+        public MethodProvider(
+            MethodSignature signature,
+            MethodBodyStatement bodyStatements,
+            TypeProvider enclosingType,
+            XmlDocProvider? xmlDocProvider = default)
         {
             Signature = signature;
             var paramHash = MethodProviderHelpers.GetParamHash(signature);
@@ -50,7 +55,11 @@ namespace Microsoft.TypeSpec.Generator.Providers
         /// <param name="bodyExpression">The method body expression.</param>
         /// <param name="enclosingType">The enclosing type.</param>
         /// <param name="xmlDocProvider">The XML documentation provider.</param>
-        public MethodProvider(MethodSignature signature, ValueExpression bodyExpression, TypeProvider enclosingType, XmlDocProvider? xmlDocProvider = default)
+        public MethodProvider(
+            MethodSignature signature,
+            ValueExpression bodyExpression,
+            TypeProvider enclosingType,
+            XmlDocProvider? xmlDocProvider = default)
         {
             Signature = signature;
             BodyExpression = bodyExpression;

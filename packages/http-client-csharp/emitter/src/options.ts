@@ -1,6 +1,8 @@
 import { CreateSdkContextOptions } from "@azure-tools/typespec-client-generator-core";
 import { EmitContext, JSONSchemaType } from "@typespec/compiler";
 import { _defaultGeneratorName } from "./constants.js";
+import { CSharpEmitterContext } from "./index.js";
+import { DYNAMIC_MODEL_DECORATOR_PATTERN } from "./lib/decorators.js";
 import { LoggerLevel } from "./lib/logger-level.js";
 import { CodeModel } from "./type/code-model.js";
 
@@ -18,7 +20,7 @@ export interface CSharpEmitterOptions {
   "disable-xml-docs"?: boolean;
   "generator-name"?: string;
   "emitter-extension-path"?: string;
-  "update-code-model"?: (model: CodeModel) => CodeModel;
+  "update-code-model"?: (model: CodeModel, context: CSharpEmitterContext) => CodeModel;
   "sdk-context-options"?: CreateSdkContextOptions;
   "generate-protocol-methods"?: boolean;
   "generate-convenience-methods"?: boolean;
@@ -158,8 +160,10 @@ export const defaultOptions = {
   debug: undefined,
   logLevel: LoggerLevel.INFO,
   "generator-name": _defaultGeneratorName,
-  "update-code-model": (model: CodeModel) => model,
-  "sdk-context-options": undefined,
+  "update-code-model": (model: CodeModel, context: CSharpEmitterContext) => model,
+  "sdk-context-options": {
+    additionalDecorators: [DYNAMIC_MODEL_DECORATOR_PATTERN],
+  },
 };
 
 /**

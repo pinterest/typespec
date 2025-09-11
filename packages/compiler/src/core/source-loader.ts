@@ -40,6 +40,9 @@ export interface SourceResolution {
   readonly locationContexts: WeakMap<SourceFile, LocationContext>;
   readonly loadedLibraries: Map<string, TypeSpecLibraryReference>;
 
+  /** List of imports that were marked as external and not loaded. */
+  readonly externals: string[];
+
   readonly diagnostics: readonly Diagnostic[];
 }
 
@@ -53,6 +56,10 @@ export interface LoadSourceOptions {
   readonly tracer?: Tracer;
   readonly nodeModules?: string[];
   getCachedScript?: (file: SourceFile) => TypeSpecScriptNode | undefined;
+  /**
+   * List or callback to determine if a module is external and should not be loaded.
+   */
+  externals?: string[] | ((path: string) => boolean);
 }
 
 export interface SourceLoader {
@@ -87,11 +94,19 @@ export async function createSourceLoader(
   const sourceFiles = new Map<string, TypeSpecScriptNode>();
   const jsSourceFiles = new Map<string, JsSourceFileNode>();
   const loadedLibraries = new Map<string, TypeSpecLibraryReference>();
+  const externals: string[] = [];
+
+  const externalsOpts = options?.externals;
+  const isExternal = externalsOpts
+    ? typeof externalsOpts === "function"
+      ? externalsOpts
+      : (x: string) => externalsOpts.includes(x)
+    : () => false;
 
   async function importFile(
     path: string,
     diagnosticTarget: DiagnosticTarget | typeof NoTarget,
-    locationContext: LocationContext,
+    locationContext: LocationContext = { type: "project" },
     kind: "import" | "entrypoint" = "import",
   ) {
     const sourceFileKind = host.getSourceFileKind(path);
@@ -122,6 +137,7 @@ export async function createSourceLoader(
       locationContexts: sourceFileLocationContexts,
       loadedLibraries: loadedLibraries,
       diagnostics: diagnostics.diagnostics,
+      externals,
     },
   };
 
@@ -186,7 +202,11 @@ export async function createSourceLoader(
 
   function getSourceFileLocationContext(sourcefile: SourceFile): LocationContext {
     const locationContext = sourceFileLocationContexts.get(sourcefile);
-    compilerAssert(locationContext, "SourceFile should have a declaration locationContext.");
+    compilerAssert(
+      locationContext,
+      `SourceFile ${sourcefile.path} should have a declaration locationContext.`,
+      { file: sourcefile, pos: 0, end: 0 },
+    );
     return locationContext;
   }
 
@@ -207,10 +227,15 @@ export async function createSourceLoader(
     relativeTo: string,
     locationContext: LocationContext = { type: "project" },
   ) {
+    if (isExternal(path)) {
+      externals.push(path);
+      return;
+    }
     const library = await resolveTypeSpecLibrary(path, relativeTo, target);
     if (library === undefined) {
       return;
     }
+
     if (library.type === "module") {
       loadedLibraries.set(library.manifest.name, {
         path: library.path,
@@ -227,8 +252,8 @@ export async function createSourceLoader(
         metadata,
       };
     }
-    const importFilePath = library.type === "module" ? library.mainFile : library.path;
 
+    const importFilePath = library.type === "module" ? library.mainFile : library.path;
     const isDirectory = (await host.stat(importFilePath)).isDirectory();
     if (isDirectory) {
       await loadDirectory(importFilePath, locationContext, target);

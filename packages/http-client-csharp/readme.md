@@ -19,7 +19,7 @@ npm install @typespec/http-client-csharp
 
 For detailed instructions on how to customize the generated C# code, see the [Customization Guide](https://github.com/microsoft/typespec/blob/main/packages/http-client-csharp/.tspd/docs/customization.md).
 
-## Usage
+## Emitter usage
 
 1. Via the command line
 
@@ -142,3 +142,43 @@ License information for the generated client code.
 **Type:** `object`
 
 The SDK context options that implement the `CreateSdkContextOptions` interface from the [`@azure-tools/typespec-client-generator-core`](https://www.npmjs.com/package/@azure-tools/typespec-client-generator-core) package to be used by the CSharp emitter.
+
+## Decorators
+
+### TypeSpec.HttpClient.CSharp
+
+- [`@dynamicModel`](#@dynamicmodel)
+
+#### `@dynamicModel`
+
+Marks a model or namespace as dynamic, indicating it should generate dynamic model code.
+Can be applied to Model or Namespace types.
+
+```typespec
+@TypeSpec.HttpClient.CSharp.dynamicModel
+```
+
+##### Target
+
+`Model | Namespace`
+
+##### Parameters
+
+None
+
+##### Examples
+
+```tsp
+@dynamicModel
+model Pet {
+  name: string;
+  kind: string;
+}
+
+@dynamicModel
+namespace PetStore {
+  model Dog extends Pet {
+    breed: string;
+  }
+}
+```

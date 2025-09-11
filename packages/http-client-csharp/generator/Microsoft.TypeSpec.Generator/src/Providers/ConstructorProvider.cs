@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+using System.Collections.Generic;
 using Microsoft.TypeSpec.Generator.Expressions;
 using Microsoft.TypeSpec.Generator.Primitives;
 using Microsoft.TypeSpec.Generator.Statements;
@@ -33,7 +34,11 @@ namespace Microsoft.TypeSpec.Generator.Providers
         /// <param name="bodyStatements">The method body.</param>
         /// <param name="enclosingType">The enclosing type.</param>
         /// <param name="xmlDocProvider">The XML documentation provider.</param>
-        public ConstructorProvider(ConstructorSignature signature, MethodBodyStatement bodyStatements, TypeProvider enclosingType, XmlDocProvider? xmlDocProvider = default)
+        public ConstructorProvider(
+            ConstructorSignature signature,
+            MethodBodyStatement bodyStatements,
+            TypeProvider enclosingType,
+            XmlDocProvider? xmlDocProvider = default)
         {
             Signature = signature;
             var paramHash = MethodProviderHelpers.GetParamHash(signature);
@@ -49,7 +54,12 @@ namespace Microsoft.TypeSpec.Generator.Providers
         /// <param name="bodyExpression">The method body expression.</param>
         /// <param name="enclosingType">The enclosing type.</param>
         /// <param name="xmlDocProvider">The XML documentation provider.</param>
-        public ConstructorProvider(ConstructorSignature signature, ValueExpression bodyExpression, TypeProvider enclosingType, XmlDocProvider? xmlDocProvider = default)
+        /// <param name="attributes"> The attributes for the method.</param>
+        public ConstructorProvider(
+            ConstructorSignature signature,
+            ValueExpression bodyExpression,
+            TypeProvider enclosingType,
+            XmlDocProvider? xmlDocProvider = default)
         {
             Signature = signature;
             BodyExpression = bodyExpression;
@@ -61,7 +71,8 @@ namespace Microsoft.TypeSpec.Generator.Providers
             MethodBodyStatement? bodyStatements = null,
             ConstructorSignature? signature = null,
             ValueExpression? bodyExpression = null,
-            XmlDocProvider? xmlDocs = null)
+            XmlDocProvider? xmlDocs = null,
+            IEnumerable<AttributeStatement>? attributes = default)
         {
             if (signature != null)
             {

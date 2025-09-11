@@ -294,13 +294,54 @@ function validateTargetingAString(
   target: Scalar | ModelProperty,
   decoratorName: string,
 ) {
-  const valid = isTypeIn(getPropertyType(target), (x) => isStringType(context.program, x));
+  const propertyType = getPropertyType(target);
+  const valid = isTypeIn(propertyType, (x) => isStringType(context.program, x));
   if (!valid) {
     reportDiagnostic(context.program, {
       code: "decorator-wrong-target",
       format: {
         decorator: decoratorName,
-        to: `type it is not a string`,
+        to:
+          propertyType.kind === "Union"
+            ? `a union type that is not string compatible. The union must explicitly include a string type, and all union values should be strings. For example: union Test { string, "A", "B" }`
+            : `type it is not a string`,
+      },
+      target: context.decoratorTarget,
+    });
+  }
+  return valid;
+}
+
+/**
+ * Get the actual type from a Type or ModelProperty for array validation
+ */
+function getTypeForArrayValidation(target: Type | ModelProperty): Type {
+  if (target.kind === "ModelProperty") {
+    return target.type;
+  } else {
+    return target.kind === "Model" ? target : (target as any).type;
+  }
+}
+
+/**
+ * Validate the given target is an array type or a union containing at least an array type.
+ */
+function validateTargetingAnArray(
+  context: DecoratorContext,
+  target: Type | ModelProperty,
+  decoratorName: string,
+) {
+  const targetType = getTypeForArrayValidation(target);
+  const valid = isTypeIn(
+    targetType,
+    (x) => x.kind === "Model" && isArrayModelType(context.program, x),
+  );
+  if (!valid) {
+    reportDiagnostic(context.program, {
+      code: "decorator-wrong-target",
+      format: {
+        decorator: decoratorName,
+        to: `non Array type`,
       },
       target: context.decoratorTarget,
     });
@@ -565,15 +606,8 @@ export const $minItems: MinItemsDecorator = (
 ) => {
   validateDecoratorUniqueOnNode(context, target, $minItems);
 
-  if (!isArrayModelType(context.program, target.kind === "Model" ? target : (target as any).type)) {
-    reportDiagnostic(context.program, {
-      code: "decorator-wrong-target",
-      format: {
-        decorator: "@minItems",
-        to: `non Array type`,
-      },
-      target: context.decoratorTarget,
-    });
+  if (!validateTargetingAnArray(context, target, "@minItems")) {
+    return;
   }
 
   if (!validateRange(context, minItems, getMaxItemsAsNumeric(context.program, target))) {
@@ -592,15 +626,8 @@ export const $maxItems: MaxItemsDecorator = (
 ) => {
   validateDecoratorUniqueOnNode(context, target, $maxItems);
 
-  if (!isArrayModelType(context.program, target.kind === "Model" ? target : (target as any).type)) {
-    reportDiagnostic(context.program, {
-      code: "decorator-wrong-target",
-      format: {
-        decorator: "@maxItems",
-        to: `non Array type`,
-      },
-      target: context.decoratorTarget,
-    });
+  if (!validateTargetingAnArray(context, target, "@maxItems")) {
+    return;
   }
   if (!validateRange(context, getMinItemsAsNumeric(context.program, target), maxItems)) {
     return;

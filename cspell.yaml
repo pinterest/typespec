@@ -49,6 +49,7 @@ words:
   - debouncer
   - debugpy
   - Declipse
+  - dedented
   - Dedupes
   - deps
   - destructures
@@ -60,8 +61,8 @@ words:
   - Dorg
   - Dosgi
   - dotenv
-  - duplicative
   - Dskip
+  - duplicative
   - Dyns
   - eastus
   - ecmarkup
@@ -78,6 +79,7 @@ words:
   - fastify
   - fluentui
   - français
+  - freadme
   - fslib
   - genproto
   - getpgid
@@ -127,6 +129,8 @@ words:
   - LINUXOS
   - LINUXVMIMAGE
   - ljust
+  - llms
+  - llmstxt
   - lmazuel
   - lropaging
   - lstrip
@@ -177,12 +181,14 @@ words:
   - Packument
   - Perfolizer
   - picocolors
+  - pnpx
   - posargs
   - primitivea
   - prismjs
   - proto
   - protobuf
   - protoc
+  - pscore
   - psscriptanalyzer
   - ptvsd
   - pwsh
@@ -197,6 +203,7 @@ words:
   - pyright
   - pyrightconfig
   - pytest
+  - pytyped
   - pyyaml
   - rcfile
   - reactivex
@@ -217,6 +224,7 @@ words:
   - sdkcore
   - segmentof
   - serde
+  - setuppy
   - sfixed
   - shiki
   - sint
@@ -265,6 +273,7 @@ words:
   - vitest
   - VNEXT
   - vsix
+  - vsmarketplace
   - VSSDK
   - Vsts
   - vswhere
@@ -294,6 +303,7 @@ ignorePaths:
   - common/scripts/*
   - "**/ThirdPartyNotices.txt"
   - packages/compiler/test/formatter/scenarios/**
+  - packages/http-client-java/generator/http-client-generator/src/main/resources/PerfAutomation.jfc
   - packages/http-client-java/generator/http-client-generator-test/**
   - packages/http-client-java/generator/http-client-generator-clientcore-test/**
   - packages/http-client-js/test/e2e/**

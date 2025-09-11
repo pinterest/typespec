@@ -2,6 +2,7 @@ import { createSdkContext } from "@azure-tools/typespec-client-generator-core";
 import { EmitContext, NoTarget } from "@typespec/compiler";
 import { execSync } from "child_process";
 import fs from "fs";
+import os from "os";
 import path, { dirname } from "path";
 import { loadPyodide } from "pyodide";
 import { fileURLToPath } from "url";
@@ -16,6 +17,7 @@ function addDefaultOptions(sdkContext: PythonSdkContext) {
   const defaultOptions = {
     "package-version": "1.0.0b1",
     "generate-packaging-files": true,
+    "validate-versioning": true,
   };
   sdkContext.emitContext.options = {
     ...defaultOptions,
@@ -151,12 +153,10 @@ async function onEmitMain(context: EmitContext<PythonEmitterOptions>) {
   }
   if (resolvedOptions["generate-packaging-files"]) {
     commandArgs["package-mode"] = sdkContext.arm ? "azure-mgmt" : "azure-dataplane";
+    commandArgs["keep-setup-py"] = resolvedOptions["keep-setup-py"] === true ? "true" : "false";
   }
   if (sdkContext.arm === true) {
     commandArgs["azure-arm"] = "true";
-  }
-  if ((resolvedOptions as any).flavor === "azure") {
-    commandArgs["emit-cross-language-definition-file"] = "true";
   }
   commandArgs["from-typespec"] = "true";
   commandArgs["models-mode"] = (resolvedOptions as any)["models-mode"] ?? "dpg";
@@ -239,7 +239,7 @@ async function onEmitMain(context: EmitContext<PythonEmitterOptions>) {
         ".pytest_cache",
         ".vscode",
         "_build",
-        "build",
+        "/build/",
         "dist",
         ".nox",
         ".svn",
@@ -297,7 +297,8 @@ function checkForPylintIssues(outputDir: string) {
     let fileContent = "";
     fileContent = fs.readFileSync(filePath, "utf-8");
     const pylintDisables: string[] = [];
-    const lines: string[] = fileContent.split("\n");
+    const lineEnding = fileContent.includes("\r\n") && os.platform() === "win32" ? "\r\n" : "\n";
+    const lines: string[] = fileContent.split(lineEnding);
     if (lines.length > 0) {
       if (!lines[0].includes("line-too-long") && lines.some((line) => line.length > 120)) {
         pylintDisables.push("line-too-long", "useless-suppression");
@@ -307,8 +308,8 @@ function checkForPylintIssues(outputDir: string) {
       }
       if (pylintDisables.length > 0) {
         fileContent = lines[0].includes("pylint: disable=")
-          ? [lines[0] + "," + pylintDisables.join(",")].concat(lines.slice(1)).join("\n")
-          : `# pylint: disable=${pylintDisables.join(",")}\n` + fileContent;
+          ? [lines[0] + "," + pylintDisables.join(",")].concat(lines.slice(1)).join(lineEnding)
+          : `# pylint: disable=${pylintDisables.join(",")}${lineEnding}` + fileContent;
       }
     }
 

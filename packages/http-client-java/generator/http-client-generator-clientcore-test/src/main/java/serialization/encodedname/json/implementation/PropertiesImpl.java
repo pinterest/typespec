@@ -13,6 +13,7 @@ import io.clientcore.core.http.models.HttpResponseException;
 import io.clientcore.core.http.models.RequestContext;
 import io.clientcore.core.http.models.Response;
 import io.clientcore.core.http.pipeline.HttpPipeline;
+import io.clientcore.core.instrumentation.Instrumentation;
 import java.lang.reflect.InvocationTargetException;
 import serialization.encodedname.json.property.JsonEncodedNameModel;
 
@@ -31,6 +32,11 @@ public final class PropertiesImpl {
     private final JsonClientImpl client;
 
     /**
+     * The instance of instrumentation to report telemetry.
+     */
+    private final Instrumentation instrumentation;
+
+    /**
      * Initializes an instance of PropertiesImpl.
      * 
      * @param client the instance of the service client containing this operation class.
@@ -38,6 +44,7 @@ public final class PropertiesImpl {
     PropertiesImpl(JsonClientImpl client) {
         this.service = PropertiesService.getNewInstance(client.getHttpPipeline());
         this.client = client;
+        this.instrumentation = client.getInstrumentation();
     }
 
     /**
@@ -86,21 +93,11 @@ public final class PropertiesImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> sendWithResponse(JsonEncodedNameModel body, RequestContext requestContext) {
-        final String contentType = "application/json";
-        return service.send(this.client.getEndpoint(), contentType, body, requestContext);
-    }
-
-    /**
-     * The send operation.
-     * 
-     * @param body The body parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void send(JsonEncodedNameModel body) {
-        sendWithResponse(body, RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("Serialization.EncodedName.Json.Property.send",
+            requestContext, updatedContext -> {
+                final String contentType = "application/json";
+                return service.send(this.client.getEndpoint(), contentType, body, updatedContext);
+            });
     }
 
     /**
@@ -114,19 +111,10 @@ public final class PropertiesImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<JsonEncodedNameModel> getWithResponse(RequestContext requestContext) {
-        final String accept = "application/json";
-        return service.get(this.client.getEndpoint(), accept, requestContext);
-    }
-
-    /**
-     * The get operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return the response.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public JsonEncodedNameModel get() {
-        return getWithResponse(RequestContext.none()).getValue();
+        return this.instrumentation.instrumentWithResponse("Serialization.EncodedName.Json.Property.get",
+            requestContext, updatedContext -> {
+                final String accept = "application/json";
+                return service.get(this.client.getEndpoint(), accept, updatedContext);
+            });
     }
 }

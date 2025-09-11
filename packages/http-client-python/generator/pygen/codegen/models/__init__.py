@@ -4,7 +4,7 @@
 # license information.
 # --------------------------------------------------------------------------
 import logging
-from typing import Any, Dict, Union, Optional
+from typing import Any, Union, Optional
 from .base import BaseModel
 from .base_builder import BaseBuilder, ParameterListType
 from .code_model import CodeModel
@@ -155,7 +155,7 @@ TYPE_TO_OBJECT = {
 _LOGGER = logging.getLogger(__name__)
 
 
-def build_type(yaml_data: Dict[str, Any], code_model: CodeModel) -> BaseType:
+def build_type(yaml_data: dict[str, Any], code_model: CodeModel) -> BaseType:
     yaml_id = id(yaml_data)
     try:
         return code_model.lookup_type(yaml_id)
@@ -165,7 +165,7 @@ def build_type(yaml_data: Dict[str, Any], code_model: CodeModel) -> BaseType:
     response: Optional[BaseType] = None
     if yaml_data["type"] == "model":
         # need to special case model to avoid recursion
-        if yaml_data["base"] == "json" or not code_model.options["models_mode"]:
+        if yaml_data["base"] == "json" or not code_model.options["models-mode"]:
             model_type = JSONModelType
         elif yaml_data["base"] == "dpg":
             model_type = DPGModelType  # type: ignore

@@ -1,4 +1,6 @@
 export { usePlaygroundContext } from "./context/index.js";
+export { DiagnosticList } from "./diagnostic-list/diagnostic-list.js";
+export type { DiagnosticListProps } from "./diagnostic-list/diagnostic-list.js";
 export { Editor, useMonacoModel, type EditorProps } from "./editor.js";
 export {
   Footer,
@@ -19,3 +21,4 @@ export {
   renderReactPlayground,
 } from "./standalone.js";
 export type * from "./types.js";
+export { usePlaygroundState, type PlaygroundState } from "./use-playground-state.js";

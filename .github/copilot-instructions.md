@@ -1,46 +1,122 @@
-# Copilot Instructions
+# TypeSpec Copilot Instructions
 
-## Install and Build
+**ALWAYS follow these instructions first and only fall back to additional search and context gathering if the information here is incomplete or found to be in error.**
 
-- Packages are located in the `packages` folder
-- Use `pnpm` as the package manager
-- Use `pnpm install` to install dependencies
-- Use `pnpm build` to build every package
-- Use `pnpm -r --filter "<pkgName>..." build` to build to a specific package `<pkgName>`
-- Use `pnpm format` to format all files
+TypeSpec is a language for defining cloud service APIs and shapes. This monorepo contains the TypeSpec compiler, standard library packages, tools, documentation, and various language client emitters.
 
-## Describing changes
+## Essential Setup and Build Commands
 
-- Repo use `@chronus/chronus` for changelogs
-- Use `pnpm change add` to add a change description for the touched packages
-- Types of changes are described in `.chronus/config.yaml`
+### Prerequisites and Installation
 
-## Testserver Generation
+- Install Node.js 20 LTS: `curl -fsSL https://nodejs.org/dist/v20.19.4/node-v20.19.4-linux-x64.tar.xz | tar -xJ --strip-components=1 -C /usr/local`
+- Install pnpm globally: `npm install -g pnpm`
+- Install dependencies: `pnpm install` (takes ~1.5 minutes)
+- Install Playwright browsers (optional for UI testing): `npx playwright install`
 
-- DO read the existing `main.tsp` and `client.tsp` files in the specs repo [here][spector-tests].
-- DO read the existing `mockapi.ts` mockapi files in the specs repo [here][spector-tests]. Follow the imports and overall structure from these test files to write your own mockapi tests
-- DO read descriptions of the input and output of existing tests and mockapis [here][spector-description].
-- DO run `pnpm install` to fully set up repo
-- DO only modify code in the `cspell.yaml` file OR `packages/http-specs/specs` folder
-- DO add a `@scenario` and `@scenarioDoc` for every scenario you are adding. Keep in mind that the `@scenarioDoc` needs to clearly and explicitly tell users exactly what values to input and what values to expect from output.
-- DO add a mockapi implementation of each scenario in the `mockapi.ts` file.
-- DO ensure that every scenario has a mockapi implementation,
-- DO see if there are existing spec files that you can add the specification to. If not, DO create new files and folders for the new scenario
-- DO know that the path of namespace and interfaces until you reach your `@scenario`-decorated operation is the full scenario name that appears in the dashboard. Make sure that the dashboard scenario name cleanly describes the exact situation that is being tested, is clear to read, and has as few words as it can
-- DO keep the route names consistent with the scenario names
-- DO decide whether a scenario is better as a collection of operation calls, or a single operation call. If it is better as a collection of calls, try to group the operation calls into an interface and decorate the interface with `@scenario` and `@scenarioDoc`.
-- DO group operations into interfaces if it makes sense for current layout or future expansion. For example, in parameters tests, try to group them by `path`, `query` etc in interfaces, even if each operation is still its own scenario.
-- DO run `pnpm build` from `packages/http-specs` to verify it builds and scenarios pass. If this step fails, DO attempt to fix the error.
-- DO run `pnpm regen-docs` from `packages/http-specs` to automatically regenerate the docs. DON'T manually write in `spec-summary.md`
-- DO run `pnpm validate-mock-apis` from `packages/http-specs` to verify there is correct mockapi implementation for each scenario. If this step fails, DO attempt to fix the error.
-- DO run `pnpm cspell` to find any spelling issues. If there are spelling issues and you believe the word is valid, please add it to `cspell.yaml`. If the word is invalid but you need to use it, use cspell disables to ignore that line. If the word is invalid and you don't need to use it, change the word.
-- DO run `pnpm format` to clean up any formatting issues.
-- DO run `pnpm lint` to find any linting issues. DO fix these linting issues to the best of your ability without impacting the quality of the tests.
-- DO run `pnpm change add` from the root and add a changeset for the touched package. DO select it as being a new feature.
-- DO only add the `lib:http-specs` label to the PR you create.
-- DON'T remove or modify existing scenario docs
+### Building the Project
 
-<!-- References -->
+- **CRITICAL**: Build the entire project: `pnpm build` (takes ~7 minutes, NEVER CANCEL - set timeout to 15+ minutes)
+- Build in watch mode for development: `pnpm watch`
+- Build specific package: `pnpm -r --filter "<package-name>..." build`
+- Clean build artifacts: `pnpm clean`
 
-[spector-tests]: https://github.com/microsoft/typespec/tree/main/packages/http-specs/specs
-[spector-description]: https://github.com/microsoft/typespec/blob/main/packages/http-specs/spec-summary.md
+### Testing and Validation
+
+- **CRITICAL**: Run all tests: `pnpm test` (takes ~5 minutes, NEVER CANCEL - set timeout to 10+ minutes)
+- Run E2E tests: `pnpm test:e2e` and `node e2e/e2e-tests.js` (~1 minute)
+- Run tests with coverage: `pnpm test:ci`
+- Run tests in watch mode (in specific package): `pnpm test:watch`
+
+### Code Quality
+
+- Check formatting: `pnpm format:check` (~1 minute)
+- Format code: `pnpm format`
+- Run linting: `pnpm lint` (~1 minute)
+- Fix lint issues: `pnpm lint:fix`
+
+### Essential TypeSpec Development Workflow
+
+1. **ALWAYS** run the full build process after repository clone: `pnpm install && pnpm build`
+2. Start watch mode: `pnpm watch`
+3. Test TypeSpec compilation works:
+
+   ```bash
+   # Create test project
+   mkdir test-tsp && cd test-tsp
+   echo 'import "@typespec/rest"; import "@typespec/openapi3"; op ping(): void;' > main.tsp
+   echo '{"dependencies": {"@typespec/compiler": "latest", "@typespec/rest": "latest", "@typespec/openapi3": "latest"}}' > package.json
+   
+   # Install and compile
+   /path/to/typespec/packages/compiler/cmd/tsp.js install
+   /path/to/typespec/packages/compiler/cmd/tsp.js compile main.tsp --emit @typespec/openapi3
+   ```
+
+4. Always format and lint before completing changes: `pnpm format && pnpm lint:fix`
+
+## Repository Structure
+
+### Key Packages (packages/)
+
+- **compiler**: Core TypeSpec compiler and CLI tool
+- **http, rest, openapi3**: Standard HTTP/REST API libraries
+- **versioning**: API versioning support
+- **json-schema**: JSON Schema emitter
+- **prettier-plugin-typespec**: Code formatting support
+- **typespec-vscode, typespec-vs**: Editor extensions
+- **playground**: Interactive TypeSpec playground
+- **website**: Documentation website (typespec.io)
+
+### Important Directories
+
+- `/packages/`: All TypeSpec packages and libraries
+- `/e2e/`: End-to-end integration tests
+- `/website/`: Documentation website source
+- `/eng/`: Build engineering and automation scripts
+- `/.github/workflows/`: CI/CD pipeline definitions
+
+## Manual Validation After Changes
+
+**ALWAYS perform these validation steps after making changes:**
+
+1. **Basic functionality test**: Create and compile a simple TypeSpec file as shown above
+2. **Build validation**: Run full build to ensure no build breaks: `pnpm build`
+3. **Test validation**: Run relevant tests: `pnpm test`
+4. **Code quality**: Ensure formatting and linting pass: `pnpm format:check && pnpm lint`
+
+## Website Development
+
+- Navigate to website: `cd website`
+- Start development server: `pnpm start` (runs on port 4321)
+- Build website: `pnpm build`
+- The website includes documentation, API references, and the playground
+
+## Critical Timing and Performance Notes
+
+- **NEVER CANCEL** long-running commands - builds can take 7+ minutes, tests 5+ minutes
+- Set explicit timeouts: Build commands need 15+ minutes, test commands need 10+ minutes
+- Package installation: ~1.5 minutes
+- Full rebuild from clean state: ~7 minutes
+- Full test suite: ~5 minutes
+- Lint check: ~1 minute
+- E2E tests: ~1 minute
+
+## Common Development Tasks
+
+- Add change description: `pnpm change add`
+- Generate external signatures: `pnpm gen-compiler-extern-signature`
+- Regenerate samples: `pnpm regen-samples`
+- Regenerate docs: `pnpm regen-docs`
+- Sync dependency versions: `pnpm fix-version-mismatch`
+
+## Troubleshooting
+
+- If builds fail with watch mode conflicts, run: `pnpm clean && pnpm build`
+- For installation issues, try: `pnpm install-conflict`
+- If TypeScript compilation fails, check that compiler built first: `pnpm -r --filter "@typespec/compiler" build`
+- For VS Code extension development, ensure you have the workspace open at the repository root
+
+## Available Task Instructions
+
+- [Testserver Generation](./prompts/testserver-generation.md): Instructions for generating TypeSpec HTTP spec test servers
+- [http-client-csharp Development](./prompts/http-client-csharp-development.md): Instructions for developing the C# HTTP client
+- [http-client-java Development](../packages/http-client-java/.github/copilot-instructions.md): Instructions for developing the TypeSpec library for Java client.

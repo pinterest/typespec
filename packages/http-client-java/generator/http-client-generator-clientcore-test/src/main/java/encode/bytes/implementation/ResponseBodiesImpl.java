@@ -12,6 +12,7 @@ import io.clientcore.core.http.models.HttpResponseException;
 import io.clientcore.core.http.models.RequestContext;
 import io.clientcore.core.http.models.Response;
 import io.clientcore.core.http.pipeline.HttpPipeline;
+import io.clientcore.core.instrumentation.Instrumentation;
 import io.clientcore.core.models.binarydata.BinaryData;
 import io.clientcore.core.utils.Base64Uri;
 import java.lang.reflect.InvocationTargetException;
@@ -31,6 +32,11 @@ public final class ResponseBodiesImpl {
     private final BytesClientImpl client;
 
     /**
+     * The instance of instrumentation to report telemetry.
+     */
+    private final Instrumentation instrumentation;
+
+    /**
      * Initializes an instance of ResponseBodiesImpl.
      * 
      * @param client the instance of the service client containing this operation class.
@@ -38,6 +44,7 @@ public final class ResponseBodiesImpl {
     ResponseBodiesImpl(BytesClientImpl client) {
         this.service = ResponseBodiesService.getNewInstance(client.getHttpPipeline());
         this.client = client;
+        this.instrumentation = client.getInstrumentation();
     }
 
     /**
@@ -111,20 +118,11 @@ public final class ResponseBodiesImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<BinaryData> defaultMethodWithResponse(RequestContext requestContext) {
-        final String accept = "application/octet-stream";
-        return service.defaultMethod(this.client.getEndpoint(), accept, requestContext);
-    }
-
-    /**
-     * The defaultMethod operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return the response.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public BinaryData defaultMethod() {
-        return defaultMethodWithResponse(RequestContext.none()).getValue();
+        return this.instrumentation.instrumentWithResponse("Encode.Bytes.ResponseBody.default", requestContext,
+            updatedContext -> {
+                final String accept = "application/octet-stream";
+                return service.defaultMethod(this.client.getEndpoint(), accept, updatedContext);
+            });
     }
 
     /**
@@ -138,20 +136,11 @@ public final class ResponseBodiesImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<BinaryData> octetStreamWithResponse(RequestContext requestContext) {
-        final String accept = "application/octet-stream";
-        return service.octetStream(this.client.getEndpoint(), accept, requestContext);
-    }
-
-    /**
-     * The octetStream operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return the response.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public BinaryData octetStream() {
-        return octetStreamWithResponse(RequestContext.none()).getValue();
+        return this.instrumentation.instrumentWithResponse("Encode.Bytes.ResponseBody.octetStream", requestContext,
+            updatedContext -> {
+                final String accept = "application/octet-stream";
+                return service.octetStream(this.client.getEndpoint(), accept, updatedContext);
+            });
     }
 
     /**
@@ -165,20 +154,11 @@ public final class ResponseBodiesImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<BinaryData> customContentTypeWithResponse(RequestContext requestContext) {
-        final String accept = "image/png";
-        return service.customContentType(this.client.getEndpoint(), accept, requestContext);
-    }
-
-    /**
-     * The customContentType operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return the response.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public BinaryData customContentType() {
-        return customContentTypeWithResponse(RequestContext.none()).getValue();
+        return this.instrumentation.instrumentWithResponse("Encode.Bytes.ResponseBody.customContentType",
+            requestContext, updatedContext -> {
+                final String accept = "image/png";
+                return service.customContentType(this.client.getEndpoint(), accept, updatedContext);
+            });
     }
 
     /**
@@ -192,20 +172,11 @@ public final class ResponseBodiesImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<byte[]> base64WithResponse(RequestContext requestContext) {
-        final String accept = "application/json";
-        return service.base64(this.client.getEndpoint(), accept, requestContext);
-    }
-
-    /**
-     * The base64 operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return represent a byte array.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public byte[] base64() {
-        return base64WithResponse(RequestContext.none()).getValue();
+        return this.instrumentation.instrumentWithResponse("Encode.Bytes.ResponseBody.base64", requestContext,
+            updatedContext -> {
+                final String accept = "application/json";
+                return service.base64(this.client.getEndpoint(), accept, updatedContext);
+            });
     }
 
     /**
@@ -219,19 +190,10 @@ public final class ResponseBodiesImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<byte[]> base64urlWithResponse(RequestContext requestContext) {
-        final String accept = "application/json";
-        return service.base64url(this.client.getEndpoint(), accept, requestContext);
-    }
-
-    /**
-     * The base64url operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return the response.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public byte[] base64url() {
-        return base64urlWithResponse(RequestContext.none()).getValue();
+        return this.instrumentation.instrumentWithResponse("Encode.Bytes.ResponseBody.base64url", requestContext,
+            updatedContext -> {
+                final String accept = "application/json";
+                return service.base64url(this.client.getEndpoint(), accept, updatedContext);
+            });
     }
 }

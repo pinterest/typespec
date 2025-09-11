@@ -4,8 +4,6 @@
 # license information.
 # --------------------------------------------------------------------------
 from typing import (
-    Dict,
-    List,
     Any,
     Optional,
     Union,
@@ -61,14 +59,14 @@ class OperationBase(  # pylint: disable=too-many-public-methods,too-many-instanc
 ):
     def __init__(
         self,
-        yaml_data: Dict[str, Any],
+        yaml_data: dict[str, Any],
         code_model: "CodeModel",
         client: "Client",
         name: str,
         request_builder: Union[RequestBuilder, OverloadedRequestBuilder],
         parameters: ParameterList,
-        responses: List[ResponseType],
-        exceptions: List[Response],
+        responses: list[ResponseType],
+        exceptions: list[Response],
         *,
         overloads: Optional[Sequence["Operation"]] = None,
     ) -> None:
@@ -124,7 +122,7 @@ class OperationBase(  # pylint: disable=too-many-public-methods,too-many-instanc
         return successful_response_with_body and successful_response_without_body
 
     def response_type_annotation(self, **kwargs) -> str:
-        if self.code_model.options["head_as_boolean"] and self.request_builder.method.lower() == "head":
+        if self.code_model.options["head-as-boolean"] and self.request_builder.method.lower() == "head":
             return "bool"
         response_type_annotations: OrderedSet[str] = {
             response.type_annotation(**kwargs): None for response in self.responses if response.type
@@ -148,13 +146,13 @@ class OperationBase(  # pylint: disable=too-many-public-methods,too-many-instanc
         return retval
 
     def cls_type_annotation(self, *, async_mode: bool, **kwargs: Any) -> str:
-        if self.request_builder.method.lower() == "head" and self.code_model.options["head_as_boolean"]:
+        if self.request_builder.method.lower() == "head" and self.code_model.options["head-as-boolean"]:
             return "ClsType[None]"
         return f"ClsType[{self.response_type_annotation(async_mode=async_mode, **kwargs)}]"
 
     def _response_docstring_helper(self, attr_name: str, **kwargs: Any) -> str:
         responses_with_body = [r for r in self.responses if r.type]
-        if self.request_builder.method.lower() == "head" and self.code_model.options["head_as_boolean"]:
+        if self.request_builder.method.lower() == "head" and self.code_model.options["head-as-boolean"]:
             return "bool"
         if responses_with_body:
             response_docstring_values: OrderedSet[str] = {
@@ -170,9 +168,9 @@ class OperationBase(  # pylint: disable=too-many-public-methods,too-many-instanc
 
     def response_docstring_text(self, **kwargs) -> str:
         retval = self._response_docstring_helper("docstring_text", **kwargs)
-        if not self.code_model.options["version_tolerant"]:
+        if not self.code_model.options["version-tolerant"]:
             retval += " or the result of cls(response)"
-        if self.code_model.options["models_mode"] == "dpg" and any(
+        if self.code_model.options["models-mode"] == "dpg" and any(
             isinstance(r.type, ModelType) for r in self.responses
         ):
             r = next(r for r in self.responses if isinstance(r.type, ModelType))
@@ -194,72 +192,28 @@ class OperationBase(  # pylint: disable=too-many-public-methods,too-many-instanc
     def any_response_has_headers(self) -> bool:
         return any(response.headers for response in self.responses)
 
-    @property
-    def default_error_deserialization(self) -> Optional[str]:
+    def default_error_deserialization(self, serialize_namespace: str) -> Optional[str]:
         default_exceptions = [e for e in self.exceptions if "default" in e.status_codes and e.type]
         if not default_exceptions:
             return None
         exception_schema = default_exceptions[0].type
         if isinstance(exception_schema, ModelType):
-            return exception_schema.type_annotation(skip_quote=True)
-        return None if self.code_model.options["models_mode"] == "dpg" else "'object'"
+            return exception_schema.type_annotation(skip_quote=True, serialize_namespace=serialize_namespace)
+        return None if self.code_model.options["models-mode"] == "dpg" else "'object'"
 
     @property
-    def non_default_errors(self) -> List[Response]:
+    def non_default_errors(self) -> list[Response]:
         return [
             e for e in self.exceptions if "default" not in e.status_codes and e.type and isinstance(e.type, ModelType)
         ]
-
-    def _imports_shared(self, async_mode: bool, **kwargs: Any) -> FileImport:
-        file_import = FileImport(self.code_model)
-        file_import.add_submodule_import("typing", "Any", ImportType.STDLIB, TypingSection.CONDITIONAL)
-
-        response_types = [r.type_annotation(async_mode=async_mode, **kwargs) for r in self.responses if r.type]
-        if len(set(response_types)) > 1:
-            file_import.add_submodule_import("typing", "Union", ImportType.STDLIB, TypingSection.CONDITIONAL)
-        if self.added_on:
-            serialize_namespace = kwargs.get("serialize_namespace", self.code_model.namespace)
-            file_import.add_submodule_import(
-                self.code_model.get_relative_import_path(serialize_namespace, module_name="_validation"),
-                "api_version_validation",
-                ImportType.LOCAL,
-            )
-        return file_import
 
     @property
     def need_import_iobase(self) -> bool:
         return self.parameters.has_body and isinstance(self.parameters.body_parameter.type, CombinedType)
 
-    def imports_for_multiapi(self, async_mode: bool, **kwargs: Any) -> FileImport:
-        if self.abstract:
-            return FileImport(self.code_model)
-        file_import = self._imports_shared(async_mode, **kwargs)
-        for param in self.parameters.method:
-            file_import.merge(
-                param.imports_for_multiapi(
-                    async_mode,
-                    need_import_iobase=self.need_import_iobase,
-                    **kwargs,
-                )
-            )
-        for response in self.responses:
-            file_import.merge(
-                response.imports_for_multiapi(
-                    async_mode=async_mode, need_import_iobase=self.need_import_iobase, **kwargs
-                )
-            )
-        if self.code_model.options["models_mode"]:
-            for exception in self.exceptions:
-                file_import.merge(
-                    exception.imports_for_multiapi(
-                        async_mode=async_mode, need_import_iobase=self.need_import_iobase, **kwargs
-                    )
-                )
-        return file_import
-
     @staticmethod
     def has_kwargs_to_pop_with_default(
-        kwargs_to_pop: List[
+        kwargs_to_pop: list[
             Union[
                 Parameter,
                 RequestBuilderParameter,
@@ -275,7 +229,9 @@ class OperationBase(  # pylint: disable=too-many-public-methods,too-many-instanc
     @property
     def need_validation(self) -> bool:
         """Whether we need parameter / operation validation. For API version."""
-        return bool(self.added_on) or any(p for p in self.parameters if p.added_on)
+        return self.code_model.options["validate-versioning"] and (
+            bool(self.added_on) or any(p for p in self.parameters if p.added_on)
+        )
 
     def get_request_builder_import(
         self,
@@ -285,7 +241,7 @@ class OperationBase(  # pylint: disable=too-many-public-methods,too-many-instanc
     ) -> FileImport:
         """Helper method to get a request builder import."""
         file_import = FileImport(self.code_model)
-        if self.code_model.options["builders_visibility"] != "embedded":
+        if self.code_model.options["builders-visibility"] != "embedded":
             group_name = request_builder.group_name
             rest_import_path = "..." if async_mode else ".."
             if group_name:
@@ -302,7 +258,7 @@ class OperationBase(  # pylint: disable=too-many-public-methods,too-many-instanc
                     import_type=ImportType.LOCAL,
                     alias="rest",
                 )
-        if self.code_model.options["builders_visibility"] == "embedded" and async_mode:
+        if self.code_model.options["builders-visibility"] == "embedded" and async_mode:
             file_import.add_submodule_import(
                 self.code_model.get_relative_import_path(
                     serialize_namespace,
@@ -325,7 +281,19 @@ class OperationBase(  # pylint: disable=too-many-public-methods,too-many-instanc
             return FileImport(self.code_model)
 
         serialize_namespace = kwargs.get("serialize_namespace", self.code_model.namespace)
-        file_import = self._imports_shared(async_mode, **kwargs)
+        file_import = FileImport(self.code_model)
+        file_import.add_submodule_import("typing", "Any", ImportType.STDLIB, TypingSection.CONDITIONAL)
+
+        response_types = [r.type_annotation(async_mode=async_mode, **kwargs) for r in self.responses if r.type]
+        if len(set(response_types)) > 1:
+            file_import.add_submodule_import("typing", "Union", ImportType.STDLIB, TypingSection.CONDITIONAL)
+        if self.added_on:
+            serialize_namespace = kwargs.get("serialize_namespace", self.code_model.namespace)
+            file_import.add_submodule_import(
+                self.code_model.get_relative_import_path(serialize_namespace, module_name="_validation"),
+                "api_version_validation",
+                ImportType.LOCAL,
+            )
 
         for param in self.parameters.method:
             file_import.merge(
@@ -339,7 +307,7 @@ class OperationBase(  # pylint: disable=too-many-public-methods,too-many-instanc
             file_import.merge(
                 response.imports(async_mode=async_mode, need_import_iobase=self.need_import_iobase, **kwargs)
             )
-        if self.code_model.options["models_mode"]:
+        if self.code_model.options["models-mode"]:
             for exception in self.exceptions:
                 file_import.merge(exception.imports(async_mode=async_mode, **kwargs))
 
@@ -367,7 +335,7 @@ class OperationBase(  # pylint: disable=too-many-public-methods,too-many-instanc
             errors.extend(["StreamConsumedError", "StreamClosedError"])
         for error in errors:
             file_import.add_submodule_import("exceptions", error, ImportType.SDKCORE)
-        if self.code_model.options["azure_arm"]:
+        if self.code_model.options["azure-arm"]:
             file_import.add_submodule_import("azure.mgmt.core.exceptions", "ARMErrorFormat", ImportType.SDKCORE)
         file_import.add_mutable_mapping_import()
 
@@ -416,7 +384,7 @@ class OperationBase(  # pylint: disable=too-many-public-methods,too-many-instanc
                 "HttpResponse",
                 ImportType.SDKCORE,
             )
-        if self.code_model.options["builders_visibility"] == "embedded" and not async_mode:
+        if self.code_model.options["builders-visibility"] == "embedded" and not async_mode:
             file_import.merge(self.request_builder.imports(**kwargs))
         file_import.add_submodule_import(
             f"{'' if self.code_model.is_azure_flavor else 'runtime.'}pipeline",
@@ -426,7 +394,6 @@ class OperationBase(  # pylint: disable=too-many-public-methods,too-many-instanc
         file_import.add_submodule_import("rest", "HttpRequest", ImportType.SDKCORE)
         file_import.add_submodule_import("typing", "Callable", ImportType.STDLIB, TypingSection.CONDITIONAL)
         file_import.add_submodule_import("typing", "Optional", ImportType.STDLIB, TypingSection.CONDITIONAL)
-        file_import.add_submodule_import("typing", "Dict", ImportType.STDLIB, TypingSection.CONDITIONAL)
         file_import.add_submodule_import("typing", "TypeVar", ImportType.STDLIB, TypingSection.CONDITIONAL)
         if self.code_model.options["tracing"] and self.want_tracing and not async_mode:
             file_import.add_submodule_import(
@@ -437,7 +404,7 @@ class OperationBase(  # pylint: disable=too-many-public-methods,too-many-instanc
         file_import.merge(self.get_request_builder_import(self.request_builder, async_mode, serialize_namespace))
         if self.overloads:
             file_import.add_submodule_import("typing", "overload", ImportType.STDLIB)
-        if self.code_model.options["models_mode"] == "dpg":
+        if self.code_model.options["models-mode"] == "dpg":
             relative_path = self.code_model.get_relative_import_path(
                 serialize_namespace, module_name="_utils.model_base"
             )
@@ -467,7 +434,7 @@ class OperationBase(  # pylint: disable=too-many-public-methods,too-many-instanc
                 file_import.add_submodule_import(relative_path, "_deserialize_xml", ImportType.LOCAL)
             elif self.need_deserialize:
                 file_import.add_submodule_import(relative_path, "_deserialize", ImportType.LOCAL)
-            if self.default_error_deserialization or self.non_default_errors:
+            if self.default_error_deserialization(serialize_namespace) or self.non_default_errors:
                 file_import.add_submodule_import(relative_path, "_failsafe_deserialize", ImportType.LOCAL)
         return file_import
 
@@ -478,7 +445,7 @@ class OperationBase(  # pylint: disable=too-many-public-methods,too-many-instanc
             raise ValueError(f"Incorrect status code {status_code}, operation {self.name}") from exc
 
     @property
-    def success_status_codes(self) -> List[Union[int, str, List[int]]]:
+    def success_status_codes(self) -> list[Union[int, str, list[int]]]:
         """The list of all successfull status code."""
         return sorted([code for response in self.responses for code in response.status_codes])
 
@@ -489,7 +456,7 @@ class OperationBase(  # pylint: disable=too-many-public-methods,too-many-instanc
             # in a mixin
             basename = self.code_model.clients[0].legacy_filename
 
-        if basename == "operations" or self.code_model.options["combine_operation_files"]:
+        if basename == "operations" or self.code_model.options["combine-operation-files"]:
             return "_operations"
         return f"_{basename}_operations"
 
@@ -498,13 +465,13 @@ class OperationBase(  # pylint: disable=too-many-public-methods,too-many-instanc
         return any(r.is_stream_response for r in self.responses)
 
     @classmethod
-    def get_request_builder(cls, yaml_data: Dict[str, Any], client: "Client"):
+    def get_request_builder(cls, yaml_data: dict[str, Any], client: "Client"):
         return client.lookup_request_builder(id(yaml_data))
 
     @classmethod
     def from_yaml(
         cls,
-        yaml_data: Dict[str, Any],
+        yaml_data: dict[str, Any],
         code_model: "CodeModel",
         client: "Client",
     ):
@@ -541,13 +508,13 @@ class Operation(OperationBase[Response]):
                 "distributed_trace_async",
                 ImportType.SDKCORE,
             )
-        if self.has_response_body and not self.has_optional_return_type and not self.code_model.options["models_mode"]:
+        if self.has_response_body and not self.has_optional_return_type and not self.code_model.options["models-mode"]:
             file_import.add_submodule_import("typing", "cast", ImportType.STDLIB)
 
         return file_import
 
 
-def get_operation(yaml_data: Dict[str, Any], code_model: "CodeModel", client: "Client") -> "OperationType":
+def get_operation(yaml_data: dict[str, Any], code_model: "CodeModel", client: "Client") -> "OperationType":
     if yaml_data["discriminator"] == "lropaging":
         from .lro_paging_operation import LROPagingOperation as OperationCls
     elif yaml_data["discriminator"] == "lro":

@@ -13,6 +13,7 @@ import io.clientcore.core.http.models.HttpResponseException;
 import io.clientcore.core.http.models.RequestContext;
 import io.clientcore.core.http.models.Response;
 import io.clientcore.core.http.pipeline.HttpPipeline;
+import io.clientcore.core.instrumentation.Instrumentation;
 import java.lang.reflect.InvocationTargetException;
 import type.model.inheritance.notdiscriminated.Siamese;
 
@@ -54,13 +55,29 @@ public final class NotDiscriminatedClientImpl {
     }
 
     /**
+     * The instance of instrumentation to report telemetry.
+     */
+    private final Instrumentation instrumentation;
+
+    /**
+     * Gets The instance of instrumentation to report telemetry.
+     * 
+     * @return the instrumentation value.
+     */
+    public Instrumentation getInstrumentation() {
+        return this.instrumentation;
+    }
+
+    /**
      * Initializes an instance of NotDiscriminatedClient client.
      * 
      * @param httpPipeline The HTTP pipeline to send requests through.
+     * @param instrumentation The instance of instrumentation to report telemetry.
      * @param endpoint Service host.
      */
-    public NotDiscriminatedClientImpl(HttpPipeline httpPipeline, String endpoint) {
+    public NotDiscriminatedClientImpl(HttpPipeline httpPipeline, Instrumentation instrumentation, String endpoint) {
         this.httpPipeline = httpPipeline;
+        this.instrumentation = instrumentation;
         this.endpoint = endpoint;
         this.service = NotDiscriminatedClientService.getNewInstance(this.httpPipeline);
     }
@@ -123,21 +140,11 @@ public final class NotDiscriminatedClientImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Void> postValidWithResponse(Siamese input, RequestContext requestContext) {
-        final String contentType = "application/json";
-        return service.postValid(this.getEndpoint(), contentType, input, requestContext);
-    }
-
-    /**
-     * The postValid operation.
-     * 
-     * @param input The input parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public void postValid(Siamese input) {
-        postValidWithResponse(input, RequestContext.none());
+        return this.instrumentation.instrumentWithResponse("Type.Model.Inheritance.NotDiscriminated.postValid",
+            requestContext, updatedContext -> {
+                final String contentType = "application/json";
+                return service.postValid(this.getEndpoint(), contentType, input, updatedContext);
+            });
     }
 
     /**
@@ -151,20 +158,11 @@ public final class NotDiscriminatedClientImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Siamese> getValidWithResponse(RequestContext requestContext) {
-        final String accept = "application/json";
-        return service.getValid(this.getEndpoint(), accept, requestContext);
-    }
-
-    /**
-     * The getValid operation.
-     * 
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return the third level model in the normal multiple levels inheritance.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public Siamese getValid() {
-        return getValidWithResponse(RequestContext.none()).getValue();
+        return this.instrumentation.instrumentWithResponse("Type.Model.Inheritance.NotDiscriminated.getValid",
+            requestContext, updatedContext -> {
+                final String accept = "application/json";
+                return service.getValid(this.getEndpoint(), accept, updatedContext);
+            });
     }
 
     /**
@@ -179,22 +177,11 @@ public final class NotDiscriminatedClientImpl {
      */
     @ServiceMethod(returns = ReturnType.SINGLE)
     public Response<Siamese> putValidWithResponse(Siamese input, RequestContext requestContext) {
-        final String contentType = "application/json";
-        final String accept = "application/json";
-        return service.putValid(this.getEndpoint(), contentType, accept, input, requestContext);
-    }
-
-    /**
-     * The putValid operation.
-     * 
-     * @param input The input parameter.
-     * @throws IllegalArgumentException thrown if parameters fail the validation.
-     * @throws HttpResponseException thrown if the service returns an error.
-     * @throws RuntimeException all other wrapped checked exceptions if the request fails to be sent.
-     * @return the third level model in the normal multiple levels inheritance.
-     */
-    @ServiceMethod(returns = ReturnType.SINGLE)
-    public Siamese putValid(Siamese input) {
-        return putValidWithResponse(input, RequestContext.none()).getValue();
+        return this.instrumentation.instrumentWithResponse("Type.Model.Inheritance.NotDiscriminated.putValid",
+            requestContext, updatedContext -> {
+                final String contentType = "application/json";
+                final String accept = "application/json";
+                return service.putValid(this.getEndpoint(), contentType, accept, input, updatedContext);
+            });
     }
 }
