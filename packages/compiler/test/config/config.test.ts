@@ -38,6 +38,7 @@ describe("compiler: config file loading", () => {
         diagnostics: [],
         outputDir: "{cwd}/tsp-output",
         emit: ["openapi"],
+        nodeModules: [],
       });
     });
 
@@ -48,6 +49,7 @@ describe("compiler: config file loading", () => {
         diagnostics: [],
         outputDir: "{cwd}/tsp-output",
         emit: ["openapi"],
+        nodeModules: [],
       });
     });
 
@@ -81,6 +83,7 @@ describe("compiler: config file loading", () => {
         diagnostics: [],
         outputDir: "{cwd}/tsp-output",
         emit: ["openapi"],
+        nodeModules: [],
       });
     });
 
@@ -91,6 +94,7 @@ describe("compiler: config file loading", () => {
         extends: "./typespec-base.yaml",
         outputDir: "{cwd}/tsp-output",
         emit: ["openapi"],
+        nodeModules: [],
       });
     });
 
@@ -100,6 +104,7 @@ describe("compiler: config file loading", () => {
         diagnostics: [],
         outputDir: "{cwd}/tsp-output",
         emit: ["new-emitter"],
+        nodeModules: [],
       });
     });
 
@@ -108,6 +113,7 @@ describe("compiler: config file loading", () => {
       deepStrictEqual(config, {
         diagnostics: [],
         outputDir: "{cwd}/tsp-output",
+        nodeModules: [],
       });
     });
 
@@ -117,6 +123,7 @@ describe("compiler: config file loading", () => {
       deepStrictEqual(config, {
         diagnostics: [],
         outputDir: "{cwd}/tsp-output",
+        nodeModules: [],
       });
     });
 
@@ -128,6 +135,7 @@ describe("compiler: config file loading", () => {
         diagnostics: [],
         outputDir: "{cwd}/tsp-output",
         emit: ["openapi"],
+        nodeModules: [],
       });
     });
   });

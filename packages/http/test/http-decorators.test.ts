@@ -818,14 +818,14 @@ describe("http: decorators", () => {
     });
 
     it("can specify custom name using id", async () => {
-      const { Foo } = (await runner.compile(`
+      const { Foo, program } = await Tester.compile(t.code`
         @doc("My basic auth with a custom name")
         model MyAuth extends BasicAuth { id: "YourAuth"; };
         @useAuth(MyAuth)
-        @test namespace Foo {}
-      `)) as { Foo: Namespace };
+        namespace ${t.namespace("Foo")} {}
+      `);
 
-      expect(getAuthentication(runner.program, Foo)).toEqual({
+      expect(getAuthentication(program, Foo)).toEqual({
         options: [
           {
             schemes: [
@@ -833,7 +833,7 @@ describe("http: decorators", () => {
                 id: "YourAuth",
                 description: "My basic auth with a custom name",
                 type: "http",
-                scheme: "basic",
+                scheme: "Basic",
                 model: expect.objectContaining({ kind: "Model" }),
               },
             ],
@@ -923,7 +923,7 @@ describe("http: decorators", () => {
     });
 
     it("[Pinterest] can specify OAuth2 with object scopes", async () => {
-      const { Foo } = (await runner.compile(`
+      const { Foo, program } = await Tester.compile(t.code`
         namespace Pinterest {
           model OAuth2Scope {
             value: string;
@@ -948,10 +948,10 @@ describe("http: decorators", () => {
         }
         
         @useAuth(Pinterest.OAuth2Auth<[Pinterest.AuthorizationCodeFlow]>)
-        @test namespace Foo {}
-      `)) as { Foo: Namespace };
+        namespace ${t.namespace("Foo")} {}
+      `);
 
-      expect(getAuthentication(runner.program, Foo)).toEqual({
+      expect(getAuthentication(program, Foo)).toEqual({
         options: [
           {
             schemes: [

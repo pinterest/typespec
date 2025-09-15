@@ -16,6 +16,7 @@ const rootOptions = [
   "emit",
   "options",
   "linter",
+  "node-modules",
 ];
 
 describe("Test completion items for root options", () => {
@@ -439,6 +440,7 @@ describe("Test completion items for extends", () => {
         "environment-variables",
         "imports",
         "linter",
+        "node-modules",
         "options",
         "output-dir",
         "parameters",

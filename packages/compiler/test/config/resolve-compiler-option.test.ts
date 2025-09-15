@@ -34,6 +34,7 @@ describe("compiler: resolve compiler options", () => {
       deepStrictEqual(options, {
         config: resolvePath(scenarioRoot, "custom/myConfig.yaml"),
         emit: ["openapi"],
+        nodeModules: [],
         options: {},
         outputDir: tspOutputPath,
       });
@@ -46,6 +47,7 @@ describe("compiler: resolve compiler options", () => {
       deepStrictEqual(options, {
         config: resolvePath(scenarioRoot, "custom/myConfigNested.yaml"),
         emit: ["openapi"],
+        nodeModules: [],
         options: {
           description: {
             name: "Testing name: Sphere",

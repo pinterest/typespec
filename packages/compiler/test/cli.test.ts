@@ -40,6 +40,7 @@ describe("compiler: cli", () => {
     it("no args and config: return empty options with output-dir at {cwd}/tsp-output", async () => {
       const options = await resolveCompilerOptions({});
       deepStrictEqual(options, {
+        nodeModules: [],
         outputDir: `${cwd}/tsp-output`,
         options: {},
       });
