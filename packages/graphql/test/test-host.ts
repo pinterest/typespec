@@ -1,5 +1,6 @@
-import type { Diagnostic, Program, Type } from "@typespec/compiler";
+import { type Diagnostic, type Program, resolvePath, type Type } from "@typespec/compiler";
 import {
+  createTester,
   createTestHost,
   createTestWrapper,
   expectDiagnosticEmpty,
@@ -11,6 +12,12 @@ import { buildSchema } from "graphql";
 import { expect } from "vitest";
 import type { GraphQLEmitterOptions } from "../src/lib.js";
 import { GraphqlTestLibrary } from "../src/testing/index.js";
+
+export const Tester = createTester(resolvePath(import.meta.dirname, ".."), {
+  libraries: [GraphqlTestLibrary.name],
+})
+  .importLibraries()
+  .using("TypeSpec.GraphQL");
 
 export async function createGraphqlTestHost() {
   return createTestHost({

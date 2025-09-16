@@ -16,19 +16,19 @@ interface TSPTypeContext {
   // TODO: Add any other TSP-specific metadata here.
 }
 /**
- * GraphQLTypeRegistry manages the registration and materialization of TypeSpec (TSP) 
+ * GraphQLTypeRegistry manages the registration and materialization of TypeSpec (TSP)
  * types into their corresponding GraphQL type definitions.
  *
  * The registry operates in a two-stage process:
  * 1. Registration: TSP types (like Enums, Models, etc.) are first registered
  *    along with relevant metadata (e.g., name, usage flags). This stores an
  *    intermediate representation (`TSPTypeContext`) without immediately creating
- *    GraphQL types. This stage is typically performed while traversing the TSP AST. 
+ *    GraphQL types. This stage is typically performed while traversing the TSP AST.
  *    Register type by calling the appropriate method (e.g., `addEnum`).
- * 
+ *
  * 2. Materialization: When a GraphQL type is needed (e.g., to build the final
  *    schema or resolve a field type), the registry can materialize the TSP type
- *    into its GraphQL counterpart (e.g., `GraphQLEnumType`, `GraphQLObjectType`). 
+ *    into its GraphQL counterpart (e.g., `GraphQLEnumType`, `GraphQLObjectType`).
  *    Materialize types by calling the appropriate method (e.g., `materializeEnum`).
  *
  * This approach helps in:
@@ -79,7 +79,7 @@ export class GraphQLTypeRegistry {
       name: context.name,
       values: Object.fromEntries(
         Array.from(tspEnum.members.values()).map((member) => [
-          member.name, 
+          member.name,
           {
             value: member.value ?? member.name,
           },

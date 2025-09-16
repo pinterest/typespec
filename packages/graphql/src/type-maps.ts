@@ -23,7 +23,6 @@ type TypeKey = string & { __typeKey: any };
  * @template G - The GraphQL type constrained to GraphQL's GraphQLType
  */
 export abstract class TypeMap<T extends Type, G extends GraphQLType> {
-
   // Map of materialized GraphQL types
   protected materializedMap = new Map<TypeKey, G>();
 

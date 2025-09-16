@@ -1,61 +1,46 @@
-import type { Model, Operation } from "@typespec/compiler";
-import { expectDiagnosticEmpty, expectDiagnostics } from "@typespec/compiler/testing";
+import { expectDiagnosticEmpty, expectDiagnostics, t } from "@typespec/compiler/testing";
 import { describe, expect, it } from "vitest";
 import { getOperationFields } from "../src/lib/operation-fields.js";
-import { compileAndDiagnose, diagnose } from "./test-host.js";
+import { Tester } from "./test-host.js";
 
 describe("@operationFields", () => {
   it("can add an operation to the model", async () => {
-    const [program, { TestModel, testOperation }, diagnostics] = await compileAndDiagnose<{
-      TestModel: Model;
-      testOperation: Operation;
-    }>(`
-      @test op testOperation(): void;
+    const { program, TestModel, testOperation } = await Tester.compile(t.code`
+      @test op ${t.op("testOperation")}(): void;
 
       @operationFields(testOperation)
-      @test model TestModel {}
+      @test model ${t.model("TestModel")} {}
     `);
-    expectDiagnosticEmpty(diagnostics);
 
     expect(getOperationFields(program, TestModel)).toContain(testOperation);
   });
 
   it("can add an interface to the model", async () => {
-    const [program, { TestModel, testOperation }, diagnostics] = await compileAndDiagnose<{
-      TestModel: Model;
-      testOperation: Operation;
-    }>(`
+    const { program, TestModel, testOperation } = await Tester.compile(t.code`
       interface TestInterface {
-        @test op testOperation(): void;
+        @test op ${t.op("testOperation")}(): void;
       }
 
       @operationFields(TestInterface)
-      @test model TestModel {}
+      @test model ${t.model("TestModel")} {}
     `);
-    expectDiagnosticEmpty(diagnostics);
 
     expect(getOperationFields(program, TestModel)).toContain(testOperation);
   });
 
   it("can add an multiple operations to the model", async () => {
-    const [program, { TestModel, testOperation1, testOperation2, testOperation3 }, diagnostics] =
-      await compileAndDiagnose<{
-        TestModel: Model;
-        testOperation1: Operation;
-        testOperation2: Operation;
-        testOperation3: Operation;
-      }>(`
+    const { program, TestModel, testOperation1, testOperation2, testOperation3 } =
+      await Tester.compile(t.code`
       interface TestInterface {
-        @test op testOperation1(): void;
-        @test op testOperation2(): void;
+        @test op ${t.op("testOperation1")}(): void;
+        @test op ${t.op("testOperation2")}(): void;
       }
 
-      @test op testOperation3(): void;
+      @test op ${t.op("testOperation3")}(): void;
 
       @operationFields(TestInterface, testOperation3)
-      @test model TestModel {}
+      @test model ${t.model("TestModel")} {}
     `);
-    expectDiagnosticEmpty(diagnostics);
 
     expect(getOperationFields(program, TestModel)).toContain(testOperation1);
     expect(getOperationFields(program, TestModel)).toContain(testOperation2);
@@ -63,16 +48,14 @@ describe("@operationFields", () => {
   });
 
   it("will add duplicate operations with a warning", async () => {
-    const [program, { TestModel, testOperation }, diagnostics] = await compileAndDiagnose<{
-      TestModel: Model;
-      testOperation: Operation;
-    }>(`
+    const [{ program, TestModel, testOperation }, diagnostics] =
+      await Tester.compileAndDiagnose(t.code`
       interface TestInterface {
-        @test op testOperation(): void;
+        @test op ${t.op("testOperation")}(): void;
       }
 
       @operationFields(TestInterface, TestInterface.testOperation)
-      @test model TestModel {}
+      @test model ${t.model("TestModel")} {}
     `);
     expectDiagnostics(diagnostics, {
       code: "@typespec/graphql/operation-field-duplicate",
@@ -84,7 +67,7 @@ describe("@operationFields", () => {
 
   describe("conflicts", () => {
     it("does not allow adding operations that conflict with a field", async () => {
-      const diagnostics = await diagnose(`
+      const diagnostics = await Tester.diagnose(`
         op foo(): void;
   
         @operationFields(foo)
@@ -99,7 +82,7 @@ describe("@operationFields", () => {
     });
 
     it("does not allow adding operations that conflict with another operation in return type", async () => {
-      const diagnostics = await diagnose(`
+      const diagnostics = await Tester.diagnose(`
         op testOperation(): string;
   
         interface TestInterface {
@@ -117,7 +100,7 @@ describe("@operationFields", () => {
     });
 
     it("does not allow adding operations that conflict with another operation in number of arguments", async () => {
-      const diagnostics = await diagnose(`
+      const diagnostics = await Tester.diagnose(`
         op testOperation(a: string, b: integer): void;
   
         interface TestInterface {
@@ -135,7 +118,7 @@ describe("@operationFields", () => {
     });
 
     it("does not allow adding operations that conflict with another operation in argument type", async () => {
-      const diagnostics = await diagnose(`
+      const diagnostics = await Tester.diagnose(`
         op testOperation(a: string): void;
   
         interface TestInterface {
@@ -153,7 +136,7 @@ describe("@operationFields", () => {
     });
 
     it("does not allow adding operations that conflict with another operation in argument name", async () => {
-      const diagnostics = await diagnose(`
+      const diagnostics = await Tester.diagnose(`
         op testOperation(a: string): void;
   
         interface TestInterface {
@@ -171,7 +154,7 @@ describe("@operationFields", () => {
     });
 
     it("allows adding operations with a different argument order", async () => {
-      const diagnostics = await diagnose(`
+      const diagnostics = await Tester.diagnose(`
         op testOperation(a: string, b: integer): void;
   
         interface TestInterface {
