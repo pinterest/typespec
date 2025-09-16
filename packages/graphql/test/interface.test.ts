@@ -1,22 +1,19 @@
-import type { Interface, Model } from "@typespec/compiler";
 import {
   expectDiagnosticEmpty,
   expectDiagnostics,
   expectTypeEquals,
+  t,
 } from "@typespec/compiler/testing";
 import { describe, expect, it } from "vitest";
 import { getComposition, isInterface } from "../src/lib/interface.js";
-import { compileAndDiagnose, diagnose } from "./test-host.js";
+import { Tester } from "./test-host.js";
 
 describe("@Interface", () => {
   it("Marks the model as an interface", async () => {
-    const [program, { TestModel }, diagnostics] = await compileAndDiagnose<{
-      TestModel: Model;
-    }>(`
+    const { TestModel, program } = await Tester.compile(t.code`
       @Interface
-      @test model TestModel {}
+      model ${t.model("TestModel")} {}
     `);
-    expectDiagnosticEmpty(diagnostics);
 
     expect(isInterface(program, TestModel)).toBe(true);
   });
@@ -24,18 +21,13 @@ describe("@Interface", () => {
 
 describe("@compose", () => {
   it("Can compose and store the composition", async () => {
-    const [program, { TestModel, AnInterface }, diagnostics] = await compileAndDiagnose<{
-      TestModel: Model;
-      AnInterface: Interface;
-    }>(`
+    const { TestModel, AnInterface, program } = await Tester.compile(t.code`
       @Interface
-      @test model AnInterface {}
+      model ${t.model("AnInterface")} {}
 
       @compose(AnInterface)
-      @test model TestModel {}
+      model ${t.model("TestModel")} {}
     `);
-    expectDiagnosticEmpty(diagnostics);
-
     const composition = getComposition(program, TestModel);
     expect(composition).toBeDefined();
     expect(composition).toHaveLength(1);
@@ -43,21 +35,15 @@ describe("@compose", () => {
   });
 
   it("Can compose multiple interfaces", async () => {
-    const [program, { TestModel, FirstInterface, SecondInterface }, diagnostics] =
-      await compileAndDiagnose<{
-        TestModel: Model;
-        FirstInterface: Interface;
-        SecondInterface: Interface;
-      }>(`
+    const { TestModel, FirstInterface, SecondInterface, program } = await Tester.compile(t.code`
       @Interface
-      @test model FirstInterface {}
+      model ${t.model("FirstInterface")} {}
       @Interface
-      @test model SecondInterface {}
+      model ${t.model("SecondInterface")} {}
 
       @compose(FirstInterface, SecondInterface)
-      @test model TestModel {}
+      model ${t.model("TestModel")} {}
     `);
-    expectDiagnosticEmpty(diagnostics);
 
     const composition = getComposition(program, TestModel);
     expect(composition).toBeDefined();
@@ -67,7 +53,7 @@ describe("@compose", () => {
   });
 
   it("Can spread properties from the interface", async () => {
-    const diagnostics = await diagnose(`
+    const diagnostics = await Tester.diagnose(`
       @Interface model AnInterface {
         prop: string;
       }
@@ -81,7 +67,7 @@ describe("@compose", () => {
   });
 
   it("Can extend properties from the interface", async () => {
-    const diagnostics = await diagnose(`
+    const diagnostics = await Tester.diagnose(`
       @Interface model AnInterface {
         prop: string;
       }
@@ -93,7 +79,7 @@ describe("@compose", () => {
   });
 
   it("Can copy the interface", async () => {
-    const diagnostics = await diagnose(`
+    const diagnostics = await Tester.diagnose(`
       @Interface model AnInterface {
         prop: string;
       }
@@ -105,7 +91,7 @@ describe("@compose", () => {
   });
 
   it("Can receive properties from a template", async () => {
-    const diagnostics = await diagnose(`
+    const diagnostics = await Tester.diagnose(`
       @Interface model AnInterface {
         prop: string;
       }
@@ -124,7 +110,7 @@ describe("@compose", () => {
   });
 
   it("Requires that an implemented model is an Interface", async () => {
-    const diagnostics = await diagnose(`
+    const diagnostics = await Tester.diagnose(`
       model NotAnInterface {}
 
       @compose(NotAnInterface)
@@ -138,7 +124,7 @@ describe("@compose", () => {
   });
 
   it("Requires that all implemented models are Interfaces", async () => {
-    const diagnostics = await diagnose(`
+    const diagnostics = await Tester.diagnose(`
       @Interface model AnInterface {}
       model NotAnInterface {}
 
@@ -153,18 +139,14 @@ describe("@compose", () => {
   });
 
   it("Allows Interfaces to implement other Interfaces", async () => {
-    const [program, { AnInterface, AnotherInterface }, diagnostics] = await compileAndDiagnose<{
-      AnInterface: Model;
-      AnotherInterface: Interface;
-    }>(`
+    const { AnInterface, AnotherInterface, program } = await Tester.compile(t.code`
       @Interface
-      @test model AnotherInterface {}
+      model ${t.model("AnotherInterface")} {}
 
       @compose(AnotherInterface)
       @Interface
-      @test model AnInterface {}
+      model ${t.model("AnInterface")} {}
     `);
-    expectDiagnosticEmpty(diagnostics);
 
     const composition = getComposition(program, AnInterface);
     expect(composition).toBeDefined();
@@ -173,7 +155,7 @@ describe("@compose", () => {
   });
 
   it("Does not allow an interface to implement itself", async () => {
-    const diagnostics = await diagnose(`
+    const diagnostics = await Tester.diagnose(`
       @compose(AnInterface)
       @Interface
       @test model AnInterface {}
@@ -185,7 +167,7 @@ describe("@compose", () => {
   });
 
   it("Requires that all Interface properties are implemented", async () => {
-    const diagnostics = await diagnose(`
+    const diagnostics = await Tester.diagnose(`
       @Interface model AnInterface {
         prop: string;
       }
@@ -201,7 +183,7 @@ describe("@compose", () => {
   });
 
   it("Requires that all Interface properties are compatible", async () => {
-    const diagnostics = await diagnose(`
+    const diagnostics = await Tester.diagnose(`
       @Interface model AnInterface {
         prop: string;
       }
@@ -218,7 +200,7 @@ describe("@compose", () => {
   });
 
   it("Allows additional properties", async () => {
-    const diagnostics = await diagnose(`
+    const diagnostics = await Tester.diagnose(`
       @Interface model AnInterface {
         prop: string;
       }

@@ -11,7 +11,6 @@ import { GraphQLSchema, validateSchema } from "graphql";
 import { type GraphQLEmitterOptions } from "./lib.js";
 import type { Schema } from "./lib/schema.js";
 import { GraphQLTypeRegistry } from "./registry.js";
-import { exit } from "node:process";
 
 class GraphQLSchemaEmitter {
   private tspSchema: Schema;
