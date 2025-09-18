@@ -22,7 +22,7 @@ import { Atom } from "../atom/atom.jsx";
 import { TypeExpression } from "../type-expression/type-expression.jsx";
 
 export interface InterfaceDeclarationProps extends Omit<py.ClassDeclarationProps, "name"> {
-  type: Model;
+  type: Model | Interface;
   name?: string;
 }
 
@@ -67,7 +67,7 @@ export function InterfaceDeclaration(props: InterfaceDeclarationProps) {
     modelTypeMembers = (
       <For each={validTypeMembers} line>
         {(typeMember) => {
-          return <ModelMember type={typeMember} />;
+          return <InterfaceMember type={typeMember} />;
         }}
       </For>
     );
@@ -139,13 +139,13 @@ function getExtendsType($: Typekit, type: Model | Interface): Children | undefin
   );
 }
 
-export interface ModelMemberProps {
+export interface InterfaceMemberProps {
   type: ModelProperty | Operation;
   doc?: Children;
   optional?: boolean;
 }
 
-export function ModelMember(props: ModelMemberProps) {
+export function InterfaceMember(props: InterfaceMemberProps) {
   const { $ } = useTsp();
   const doc = props.doc ?? $.type.getDoc(props.type);
   const namePolicy = py.usePythonNamePolicy();

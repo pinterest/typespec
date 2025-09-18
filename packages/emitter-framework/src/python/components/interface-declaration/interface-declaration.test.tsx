@@ -1,7 +1,7 @@
 import { Tester } from "#test/test-host.js";
 import { t, type TesterInstance } from "@typespec/compiler/testing";
 import { beforeEach, describe, expect, it } from "vitest";
-import { InterfaceDeclaration } from "../../index.jsx";
+import { InterfaceDeclaration, InterfaceMethod } from "../../components/interface-declaration/interface-declaration.jsx";
 import { getOutput } from "../../test-utils.js";
 
 describe("Python Model Declaration - Non-Record", () => {
@@ -321,6 +321,59 @@ describe("Python Model Declaration - Non-Record", () => {
         """
         # This is a known property
         known_prop: str
+
+      `);
+  });
+});
+
+describe("Interfaces", () => {
+  let runner: TesterInstance;
+
+  beforeEach(async () => {
+    runner = await Tester.createInstance();
+  });
+
+  it("creates an interface method", async () => {
+    const result = await runner.compile(t.code`
+      @test model ${t.model("Item")} {
+        id: string;
+        name: string;
+      }
+      
+      @test interface ${t.interface("Person")} {
+        get(id: string): Item;
+        put(item: Item): void;
+      }
+    `);
+
+    expect(
+      getOutput(runner.program, [
+        <InterfaceDeclaration type={result.Item} />,
+        <InterfaceDeclaration type={result.Person}>
+          <InterfaceMethod name="get" parametersMode="prepend" type={result.Person.operations.get("get")!} />
+          <InterfaceMethod name="put" parametersMode="prepend" type={result.Person.operations.get("put")!} />
+        </InterfaceDeclaration>
+      ]),
+    ).toRenderTo(`
+      from dataclasses import dataclass
+      from typing import Protocol
+
+      @dataclass
+      class Item:
+        id: str
+        name: str
+
+
+      
+      class Person(Protocol):
+        @staticmethod
+        def get(id: str) -> Item:
+          ...
+
+        @staticmethod
+        def put(item: Item) -> None:
+          ...
+
 
       `);
   });
