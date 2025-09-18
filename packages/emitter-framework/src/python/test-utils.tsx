@@ -1,12 +1,30 @@
-import { type Children, type OutputDirectory, render } from "@alloy-js/core";
+import { render, type Children, type OutputDirectory } from "@alloy-js/core";
 import { Output as StcOutput, SourceFile as StcSourceFile } from "@alloy-js/core/stc";
 import { createPythonNamePolicy, SourceFile } from "@alloy-js/python";
-import type { Program } from "@typespec/compiler";
-import { type ModelProperty } from "@typespec/compiler";
-import type { BasicTestRunner } from "@typespec/compiler/testing";
+import type {
+  Enum,
+  Interface,
+  Model,
+  Namespace,
+  NavigationOptions,
+  Operation,
+  Program,
+  SemanticNodeListener,
+  Tuple,
+  Union,
+  UnionVariant,
+} from "@typespec/compiler";
+import { navigateProgram, type ModelProperty } from "@typespec/compiler";
+import type { BasicTestRunner, TestHost } from "@typespec/compiler/testing";
 import { assert } from "vitest";
 import { Output } from "../../src/core/components/output.jsx";
-import { datetimeModule, decimalModule, typingModule } from "./builtins.js";
+import {
+  dataclassesModule,
+  datetimeModule,
+  decimalModule,
+  typingExtensionsModule,
+  typingModule,
+} from "./builtins.js";
 import { getProgram } from "./test-host.js";
 
 // Reimplementing so we can set the correct extensions
@@ -30,7 +48,7 @@ export function assertFileContents(res: OutputDirectory, contents: string) {
 }
 
 function getExternals() {
-  return [datetimeModule, decimalModule, typingModule];
+  return [dataclassesModule, datetimeModule, decimalModule, typingModule, typingExtensionsModule];
 }
 
 export function getOutput(program: Program, children: Children[]): Children {
@@ -72,4 +90,119 @@ export async function compileModelProperty(ref: string, runner: BasicTestRunner)
 
 export async function compileModelPropertyType(ref: string, runner: BasicTestRunner) {
   return (await compileModelProperty(ref, runner)).type;
+}
+
+function createCollector(customListener?: SemanticNodeListener) {
+  const result = {
+    enums: [] as Enum[],
+    exitEnums: [] as Enum[],
+    interfaces: [] as Interface[],
+    exitInterfaces: [] as Interface[],
+    models: [] as Model[],
+    exitModels: [] as Model[],
+    modelProperties: [] as ModelProperty[],
+    exitModelProperties: [] as ModelProperty[],
+    namespaces: [] as Namespace[],
+    exitNamespaces: [] as Namespace[],
+    operations: [] as Operation[],
+    exitOperations: [] as Operation[],
+    tuples: [] as Tuple[],
+    exitTuples: [] as Tuple[],
+    unions: [] as Union[],
+    exitUnions: [] as Union[],
+    unionVariants: [] as UnionVariant[],
+    exitUnionVariants: [] as UnionVariant[],
+  };
+
+  const listener: SemanticNodeListener = {
+    namespace: (x) => {
+      result.namespaces.push(x);
+      return customListener?.namespace?.(x);
+    },
+    exitNamespace: (x) => {
+      result.exitNamespaces.push(x);
+      return customListener?.exitNamespace?.(x);
+    },
+    operation: (x) => {
+      result.operations.push(x);
+      return customListener?.operation?.(x);
+    },
+    exitOperation: (x) => {
+      result.exitOperations.push(x);
+      return customListener?.exitOperation?.(x);
+    },
+    model: (x) => {
+      result.models.push(x);
+      return customListener?.model?.(x);
+    },
+    exitModel: (x) => {
+      result.exitModels.push(x);
+      return customListener?.exitModel?.(x);
+    },
+    modelProperty: (x) => {
+      result.modelProperties.push(x);
+      return customListener?.modelProperty?.(x);
+    },
+    exitModelProperty: (x) => {
+      result.exitModelProperties.push(x);
+      return customListener?.exitModelProperty?.(x);
+    },
+    enum: (x) => {
+      result.enums.push(x);
+      return customListener?.enum?.(x);
+    },
+    exitEnum: (x) => {
+      result.exitEnums.push(x);
+      return customListener?.exitEnum?.(x);
+    },
+    union: (x) => {
+      result.unions.push(x);
+      return customListener?.union?.(x);
+    },
+    exitUnion: (x) => {
+      result.exitUnions.push(x);
+      return customListener?.exitUnion?.(x);
+    },
+    interface: (x) => {
+      result.interfaces.push(x);
+      return customListener?.interface?.(x);
+    },
+    exitInterface: (x) => {
+      result.exitInterfaces.push(x);
+      return customListener?.exitInterface?.(x);
+    },
+    tuple: (x) => {
+      result.tuples.push(x);
+      return customListener?.tuple?.(x);
+    },
+    exitTuple: (x) => {
+      result.exitTuples.push(x);
+      return customListener?.exitTuple?.(x);
+    },
+    unionVariant: (x) => {
+      result.unionVariants.push(x);
+      return customListener?.unionVariant?.(x);
+    },
+    exitUnionVariant: (x) => {
+      result.exitUnionVariants.push(x);
+      return customListener?.exitUnionVariant?.(x);
+    },
+  };
+  return [result, listener] as const;
+}
+
+export async function runNavigator(
+  typespec: string,
+  host: TestHost,
+  customListener?: SemanticNodeListener,
+  options?: NavigationOptions,
+) {
+  host.addTypeSpecFile("main.tsp", typespec);
+
+  await host.compile("main.tsp", { nostdlib: true });
+
+  const [result, listener] = createCollector(customListener);
+  navigateProgram(host.program, listener, options);
+
+  return result;
 }
