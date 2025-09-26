@@ -9,7 +9,7 @@ export function getOutput(program: Program, children: Children[]): Children {
   return (
     <Output
       program={program}
-      externals={[datetimeModule, decimalModule, typingModule]}
+      externals={[datetimeModule, decimalModule, typingModule, py.enumModule]}
       namePolicy={policy}
     >
       <SourceFile path="test.py">{children}</SourceFile>
