@@ -46,9 +46,12 @@ describe("Python Enum Declaration", () => {
     expect(output).toRenderTo(d`
       from enum import IntEnum
 
-      # This is a test enum
       class Foo(IntEnum):
-        ONE = 1  # This is one
+        """
+        This is a test enum
+        """
+
+        ONE = 1  #: This is one
         TWO = 2
         THREE = 3
 
@@ -75,9 +78,12 @@ describe("Python Enum Declaration", () => {
     expect(output).toRenderTo(d`
       from enum import IntEnum
 
-      # This is an explicit doc
       class Foo(IntEnum):
-        ONE = 1  # This is one
+        """
+        This is an explicit doc
+        """
+
+        ONE = 1  #: This is one
         TWO = 2
         THREE = 3
 

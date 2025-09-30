@@ -1,5 +1,5 @@
 import { useTsp } from "#core/context/index.js";
-import { type Children, For, type Refkey } from "@alloy-js/core";
+import { type Children, For, Prose, type Refkey } from "@alloy-js/core";
 import * as py from "@alloy-js/python";
 import type { Enum, EnumMember as TspEnumMember, Union } from "@typespec/compiler";
 import { reportDiagnostic } from "../../../lib.js";
@@ -52,10 +52,11 @@ export function EnumDeclaration(props: EnumDeclarationProps) {
   const name = props.name ?? py.usePythonNamePolicy().getName(props.type.name!, "enum");
   const members = Array.from(type.members.entries());
   const doc = props.doc ?? $.type.getDoc(type);
+  const docElement = doc ? <py.ClassDoc description={[<Prose>{doc}</Prose>]} /> : undefined;
   const enumType = determineEnumType(members);
 
   return (
-    <py.ClassEnumDeclaration doc={doc} name={name} refkey={refkeys} baseType={enumType}>
+    <py.ClassEnumDeclaration doc={docElement} name={name} refkey={refkeys} baseType={enumType}>
       <For each={members} joiner={"\n"}>
         {([key, value]) => {
           const memberDoc = $.type.getDoc(value);
