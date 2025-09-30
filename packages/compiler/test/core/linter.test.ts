@@ -2,7 +2,7 @@ import { describe, it } from "vitest";
 
 import { createLinterRule, createTypeSpecLibrary } from "../../src/core/library.js";
 import { Linter, createLinter, resolveLinterDefinition } from "../../src/core/linter.js";
-import type { LibraryInstance, LinterDefinition } from "../../src/index.js";
+import type { LinterDefinition, LinterLibraryInstance } from "../../src/index.js";
 import {
   createTestHost,
   expectDiagnosticEmpty,
@@ -43,7 +43,7 @@ describe("compiler: linter", () => {
       }
     }
 
-    const library: LibraryInstance = {
+    const library: LinterLibraryInstance = {
       entrypoint: {} as any,
       metadata: { type: "module", name: "@typespec/test-linter" },
       module: { type: "module", path: "", mainFile: "", manifest: { name: "", version: "" } },
