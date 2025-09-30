@@ -44,6 +44,12 @@ import {
 import { createStateAccessors } from "./state-accessors.js";
 import { ComplexityStats, RuntimeStats, Stats, startTimer, time, timeAsync } from "./stats.js";
 import {
+  builtInTransformerLibraryName,
+  createBuiltInTransformerLibrary,
+  createTransformer,
+  resolveTransformerDefinition,
+} from "./transformer.js";
+import {
   CompilerHost,
   Diagnostic,
   Directive,
@@ -52,8 +58,8 @@ import {
   EmitterFunc,
   Entity,
   JsSourceFileNode,
-  LibraryInstance,
   LibraryMetadata,
+  LinterLibraryInstance,
   LiteralType,
   LocationContext,
   LogSink,
@@ -68,6 +74,7 @@ import {
   SyntaxKind,
   TemplateInstanceTarget,
   Tracer,
+  TransformerLibraryInstance,
   Type,
   TypeSpecLibrary,
   TypeSpecScriptNode,
@@ -136,13 +143,15 @@ export interface Program {
   readonly projectRoot: string;
 }
 
+export interface TransformedProgram extends Program {}
+
 interface EmitterRef {
   emitFunction: EmitterFunc;
   main: string;
   metadata: LibraryMetadata;
   emitterOutputDir: string;
   options: Record<string, unknown>;
-  readonly library: LibraryInstance;
+  readonly library: LinterLibraryInstance & TransformerLibraryInstance;
 }
 
 interface Validator {
@@ -207,7 +216,7 @@ async function createProgram(
   mainFile: string,
   options: CompilerOptions = {},
   oldProgram?: Program,
-): Promise<{ program: Program; shouldAbort: boolean }> {
+): Promise<{ program: TransformedProgram; shouldAbort: boolean }> {
   const runtimeStats: Partial<RuntimeStats> = {};
   const validateCbs: Validator[] = [];
   const stateMaps = new Map<symbol, Map<Type, unknown>>();
@@ -303,6 +312,16 @@ async function createProgram(
     program.reportDiagnostics(await linter.extendRuleSet(options.linterRuleSet));
   }
 
+  const transformer = createTransformer(program, (name) => loadLibrary(basedir, name));
+  // Register built-in transformer library (currently empty placeholder)
+  transformer.registerTransformLibrary(
+    builtInTransformerLibraryName,
+    createBuiltInTransformerLibrary(),
+  );
+  if (options.transformSet) {
+    program.reportDiagnostics(await transformer.extendTransformSet(options.transformSet));
+  }
+
   program.checker = createChecker(program, resolver);
   runtimeStats.checker = time(() => program.checker.checkProgram());
 
@@ -329,7 +348,12 @@ async function createProgram(
   runtimeStats.linter = lintResult.stats.runtime;
   program.reportDiagnostics(lintResult.diagnostics);
 
-  return { program, shouldAbort: false };
+  // Transform stage
+  const transformResult = transformer.transform();
+  runtimeStats.transformer = transformResult.stats.runtime;
+  program.reportDiagnostics(transformResult.diagnostics);
+
+  return { program: transformResult.program, shouldAbort: false };
 
   /**
    * Validate the libraries loaded during the compilation process are compatible.
@@ -507,7 +531,7 @@ async function createProgram(
   async function loadLibrary(
     basedir: string,
     libraryNameOrPath: string,
-  ): Promise<LibraryInstance | undefined> {
+  ): Promise<(LinterLibraryInstance & TransformerLibraryInstance) | undefined> {
     const [resolution, diagnostics] = await resolveEmitterModuleAndEntrypoint(
       basedir,
       libraryNameOrPath,
@@ -522,11 +546,14 @@ async function createProgram(
     const libDefinition: TypeSpecLibrary<any> | undefined = entrypoint?.esmExports.$lib;
     const metadata = computeLibraryMetadata(module, libDefinition);
     const linterDef = entrypoint?.esmExports.$linter;
+    const transformerDef = entrypoint?.esmExports.$transformer;
     return {
       ...resolution,
       metadata,
       definition: libDefinition,
       linter: linterDef && resolveLinterDefinition(libraryNameOrPath, linterDef),
+      transformer:
+        transformerDef && resolveTransformerDefinition(libraryNameOrPath, transformerDef),
     };
   }
 

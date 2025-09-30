@@ -8,7 +8,14 @@ import { getIdentifierContext, getNodeAtPosition } from "../core/parser.js";
 import { getRelativePathFromDirectory, joinPaths, resolvePath } from "../core/path-utils.js";
 import { Program, compile as coreCompile } from "../core/program.js";
 import { createSourceLoader } from "../core/source-loader.js";
-import { CompilerHost, Diagnostic, Entity, NoTarget, SourceFile } from "../core/types.js";
+import {
+  CompilerHost,
+  Diagnostic,
+  Entity,
+  NoTarget,
+  SourceFile,
+  TransformSet,
+} from "../core/types.js";
 import { resolveModule } from "../module-resolver/module-resolver.js";
 import { NodePackageResolver } from "../module-resolver/node-package-resolver.js";
 import { ResolveModuleHost } from "../module-resolver/types.js";
@@ -19,7 +26,7 @@ import { createTestFileSystem } from "./fs.js";
 import { GetMarkedEntities, Marker, TemplateWithMarkers } from "./marked-template.js";
 import { StandardTestLibrary, addTestLib } from "./test-compiler-host.js";
 import { resolveVirtualPath } from "./test-utils.js";
-import type {
+import {
   EmitterTester,
   EmitterTesterInstance,
   MockFile,
@@ -31,6 +38,8 @@ import type {
   Tester,
   TesterBuilder,
   TesterInstance,
+  TransformerTester,
+  TransformerTesterInstance,
 } from "./types.js";
 
 export interface TesterOptions {
@@ -163,6 +172,10 @@ interface EmitterTesterInternalParams extends TesterInternalParams {
   emitter: string;
 }
 
+interface TransformerTesterInternalParams extends TesterInternalParams {
+  transformSet: TransformSet;
+}
+
 function createTesterBuilder<
   const I extends TesterInternalParams,
   const O extends TesterBuilder<unknown>,
@@ -227,6 +240,7 @@ function createTesterInternal(params: TesterInternalParams): Tester {
     ...createTesterBuilder(params, createTesterInternal),
     emit,
     createInstance,
+    transformer,
   };
 
   function emit(emitter: string, options?: Record<string, unknown>): EmitterTester {
@@ -242,6 +256,16 @@ function createTesterInternal(params: TesterInternalParams): Tester {
             },
           }
         : params.compilerOptions,
+    });
+  }
+
+  function transformer(
+    transformSet: TransformSet,
+    options?: Record<string, unknown>,
+  ): TransformerTester {
+    return createTransformerTesterInternal({
+      ...params,
+      transformSet,
     });
   }
 
@@ -272,6 +296,41 @@ function createEmitterTesterInternal<Result>(
     },
     createInstance: () => createEmitterTesterInstance(params),
   };
+}
+
+function createTransformerTesterInternal(
+  params: TransformerTesterInternalParams,
+): TransformerTester {
+  return {
+    ...createCompilable(async (...args) => {
+      const instance = await createTransformerTesterInstance(params);
+      return instance.compileAndDiagnose(...args);
+    }),
+    ...createTesterBuilder<TransformerTesterInternalParams, TransformerTester>(
+      params,
+      createTransformerTesterInternal,
+    ),
+    // transform,
+    createInstance: () => createTransformerTesterInstance(params),
+  };
+
+  // async function transform<
+  //   T extends string | TemplateWithMarkers<any> | Record<string, string | TemplateWithMarkers<any>>,
+  // >(
+  //   code: T,
+  //   options?: TestTransformOptions,
+  // ): Promise<TestTransformResult<GetMarkedEntities<T>>> {
+  //   const tester = await createTesterInstance(params);
+  //
+  //   // todo
+  //   return tester.compile(code, {
+  //     ...options,
+  //     compilerOptions: {
+  //       ...(options ?? {}).compilerOptions,
+  //       transformSet: params.transformSet,
+  //     },
+  //   });
+  // }
 }
 
 async function createEmitterTesterInstance<Result>(
@@ -320,6 +379,37 @@ async function createEmitterTesterInstance<Result>(
     };
     const final = params.outputProcess ? params.outputProcess(prep) : prep;
     return [final, diagnostics];
+  }
+}
+
+async function createTransformerTesterInstance(
+  params: TransformerTesterInternalParams,
+): Promise<TransformerTesterInstance> {
+  const tester = await createTesterInstance(params);
+  return {
+    fs: tester.fs,
+    ...createCompilable(compileAndDiagnose),
+    get program() {
+      return tester.program;
+    },
+  };
+
+  async function compileAndDiagnose(
+    code: string | TemplateWithMarkers<any> | Record<string, string | TemplateWithMarkers<any>>,
+    options?: TestCompileOptions,
+  ): Promise<[TestCompileResult<any>, readonly Diagnostic[]]> {
+    if (options?.compilerOptions?.transformSet !== undefined) {
+      throw new Error("Cannot set transformSet in options.");
+    }
+    const resolvedOptions: TestCompileOptions = {
+      ...options,
+      compilerOptions: {
+        ...params.compilerOptions,
+        ...options?.compilerOptions,
+        transformSet: params.transformSet,
+      },
+    };
+    return tester.compileAndDiagnose(code, resolvedOptions);
   }
 }
 

@@ -42,6 +42,7 @@ export type {
   TestHostError,
   Tester,
   TesterInstance,
+  TransformerTesterInstance,
   TypeSpecTestLibrary,
   TypeSpecTestLibraryInit,
 } from "./types.js";

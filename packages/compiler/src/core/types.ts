@@ -1,5 +1,6 @@
 import type { JSONSchemaType as AjvJSONSchemaType } from "ajv";
-import type { ModuleResolutionResult } from "../module-resolver/index.js";
+import type { ModuleResolutionResult } from "../module-resolver/module-resolver.js";
+import { Mutator } from "../experimental/mutators.js";
 import type { YamlPathTarget, YamlScript } from "../yaml/types.js";
 import type { Numeric } from "./numeric.js";
 import type { Program } from "./program.js";
@@ -1897,7 +1898,14 @@ export interface LibraryInstance {
   entrypoint: JsSourceFileNode;
   metadata: LibraryMetadata;
   definition?: TypeSpecLibrary<any>;
+}
+
+export interface LinterLibraryInstance extends LibraryInstance {
   linter: LinterResolvedDefinition;
+}
+
+export interface TransformerLibraryInstance extends LibraryInstance {
+  transformer: TransformerResolvedDefinition;
 }
 
 export type LibraryMetadata = FileLibraryMetadata | ModuleLibraryMetadata;
@@ -2410,6 +2418,48 @@ export type LinterRuleDiagnosticReport<
   T extends DiagnosticMessages,
   M extends keyof T = "default",
 > = LinterRuleDiagnosticReportWithoutTarget<T, M> & { target: DiagnosticTarget | typeof NoTarget };
+
+export interface TransformerDefinition {
+  transforms: TransformDefinition<string>[];
+  transformSets?: Record<string, TransformSet>;
+}
+
+export interface TransformerResolvedDefinition {
+  readonly transforms: Transform<string>[];
+  readonly transformSets: {
+    [name: string]: TransformSet;
+  };
+}
+
+export interface TransformDefinition<N extends string> {
+  /** Transform name (without the library name) */
+  name: N;
+  /** Short description of the transform */
+  description: string;
+  /** Specifies the URL at which the full documentation can be accessed. */
+  url?: string;
+  /** Creator */
+  mutators: Mutator[];
+}
+
+/** Resolved instance of a transform that will run. */
+export interface Transform<N extends string> extends TransformDefinition<N> {
+  /** Expanded transform id in format `<library-name>:<transform-name>` */
+  id: string;
+}
+
+/** Reference to a transform. In this format `<library name>:<transform/transformset name>` */
+export type TransformSetRef = `${string}/${string}`;
+export interface TransformSet {
+  /** Other transformset this transformset extends */
+  extends?: TransformSetRef[];
+
+  /** Transforms to enable/configure */
+  enable?: Record<TransformSetRef, boolean>;
+
+  /** Transforms to disable. A transform CANNOT be in enable and disable map. */
+  disable?: Record<TransformSetRef, string>;
+}
 
 export interface TypeSpecLibrary<
   T extends { [code: string]: DiagnosticMessages },

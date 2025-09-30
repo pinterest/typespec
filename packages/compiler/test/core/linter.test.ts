@@ -4,7 +4,7 @@ import { createLinterRule, createTypeSpecLibrary } from "../../src/core/library.
 import { Linter, createLinter, resolveLinterDefinition } from "../../src/core/linter.js";
 import {
   type Interface,
-  type LibraryInstance,
+  type LinterLibraryInstance,
   type LinterDefinition,
   type LinterRuleContext,
 } from "../../src/index.js";
@@ -107,7 +107,7 @@ describe("compiler: linter", () => {
       }
     }
 
-    const library: LibraryInstance = {
+    const library: LinterLibraryInstance = {
       entrypoint: {} as any,
       metadata: { type: "module", name: "@typespec/test-linter" },
       module: { type: "module", path: "", mainFile: "", manifest: { name: "", version: "" } },

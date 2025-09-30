@@ -69,6 +69,8 @@ export interface TypeSpecConfig {
   options?: Record<string, EmitterOptions>;
 
   linter?: LinterConfig;
+
+  transformer?: TransformerConfig;
 }
 
 /**
@@ -88,6 +90,7 @@ export interface TypeSpecRawConfig {
   options?: Record<string, EmitterOptions>;
 
   linter?: LinterConfig;
+  transformer?: TransformerConfig;
 }
 
 export interface ConfigEnvironmentVariable {
@@ -103,6 +106,12 @@ export type EmitterOptions = Record<string, unknown> & {
 };
 
 export interface LinterConfig {
+  extends?: RuleRef[];
+  enable?: Record<RuleRef, boolean>;
+  disable?: Record<RuleRef, string>;
+}
+
+export interface TransformerConfig {
   extends?: RuleRef[];
   enable?: Record<RuleRef, boolean>;
   disable?: Record<RuleRef, string>;

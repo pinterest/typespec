@@ -103,5 +103,30 @@ export const TypeSpecConfigJsonSchema: JSONSchemaType<TypeSpecRawConfig> = {
         },
       },
     } as any, // ajv type system doesn't like the string templates
+    transformer: {
+      type: "object",
+      nullable: true,
+      required: [],
+      additionalProperties: false,
+      properties: {
+        extends: {
+          type: "array",
+          nullable: true,
+          items: { type: "string" },
+        },
+        enable: {
+          type: "object",
+          required: [],
+          nullable: true,
+          additionalProperties: { type: "boolean" },
+        },
+        disable: {
+          type: "object",
+          required: [],
+          nullable: true,
+          additionalProperties: { type: "string" },
+        },
+      },
+    } as any, // ajv type system doesn't like the string templates
   },
 };
