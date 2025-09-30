@@ -4,6 +4,8 @@ import { strictEqual } from "assert";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { resolvePath } from "../../src/core/path-utils.js";
 import {
+  createTransform,
+  defineTransformer,
   EmitContext,
   emitFile,
   Enum,
@@ -355,5 +357,40 @@ describe("emitter", () => {
       "Foo.model": "Foo",
       "Bar.model": "Bar",
     });
+  });
+});
+
+describe("transformer", () => {
+  const TransformerTester = Tester.files({
+    "node_modules/dummy-transformer/package.json": JSON.stringify({
+      name: "dummy-transformer",
+      version: "1.0.0",
+      exports: { ".": "./index.js" },
+    }),
+    "node_modules/dummy-transformer/index.js": mockFile.js({
+      $transformer: defineTransformer({
+        transforms: [
+          createTransform({
+            name: "dummy-transform",
+            description: "A dummy transform.",
+            mutators: [],
+          }),
+        ],
+      }),
+    }),
+  }).transformer({ extends: ["dummy-transformer/all"] });
+
+  it("can transform", async () => {
+    const result = await TransformerTester.compile(t.code`
+      model ${t.model("Foo")} {}
+    `);
+    expect(result.Foo.kind).toBe("Model");
+  });
+
+  it("can wrap", async () => {
+    const result = await TransformerTester.wrap(
+      (x) => `model Test {}\n${x}\nmodel Test2 {}`,
+    ).compile(t.code`model ${t.model("Foo")} {}`);
+    expect(result.Foo.kind).toBe("Model");
   });
 });

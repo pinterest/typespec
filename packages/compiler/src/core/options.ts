@@ -1,5 +1,5 @@
 import { EmitterOptions, TypeSpecConfig } from "../config/types.js";
-import { LinterRuleSet, ParseOptions } from "./types.js";
+import { LinterRuleSet, ParseOptions, TransformSet } from "./types.js";
 
 export interface CompilerOptions {
   miscOptions?: Record<string, unknown>;
@@ -67,6 +67,9 @@ export interface CompilerOptions {
 
   /** Ruleset to enable for linting. */
   linterRuleSet?: LinterRuleSet;
+
+  /** Transform set to enable for transformation. */
+  transformSet?: TransformSet;
 
   /** @internal */
   readonly configFile?: TypeSpecConfig;
