@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { getOutput } from "../../test-utils.js";
 import { FunctionDeclaration } from "./function-declaration.jsx";
 
-describe("Typescript Function Declaration", () => {
+describe("Python Function Declaration", () => {
   describe("Function bound to Typespec Types", () => {
     describe("Bound to Operation", () => {
       it("creates a function", async () => {

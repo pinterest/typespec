@@ -57,9 +57,14 @@ describe("NumericValue", () => {
   });
 
   it("decimals", async () => {
-    const value = $(program).value.createNumeric(42.5);
+    const fractional = $(program).value.createNumeric(42.5);
+    await testValueExpression(fractional, `42.5`);
+  });
 
-    await testValueExpression(value, `42.5`);
+  it("decimals with .0", async () => {
+    // Atom normalizes 42.0 to 42 because it uses asNumber()
+    const value = $(program).value.createNumeric(42.0);
+    await testValueExpression(value, `42`);
   });
 });
 

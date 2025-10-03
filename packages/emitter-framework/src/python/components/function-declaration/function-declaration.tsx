@@ -13,7 +13,7 @@ export type FunctionDeclarationProps =
   | py.FunctionDeclarationProps;
 
 /**
- * A TypeScript function declaration. Pass the `type` prop to create the
+ * A Python function declaration. Pass the `type` prop to create the
  * function declaration by converting from a TypeSpec Operation. Any other props
  * provided will take precedence.
  */

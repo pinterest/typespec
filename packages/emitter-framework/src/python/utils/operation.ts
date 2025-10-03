@@ -1,5 +1,5 @@
 import { refkey, type Refkey } from "@alloy-js/core";
-import * as ts from "@alloy-js/typescript";
+import * as py from "@alloy-js/python";
 import type { Model, ModelProperty, Operation, Type } from "@typespec/compiler";
 import { useTsp } from "../../core/index.js";
 import { TypeExpression } from "../components/type-expression/type-expression.jsx";
@@ -20,7 +20,7 @@ export function getReturnType(
 }
 
 export interface BuildParameterDescriptorsOptions {
-  params?: ts.ParameterDescriptor[] | string[] | undefined;
+  params?: (string | py.ParameterDescriptor)[] | undefined;
   mode?: "prepend" | "append" | "replace";
   suffixRefkey?: Refkey;
 }
@@ -28,7 +28,7 @@ export interface BuildParameterDescriptorsOptions {
 export function buildParameterDescriptors(
   type: Model,
   options: BuildParameterDescriptorsOptions = {},
-): ts.ParameterDescriptor[] | undefined {
+): py.ParameterDescriptor[] | undefined {
   const { $ } = useTsp();
   const suffixRefkey = options.suffixRefkey ?? refkey();
   const optionsParams = normalizeParameters(options.params);
@@ -54,9 +54,9 @@ export function buildParameterDescriptors(
 export function buildParameterDescriptor(
   modelProperty: ModelProperty,
   suffixRefkey: Refkey,
-): ts.ParameterDescriptor {
+): py.ParameterDescriptor {
   const { $ } = useTsp();
-  const namePolicy = ts.useTSNamePolicy();
+  const namePolicy = py.usePythonNamePolicy();
   const paramName = namePolicy.getName(modelProperty.name, "parameter");
   const isOptional = modelProperty.optional || modelProperty.defaultValue !== undefined;
   const doc = $.type.getDoc(modelProperty);
@@ -64,7 +64,6 @@ export function buildParameterDescriptor(
     doc,
     name: paramName,
     refkey: efRefkey(modelProperty, suffixRefkey),
-    optional: isOptional,
     type: TypeExpression({ type: modelProperty.type }),
   };
 }
@@ -74,8 +73,8 @@ export function buildParameterDescriptor(
  * a parameter descriptor array.
  */
 function normalizeParameters(
-  params: ts.ParameterDescriptor[] | string[] | undefined,
-): ts.ParameterDescriptor[] {
+  params: (string | py.ParameterDescriptor)[] | undefined,
+): py.ParameterDescriptor[] {
   if (!params) return [];
 
   return params.map((param) => {
