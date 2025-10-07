@@ -31,6 +31,7 @@ describe("Python Class from model", () => {
     expect(getOutput(program, [<ClassDeclaration type={Widget} />])).toRenderTo(
       `
           from dataclasses import dataclass
+          from typing import Literal
 
           @dataclass
           class Widget:
@@ -308,6 +309,7 @@ describe("Python Class from model", () => {
       `
       from dataclasses import dataclass
       from enum import StrEnum
+      from typing import Literal
 
       class Color(StrEnum):
         RED = "RED"
@@ -353,6 +355,7 @@ describe("Python Class from model", () => {
     expect(getOutput(program, [<ClassDeclaration name="MyOperations" type={Widget} />]))
       .toRenderTo(`
       from dataclasses import dataclass
+      from typing import Literal
 
       @dataclass
       class MyOperations:
@@ -383,6 +386,7 @@ describe("Python Class from model", () => {
       ]),
     ).toRenderTo(`
       from dataclasses import dataclass
+      from typing import Literal
 
       @dataclass
       class MyOperations:
@@ -414,6 +418,7 @@ describe("Python Class from model", () => {
       ]),
     ).toRenderTo(`
       from dataclasses import dataclass
+      from typing import Literal
 
       @dataclass
       class Widget:
@@ -527,6 +532,7 @@ describe("Python Class from interface", () => {
       from abc import ABC
       from abc import abstractmethod
       from dataclasses import dataclass
+      from typing import Literal
 
 
       class WidgetOperations(ABC):
@@ -579,6 +585,7 @@ describe("Python Class from interface", () => {
       from abc import ABC
       from abc import abstractmethod
       from dataclasses import dataclass
+      from typing import Literal
 
 
       class WidgetOperations(ABC):

@@ -1,3 +1,4 @@
+import { typingModule } from "#python/builtins.js";
 import { type Children } from "@alloy-js/core";
 import * as py from "@alloy-js/python";
 import { isNeverType, type ModelProperty, type Operation } from "@typespec/compiler";
@@ -88,7 +89,7 @@ function buildTypeNodeForProperty(unpackedType: any): Children | undefined {
         : String(variantValue?.value ?? "");
     return (
       <>
-        Literal[{efRefkey(unionType)}.{enumMemberName}]
+        {typingModule["."]["Literal"]}[{efRefkey(unionType)}.{enumMemberName}]
       </>
     );
   }
@@ -103,7 +104,7 @@ function buildTypeNodeForProperty(unpackedType: any): Children | undefined {
     const allStringLiterals = opts.every((opt) => opt && opt.kind === "String");
     if (allStringLiterals) {
       const literalValues = opts.map((opt) => JSON.stringify(opt.value)).join(", ");
-      return <>Literal[{literalValues}]</>;
+      return <>{typingModule["."]["Literal"]}[{literalValues}]</>;
     }
   }
 
