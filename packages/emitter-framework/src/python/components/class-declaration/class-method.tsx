@@ -6,12 +6,12 @@ import { useTsp } from "../../../core/index.js";
 import { buildParameterDescriptors, getReturnType } from "../../utils/operation.js";
 import { TypeExpression } from "../type-expression/type-expression.jsx";
 
-export const ClassMethodContext = createContext<"method" | "static" | "class" | undefined>(
+export const MethodContext = createContext<"method" | "static" | "class" | undefined>(
   undefined,
 );
-export const ClassMethodProvider = ClassMethodContext.Provider;
+export const MethodProvider = MethodContext.Provider;
 
-export interface ClassMethodPropsWithType extends Omit<py.MethodDeclarationBaseProps, "name"> {
+export interface MethodPropsWithType extends Omit<py.MethodDeclarationBaseProps, "name"> {
   type: Operation;
   name?: string;
   doc?: Children;
@@ -20,9 +20,9 @@ export interface ClassMethodPropsWithType extends Omit<py.MethodDeclarationBaseP
   abstract?: boolean;
 }
 
-export type ClassMethodProps = ClassMethodPropsWithType | py.MethodDeclarationBaseProps;
+export type MethodProps = MethodPropsWithType | py.MethodDeclarationBaseProps;
 
-function createDocElement($: Typekit, props: ClassMethodProps) {
+function createDocElement($: Typekit, props: MethodProps) {
   let docElement = undefined;
   const docSource = props.doc ?? ("type" in props && $.type.getDoc(props.type)) ?? undefined;
   if (docSource) {
@@ -55,11 +55,11 @@ function createDocElement($: Typekit, props: ClassMethodProps) {
 
 /**
  * Get the method component based on the resolved method type.
- * We prioritize the methodType prop provided in the ClassMethod component,
+ * We prioritize the methodType prop provided in the Method component,
  * and then the one provided in the context, and then we default to "method".
  */
-function getResolvedMethodType(props: ClassMethodProps): "method" | "class" | "static" {
-  const ctxMethodType = useContext(ClassMethodContext);
+function getResolvedMethodType(props: MethodProps): "method" | "class" | "static" {
+  const ctxMethodType = useContext(MethodContext);
   const propMethodType = "methodType" in props ? (props as any).methodType : undefined;
   return (propMethodType ?? ctxMethodType ?? "method") as "method" | "class" | "static";
 }
@@ -69,7 +69,7 @@ function getResolvedMethodType(props: ClassMethodProps): "method" | "class" | "s
  * method by converting from a TypeSpec Operation. Any other props
  * provided will take precedence.
  */
-export function ClassMethod(props: Readonly<ClassMethodProps>) {
+export function Method(props: Readonly<MethodProps>) {
   const { $ } = useTsp();
   const isTypeSpecTyped = "type" in props;
   const docElement = createDocElement($, props);

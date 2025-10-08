@@ -16,7 +16,7 @@ import { reportDiagnostic } from "../../../lib.js";
 import { declarationRefkeys, efRefkey } from "../../utils/refkey.js";
 import { TypeExpression } from "../type-expression/type-expression.jsx";
 import { ClassMember } from "./class-member.jsx";
-import { ClassMethodProvider } from "./class-method.jsx";
+import { MethodProvider } from "./class-method.jsx";
 
 export interface ClassDeclarationPropsWithType extends Omit<py.ClassDeclarationProps, "name"> {
   type: Model | Interface;
@@ -232,7 +232,7 @@ export function ClassDeclaration(props: ClassDeclarationProps) {
     <>
       <Show when={dataclass}>@{dataclass}</Show>
       <hbr />
-      <ClassMethodProvider value={props.methodType}>
+      <MethodProvider value={props.methodType}>
         <py.ClassDeclaration
           doc={docElement}
           name={name}
@@ -241,7 +241,7 @@ export function ClassDeclaration(props: ClassDeclarationProps) {
         >
           {classBody}
         </py.ClassDeclaration>
-      </ClassMethodProvider>
+      </MethodProvider>
     </>
   );
 }

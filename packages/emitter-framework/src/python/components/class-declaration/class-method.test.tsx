@@ -4,7 +4,7 @@ import { getProgram } from "#test/utils.js";
 import { t } from "@typespec/compiler/testing";
 import { describe, expect, it } from "vitest";
 import { ClassDeclaration } from "../../../../src/python/components/class-declaration/class-declaration.js";
-import { ClassMethod } from "../../../../src/python/components/class-declaration/class-method.js";
+import { Method } from "../../../../src/python/components/class-declaration/class-method.js";
 
 describe("interface methods with a `type` prop", () => {
   it("creates a class method from an interface method", async () => {
@@ -15,7 +15,7 @@ describe("interface methods with a `type` prop", () => {
     expect(
       getOutput(program, [
         <ClassDeclaration name="basicInterface">
-          <ClassMethod async type={getName} />
+          <Method async type={getName} />
         </ClassDeclaration>,
       ]),
     ).toRenderTo(`
@@ -35,7 +35,7 @@ describe("interface methods with a `type` prop", () => {
     expect(
       getOutput(program, [
         <ClassDeclaration name="basicInterface">
-          <ClassMethod async type={getName} methodType="class" />
+          <Method async type={getName} methodType="class" />
         </ClassDeclaration>,
       ]),
     ).toRenderTo(`
@@ -56,7 +56,7 @@ describe("interface methods with a `type` prop", () => {
     expect(
       getOutput(program, [
         <ClassDeclaration name="basicInterface">
-          <ClassMethod async type={getName} methodType="static" />
+          <Method async type={getName} methodType="static" />
         </ClassDeclaration>,
       ]),
     ).toRenderTo(`
@@ -77,7 +77,7 @@ describe("interface methods with a `type` prop", () => {
     expect(
       getOutput(program, [
         <ClassDeclaration name="basicInterface">
-          <ClassMethod async type={getName} />
+          <Method async type={getName} />
         </ClassDeclaration>,
       ]),
     ).toRenderTo(`
@@ -97,7 +97,7 @@ describe("interface methods with a `type` prop", () => {
     expect(
       getOutput(program, [
         <ClassDeclaration name="basicInterface">
-          <ClassMethod
+          <Method
             type={getName}
             parametersMode="append"
             parameters={[{ name: "foo", type: "string" }]}
@@ -121,7 +121,7 @@ describe("interface methods with a `type` prop", () => {
     expect(
       getOutput(program, [
         <ClassDeclaration name="basicInterface">
-          <ClassMethod
+          <Method
             type={getName}
             parametersMode="prepend"
             parameters={[{ name: "foo", type: "string" }]}
@@ -145,7 +145,7 @@ describe("interface methods with a `type` prop", () => {
     expect(
       getOutput(program, [
         <ClassDeclaration name="basicInterface">
-          <ClassMethod
+          <Method
             type={getName}
             parametersMode="replace"
             parameters={[
@@ -172,7 +172,7 @@ describe("interface methods with a `type` prop", () => {
     expect(
       getOutput(program, [
         <ClassDeclaration name="basicInterface">
-          <ClassMethod type={getName} returnType="ASpecialString" />
+          <Method type={getName} returnType="ASpecialString" />
         </ClassDeclaration>,
       ]),
     ).toRenderTo(`
@@ -192,7 +192,7 @@ describe("interface methods with a `type` prop", () => {
     expect(
       getOutput(program, [
         <ClassDeclaration name="basicInterface">
-          <ClassMethod type={getName} name="get_name_custom" />
+          <Method type={getName} name="get_name_custom" />
         </ClassDeclaration>,
       ]),
     ).toRenderTo(`
@@ -212,7 +212,7 @@ describe("interface methods without a `type` prop", () => {
     expect(
       getOutput(program, [
         <ClassDeclaration name="basicInterface">
-          <ClassMethod
+          <Method
             name="plainMethod"
             parameters={[{ name: "param1", type: "string" }]}
             returnType="number"

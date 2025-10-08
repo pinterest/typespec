@@ -5,7 +5,7 @@ import * as py from "@alloy-js/python";
 import { t } from "@typespec/compiler/testing";
 import { describe, expect, it } from "vitest";
 import { ClassDeclaration } from "../../../../src/python/components/class-declaration/class-declaration.js";
-import { ClassMethod } from "../../../../src/python/components/class-declaration/class-method.js";
+import { Method } from "../../../../src/python/components/class-declaration/class-method.js";
 import { EnumDeclaration } from "../../../../src/python/components/enum-declaration/enum-declaration.js";
 
 describe("Python Class from model", () => {
@@ -632,7 +632,7 @@ describe("Python Class overrides", () => {
           <hbr />
           <hbr />
           <List>
-            <ClassMethod name="do_work" returnType="None" doc="This is a test" />
+            <Method name="do_work" returnType="None" doc="This is a test" />
           </List>
         </ClassDeclaration>,
       ]),
@@ -668,7 +668,7 @@ describe("Python Class overrides", () => {
           <hbr />
           <hbr />
           <List>
-            <ClassMethod name="do_work" returnType="None" doc="This is a test" />
+            <Method name="do_work" returnType="None" doc="This is a test" />
           </List>
         </ClassDeclaration>,
       ]),
@@ -704,7 +704,7 @@ describe("Python Class overrides", () => {
           <hbr />
           <hbr />
           <List>
-            <ClassMethod name="do_work" returnType="None" doc="This is a test" />
+            <Method name="do_work" returnType="None" doc="This is a test" />
           </List>
         </ClassDeclaration>,
       ]),
@@ -741,7 +741,7 @@ describe("Python Class overrides", () => {
           <hbr />
           <hbr />
           <List>
-            <ClassMethod name="do_work" returnType="None" doc="This is a test" />
+            <Method name="do_work" returnType="None" doc="This is a test" />
           </List>
         </ClassDeclaration>,
       ]),
