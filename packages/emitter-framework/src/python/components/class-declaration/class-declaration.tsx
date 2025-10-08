@@ -1,14 +1,7 @@
 import { abcModule, dataclassesModule } from "#python/builtins.js";
 import { type Children, For, List, mapJoin, Show } from "@alloy-js/core";
 import * as py from "@alloy-js/python";
-import {
-  type Interface,
-  isNeverType,
-  type Model,
-  type ModelProperty,
-  type Operation,
-  type RekeyableMap,
-} from "@typespec/compiler";
+import { type Interface, type Model, type ModelProperty, type Operation } from "@typespec/compiler";
 import type { Typekit } from "@typespec/compiler/typekit";
 import { createRekeyableMap } from "@typespec/compiler/utils";
 import { useTsp } from "../../../core/context/tsp-context.js";
@@ -33,26 +26,7 @@ function isTypedClassDeclarationProps(
   return "type" in props;
 }
 
-/**
- * Filters out model properties whose type is never.
- * @param $ - The Typekit.
- * @param type - The type to filter the model properties from.
- * @returns The valid model properties.
- */
-function getValidTypeMembers($: Typekit, type: Model | Interface): (ModelProperty | Operation)[] {
-  let typeMembers: RekeyableMap<string, ModelProperty | Operation> | undefined;
-  if ($.model.is(type)) {
-    typeMembers = $.model.getProperties(type);
-  } else {
-    typeMembers = createRekeyableMap((type as { operations: Map<string, Operation> }).operations);
-  }
-  return Array.from(typeMembers.values()).filter((member) => {
-    if ($.modelProperty.is(member) && isNeverType(member.type)) {
-      return false;
-    }
-    return true;
-  });
-}
+// (removed getValidTypeMembers; inline logic where needed)
 
 /**
  * Creates the doc element for the class declaration, either from the props or from the type.
@@ -102,7 +76,14 @@ function createDocElement($: Typekit, props: ClassDeclarationProps) {
  */
 function createClassBody($: Typekit, props: ClassDeclarationProps, abstract: boolean) {
   const validTypeMembers = isTypedClassDeclarationProps(props)
-    ? getValidTypeMembers($, props.type)
+    ? (() => {
+        if ($.model.is(props.type)) {
+          return Array.from($.model.getProperties(props.type).values());
+        } else {
+          const ops = (props.type as { operations: Map<string, Operation> }).operations;
+          return Array.from(createRekeyableMap(ops).values());
+        }
+      })()
     : [];
   const hasValidMember = validTypeMembers.length > 0;
   const hasChildren = Array.isArray(props.children)
@@ -219,7 +200,11 @@ export function ClassDeclaration(props: ClassDeclarationProps) {
   const refkeys = declarationRefkeys(props.refkey, props.type);
   let dataclass: any = null;
   if (!abstract) {
-    dataclass = dataclassesModule["."]["dataclass"];
+    // Array-based models should be rendered as normal classes, not dataclasses (e.g., model Foo is Array<T>)
+    const isArrayModel = $.model.is(props.type) && $.array.is(props.type);
+    if (!isArrayModel) {
+      dataclass = dataclassesModule["."]["dataclass"];
+    }
   }
   const classBody = createClassBody($, props, abstract);
 
@@ -233,8 +218,13 @@ export function ClassDeclaration(props: ClassDeclarationProps) {
 
   return (
     <>
-      <Show when={dataclass}>@{dataclass}</Show>
-      <hbr />
+      <Show when={dataclass}>
+        @{dataclass}
+        <hbr />
+      </Show>
+      <Show when={abstract}>
+        <hbr />
+      </Show>
       <MethodProvider value={props.methodType}>
         <py.ClassDeclaration
           doc={docElement}
@@ -261,7 +251,16 @@ function ClassBody(
   props: ClassBodyProps & { validTypeMembers?: (ModelProperty | Operation)[] },
 ): Children {
   const { $ } = useTsp();
-  const validTypeMembers = props.validTypeMembers ?? getValidTypeMembers($, props.type);
+  const validTypeMembers =
+    props.validTypeMembers ??
+    (() => {
+      if ($.model.is(props.type)) {
+        return Array.from($.model.getProperties(props.type).values());
+      } else {
+        const ops = (props.type as { operations: Map<string, Operation> }).operations;
+        return Array.from(createRekeyableMap(ops).values());
+      }
+    })();
 
   // Throw error for models with additional properties (Record-based scenarios)
   if ($.model.is(props.type)) {

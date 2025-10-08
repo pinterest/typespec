@@ -52,6 +52,51 @@ describe("Python Class from model", () => {
     );
   });
 
+  it("creates a class with non-default values followed by default values", async () => {
+    const { program, Widget } = await Tester.compile(t.code`
+
+    model ${t.model("Widget")} {
+      id: string;
+      description?: string = "This is a widget";
+    }
+    `);
+
+    expect(getOutput(program, [<ClassDeclaration type={Widget} />])).toRenderTo(
+      `
+          from dataclasses import dataclass
+
+          @dataclass
+          class Widget:
+            id: str
+            description: str = "This is a widget"
+          
+          `,
+    );
+  });
+
+  // TODO: Change this test, as this isn't valid Python
+  it("creates a class with non-default values followed by default values", async () => {
+    const { program, Widget } = await Tester.compile(t.code`
+
+    model ${t.model("Widget")} {
+      description?: string = "This is a widget";
+      id: string;
+    }
+    `);
+
+    expect(getOutput(program, [<ClassDeclaration type={Widget} />])).toRenderTo(
+      `
+          from dataclasses import dataclass
+
+          @dataclass
+          class Widget:
+            description: str = "This is a widget"
+            id: str
+          
+          `,
+    );
+  });
+
   it("declares a class with multi line docs", async () => {
     const { program, Foo } = await Tester.compile(t.code`
       /**
@@ -144,7 +189,7 @@ describe("Python Class from model", () => {
     );
   });
 
-  it("declares a class overriding docs with prebuilt JSX ClassDoc", async () => {
+  it("declares a class overriding docs with prebuilt ClassDoc", async () => {
     const { program, Foo } = await Tester.compile(t.code`
       /**
        * Base doc will be overridden
@@ -175,7 +220,7 @@ describe("Python Class from model", () => {
     );
   });
 
-  it("declares a class from amodel with @doc", async () => {
+  it("declares a class from a model with @doc", async () => {
     const { program, Foo } = await Tester.compile(t.code`
         @doc("This is a test")
         model ${t.model("Foo")} {
@@ -279,9 +324,6 @@ describe("Python Class from model", () => {
 
     expect(getOutput(program, [<ClassDeclaration type={Foo} />])).toRenderTo(
       `
-      from dataclasses import dataclass
-
-      @dataclass
       class Foo(list[str]):
         pass
 
@@ -293,13 +335,13 @@ describe("Python Class from model", () => {
     const { program, Color, Widget } = await Tester.compile(t.code`
       union ${t.union("Color")} {
         red: "RED",
-        blue: "BLUE"
+        blue: "BLUE",
       }
   
       model ${t.model("Widget")} {
         id: string = "123";
         weight: int32 = 100;
-        color: Color.blue
+        color: Color.blue;
       }
       `);
 
@@ -326,7 +368,7 @@ describe("Python Class from model", () => {
     );
   });
 
-  it("renders an empty class based on a model with a never-typed member", async () => {
+  it("renders a never-typed member as typing.Never", async () => {
     const { program, Widget } = await Tester.compile(t.code`
     model ${t.model("Widget")} {
       property: never;
@@ -335,10 +377,11 @@ describe("Python Class from model", () => {
 
     expect(getOutput(program, [<ClassDeclaration type={Widget} />])).toRenderTo(`
       from dataclasses import dataclass
+      from typing import Never
 
       @dataclass
       class Widget:
-        pass
+        property: Never
 
   `);
   });

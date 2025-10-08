@@ -124,17 +124,17 @@ export function ClassMember(props: ClassMemberProps) {
   const doc = props.doc ?? $.type.getDoc(props.type);
 
   if ($.modelProperty.is(props.type)) {
-    // Never type is not supported
-    if (isNeverType(props.type.type)) {
-      return null;
-    }
+    // Map never-typed properties to typing.Never
+    const isNever = isNeverType(props.type.type);
 
-    const unpackedType = props.type.type as any;
+    const unpackedType = isNever ? (typingModule["."]["Never"] as any) : (props.type.type as any);
     const isOptional = props.optional ?? props.type.optional ?? false;
     const defaultValue: any = (props.type as any).defaultValue;
     const literalTypeNode = buildTypeNodeForProperty(unpackedType);
     const initializer = buildPrimitiveInitializerFromDefault(defaultValue, unpackedType, $);
-    const typeNode: Children = literalTypeNode ?? <TypeExpression type={unpackedType} />;
+    const typeNode: Children = isNever
+      ? (typingModule["."]["Never"] as any)
+      : (literalTypeNode ?? <TypeExpression type={unpackedType} />);
 
     const interfaceMemberProps = {
       doc,

@@ -12,6 +12,11 @@ import {
 
 export function getOutput(program: Program, children: Children[]): Children {
   const policy = py.createPythonNamePolicy();
+  const printOptions = {
+    printWidth: 80,
+    tabWidth: 4,
+    insertFinalNewLine: false,
+  };
   return (
     <Output
       program={program}
@@ -24,6 +29,7 @@ export function getOutput(program: Program, children: Children[]): Children {
         py.abcModule,
         py.enumModule,
       ]}
+      printOptions={printOptions}
       namePolicy={policy}
     >
       <py.SourceFile path="test.py">{children}</py.SourceFile>
