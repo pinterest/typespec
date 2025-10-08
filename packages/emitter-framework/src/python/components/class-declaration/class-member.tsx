@@ -44,7 +44,7 @@ function buildPrimitiveInitializerFromDefault(
       // Example: value is { value: "100", isInteger: true }
       if (raw && typeof raw === "object" && "value" in raw) raw = raw.value;
 
-      // Float-ish property types should render as raw text with .0 if integral
+      // Float-ish property types should render with a float hint if integral
       if ($.scalar.is(propertyType)) {
         const base = $.scalar.getStdBase(propertyType)?.name;
         const isFloatish =
@@ -54,10 +54,7 @@ function buildPrimitiveInitializerFromDefault(
           base === "decimal" ||
           base === "decimal128";
         if (isFloatish) {
-          // Example: raw is 42.5 or 42.0
-          const s = typeof raw === "string" ? raw : String(raw);
-          const needsDotZero = !s.includes(".") && !s.toLowerCase().includes("e");
-          return <>{needsDotZero ? `${s}.0` : s}</>;
+          return <Atom value={defaultValue} assumeFloat />;
         }
       }
 
@@ -104,7 +101,11 @@ function buildTypeNodeForProperty(unpackedType: any): Children | undefined {
     const allStringLiterals = opts.every((opt) => opt && opt.kind === "String");
     if (allStringLiterals) {
       const literalValues = opts.map((opt) => JSON.stringify(opt.value)).join(", ");
-      return <>{typingModule["."]["Literal"]}[{literalValues}]</>;
+      return (
+        <>
+          {typingModule["."]["Literal"]}[{literalValues}]
+        </>
+      );
     }
   }
 
@@ -148,12 +149,7 @@ export function ClassMember(props: ClassMemberProps) {
 
   if ($.operation.is(props.type)) {
     return (
-      <Method
-        type={props.type}
-        doc={doc}
-        methodType={props.methodType}
-        abstract={props.abstract}
-      />
+      <Method type={props.type} doc={doc} methodType={props.methodType} abstract={props.abstract} />
     );
   }
 }

@@ -6,8 +6,8 @@ settings:
 
 overrides:
   cross-spawn@>=7.0.0 <7.0.5: ^7.0.5
-  '@alloy-js/core': ^0.21.0-dev.10
-  '@alloy-js/python': ^0.2.0-dev.4
+  '@alloy-js/core': ^0.21.0-dev.13
+  '@alloy-js/python': ^0.2.0-dev.5
   rollup: 4.49.0
 
 importers:
@@ -421,11 +421,11 @@ importers:
         specifier: ^0.20.0
         version: 0.20.0
       '@alloy-js/core':
-        specifier: ^0.21.0-dev.10
-        version: 0.21.0-dev.10
+        specifier: ^0.21.0-dev.13
+        version: 0.21.0-dev.13
       '@alloy-js/python':
-        specifier: ^0.2.0-dev.4
-        version: 0.2.0-dev.4
+        specifier: ^0.2.0-dev.5
+        version: 0.2.0-dev.5
       '@alloy-js/rollup-plugin':
         specifier: ^0.1.0
         version: 0.1.0(@babel/core@7.28.4)(@types/babel__core@7.20.5)(rollup@4.49.0)
@@ -666,8 +666,8 @@ importers:
         specifier: ^0.20.0
         version: 0.20.0
       '@alloy-js/core':
-        specifier: ^0.21.0-dev.10
-        version: 0.21.0-dev.10
+        specifier: ^0.21.0-dev.13
+        version: 0.21.0-dev.13
       '@alloy-js/rollup-plugin':
         specifier: ^0.1.0
         version: 0.1.0(@babel/core@7.28.4)(@types/babel__core@7.20.5)(rollup@4.49.0)
@@ -708,8 +708,8 @@ importers:
   packages/http-client-js:
     dependencies:
       '@alloy-js/core':
-        specifier: ^0.21.0-dev.10
-        version: 0.21.0-dev.10
+        specifier: ^0.21.0-dev.13
+        version: 0.21.0-dev.13
       '@alloy-js/typescript':
         specifier: ^0.20.0
         version: 0.20.0
@@ -2219,8 +2219,8 @@ importers:
   packages/tspd:
     dependencies:
       '@alloy-js/core':
-        specifier: ^0.21.0-dev.10
-        version: 0.21.0-dev.10
+        specifier: ^0.21.0-dev.13
+        version: 0.21.0-dev.13
       '@alloy-js/markdown':
         specifier: ^0.20.0
         version: 0.20.0
@@ -2676,8 +2676,8 @@ packages:
     engines: {node: '>=18.0.0'}
     hasBin: true
 
-  '@alloy-js/core@0.21.0-dev.10':
-    resolution: {integrity: sha512-Gf8WTuGyK5HpTjdfuJcUavKPLXnzTKNS13058KUj7ZrVVSY69ZKyMfBxEXp73AYuE0ooAU6TE889mxihJjcYNg==}
+  '@alloy-js/core@0.21.0-dev.13':
+    resolution: {integrity: sha512-Hp2KpM8L3ni2f95OoAYI7vYB3Tu86WJYdYAv8PcgboyyFMt3zvl4WZlmNwxi7lgr86rYCGSuGhWFYw825pbWnA==}
 
   '@alloy-js/csharp@0.20.0':
     resolution: {integrity: sha512-Yn8oua43tVWYGN9Gt5DDtGUdLIB9io6/nL8dK4qDvL019w9uK7f3wosr+/JtSm14PuToN4jM1s7HNVzqh41KUA==}
@@ -2685,8 +2685,8 @@ packages:
   '@alloy-js/markdown@0.20.0':
     resolution: {integrity: sha512-c1Q4dzUvWC4Bdoi6dRT9yAYVoCiqz3ZMClV8CHzEsgZYjjdS0S2ZWWmgxzS87rSDHSjmQIXJ4BcUZfKyfnMrFA==}
 
-  '@alloy-js/python@0.2.0-dev.4':
-    resolution: {integrity: sha512-VAa3sfQ2YpIk4aLJmWmn5/ctV90k/P90+7K5Y50RkX89DLIq42lVIIR7tNBaMCR96p7OdrOTTKlhp6uzi3IEhQ==}
+  '@alloy-js/python@0.2.0-dev.5':
+    resolution: {integrity: sha512-vVKvbcJegeGqEroxxtUbLeJJM4q+ihd+lQB83jhgOnn4ldCy04nlnymp5GW2ZUR1KQoEhMimzLe6pvVh8wPlHQ==}
 
   '@alloy-js/rollup-plugin@0.1.0':
     resolution: {integrity: sha512-MXR8mBdSh/pxMP8kIXAcMYKsm5yOWZ+igxcaRX1vBXFiHU4eK7gE/5q6Fk8Vdydh+MItWtgekwIhUWvcszdNFQ==}
@@ -13564,7 +13564,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@alloy-js/core@0.21.0-dev.10':
+  '@alloy-js/core@0.21.0-dev.13':
     dependencies:
       '@vue/reactivity': 3.5.18
       cli-table3: 0.6.5
@@ -13574,19 +13574,19 @@ snapshots:
 
   '@alloy-js/csharp@0.20.0':
     dependencies:
-      '@alloy-js/core': 0.21.0-dev.10
+      '@alloy-js/core': 0.21.0-dev.13
       change-case: 5.4.4
       marked: 16.1.1
       pathe: 2.0.3
 
   '@alloy-js/markdown@0.20.0':
     dependencies:
-      '@alloy-js/core': 0.21.0-dev.10
+      '@alloy-js/core': 0.21.0-dev.13
       yaml: 2.8.0
 
-  '@alloy-js/python@0.2.0-dev.4':
+  '@alloy-js/python@0.2.0-dev.5':
     dependencies:
-      '@alloy-js/core': 0.21.0-dev.10
+      '@alloy-js/core': 0.21.0-dev.13
       change-case: 5.4.4
       pathe: 2.0.3
 
@@ -13603,7 +13603,7 @@ snapshots:
 
   '@alloy-js/typescript@0.20.0':
     dependencies:
-      '@alloy-js/core': 0.21.0-dev.10
+      '@alloy-js/core': 0.21.0-dev.13
       change-case: 5.4.4
       pathe: 2.0.3
 

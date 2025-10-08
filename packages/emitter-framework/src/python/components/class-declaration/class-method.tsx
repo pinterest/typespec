@@ -6,9 +6,7 @@ import { useTsp } from "../../../core/index.js";
 import { buildParameterDescriptors, getReturnType } from "../../utils/operation.js";
 import { TypeExpression } from "../type-expression/type-expression.jsx";
 
-export const MethodContext = createContext<"method" | "static" | "class" | undefined>(
-  undefined,
-);
+export const MethodContext = createContext<"method" | "static" | "class" | undefined>(undefined);
 export const MethodProvider = MethodContext.Provider;
 
 export interface MethodPropsWithType extends Omit<py.MethodDeclarationBaseProps, "name"> {

@@ -193,16 +193,19 @@ export function ClassDeclaration(props: ClassDeclarationProps) {
   const { $ } = useTsp();
 
   // If we are explicitly overriding the class as abstract or the type is not a model, we need to create an abstract class
-  let abstract = ('abstract' in props && props.abstract) || ('type' in props && !$.model.is(props.type));
+  let abstract =
+    ("abstract" in props && props.abstract) || ("type" in props && !$.model.is(props.type));
   let docElement = createDocElement($, props);
   let basesType = createBasesType($, props, abstract);
 
   if (!isTypedClassDeclarationProps(props)) {
-    return <py.ClassDeclaration
-    {...props}
-    doc={docElement}
-    {...(basesType !== undefined ? { bases: basesType as Children[] } : {})}
-    />;
+    return (
+      <py.ClassDeclaration
+        {...props}
+        doc={docElement}
+        {...(basesType !== undefined ? { bases: basesType as Children[] } : {})}
+      />
+    );
   }
 
   const namePolicy = py.usePythonNamePolicy();

@@ -38,10 +38,3 @@ export const typingModule = createModule({
     ".": ["Any", "Literal", "NoReturn", "Protocol", "Tuple"],
   },
 });
-
-export const typingExtensionsModule = createModule({
-  name: "typing_extensions",
-  descriptor: {
-    ".": ["TypedDict"],
-  },
-});
