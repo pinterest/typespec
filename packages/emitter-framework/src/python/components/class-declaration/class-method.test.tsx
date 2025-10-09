@@ -1,10 +1,10 @@
-import { getOutput } from "#python/test-utils.jsx";
 import { Tester } from "#test/test-host.js";
 import { getProgram } from "#test/utils.js";
 import { t } from "@typespec/compiler/testing";
 import { describe, expect, it } from "vitest";
 import { ClassDeclaration } from "../../../../src/python/components/class-declaration/class-declaration.js";
 import { Method } from "../../../../src/python/components/class-declaration/class-method.js";
+import { getOutput } from "../../test-utils.jsx";
 
 describe("interface methods with a `type` prop", () => {
   it("creates a class method from an interface method", async () => {

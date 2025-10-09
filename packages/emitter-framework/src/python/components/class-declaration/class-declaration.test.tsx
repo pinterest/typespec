@@ -1,4 +1,3 @@
-import { getOutput } from "#python/test-utils.jsx";
 import { Tester } from "#test/test-host.js";
 import { List } from "@alloy-js/core";
 import * as py from "@alloy-js/python";
@@ -7,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { ClassDeclaration } from "../../../../src/python/components/class-declaration/class-declaration.js";
 import { Method } from "../../../../src/python/components/class-declaration/class-method.js";
 import { EnumDeclaration } from "../../../../src/python/components/enum-declaration/enum-declaration.js";
+import { getOutput } from "../../test-utils.jsx";
 
 describe("Python Class from model", () => {
   it("creates a class", async () => {

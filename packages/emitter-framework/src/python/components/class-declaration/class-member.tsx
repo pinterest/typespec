@@ -1,7 +1,7 @@
 import { typingModule } from "#python/builtins.js";
 import { type Children } from "@alloy-js/core";
 import * as py from "@alloy-js/python";
-import { isNeverType, type ModelProperty, type Operation } from "@typespec/compiler";
+import { type ModelProperty, type Operation } from "@typespec/compiler";
 import { useTsp } from "../../../core/context/tsp-context.js";
 import { efRefkey } from "../../utils/refkey.js";
 import { Atom } from "../atom/atom.jsx";
@@ -125,16 +125,21 @@ export function ClassMember(props: ClassMemberProps) {
 
   if ($.modelProperty.is(props.type)) {
     // Map never-typed properties to typing.Never
-    const isNever = isNeverType(props.type.type);
 
-    const unpackedType = isNever ? (typingModule["."]["Never"] as any) : (props.type.type as any);
+    const unpackedType = props.type.type;
     const isOptional = props.optional ?? props.type.optional ?? false;
-    const defaultValue: any = (props.type as any).defaultValue;
+    const defaultValue = props.type.defaultValue;
     const literalTypeNode = buildTypeNodeForProperty(unpackedType);
     const initializer = buildPrimitiveInitializerFromDefault(defaultValue, unpackedType, $);
-    const typeNode: Children = isNever
-      ? (typingModule["."]["Never"] as any)
-      : (literalTypeNode ?? <TypeExpression type={unpackedType} />);
+    const unpackedTypeNode: Children = literalTypeNode ?? <TypeExpression type={unpackedType} />;
+    const typeNode = isOptional ? (
+      <py.TypeReference
+        refkey={typingModule["."].Optional}
+        typeArgs={[unpackedTypeNode]}
+      ></py.TypeReference>
+    ) : (
+      unpackedTypeNode
+    );
 
     const interfaceMemberProps = {
       doc,
