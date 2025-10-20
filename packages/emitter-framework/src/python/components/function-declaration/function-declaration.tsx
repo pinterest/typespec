@@ -21,13 +21,15 @@ export type FunctionDeclarationProps =
 /**
  * Normalize various doc sources into a Python FunctionDoc element.
  *
- * - When `source` is a string, it is split into lines and rendered as a multi-line
- *   docstring (one line per row).
- * - When `source` is an array of Children, it is rendered as distinct paragraphs.
- * - When `source` is already a JSX node (e.g., an explicit <py.FunctionDoc />), it is
- *   returned as-is.
+ * Accepts:
+ * - string → split into lines and render as a multi-line docstring
+ * - string[] | Children[] → rendered as separate paragraphs
+ * - Children (e.g., an explicit <py.FunctionDoc />) → returned as-is
  */
-function createDocElement($: ReturnType<typeof useTsp>["$"], source: any): Children | undefined {
+function createDocElement(
+  $: ReturnType<typeof useTsp>["$"],
+  source?: string | string[] | Children | Children[],
+): Children | undefined {
   if (!source) return undefined;
   if (Array.isArray(source)) {
     return <py.FunctionDoc description={source as Children[]} />;
@@ -45,7 +47,7 @@ function createDocElement($: ReturnType<typeof useTsp>["$"], source: any): Child
       />
     );
   } else {
-    return source as any;
+    return source as Children | undefined;
   }
 }
 

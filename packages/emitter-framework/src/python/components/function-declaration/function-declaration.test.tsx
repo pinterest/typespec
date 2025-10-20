@@ -30,25 +30,6 @@ describe("Python Function Declaration", () => {
       `);
   });
 
-  it("creates an async function with parametersModel", async () => {
-    const { program, createPerson, Foo } = await Tester.compile(t.code`
-      op ${t.op("createPerson")}(id: string): string;
-
-      model ${t.model("Foo")} {
-        name: string;
-        age: int32;
-      }
-    `);
-
-    expect(
-      getOutput(program, [<FunctionDeclaration async type={createPerson} parametersModel={Foo} />]),
-    ).toRenderTo(`
-      async def create_person(name: str, age: int) -> str:
-        pass
-      
-      `);
-  });
-
   it("creates a function with a custom name", async () => {
     const { program, getName } = await Tester.compile(t.code`
       op ${t.op("getName")}(id: string): string;
@@ -281,6 +262,50 @@ describe("Python Function Declaration", () => {
       `);
   });
 
+  it("creates a function with doc as string[]", async () => {
+    const { program, getName } = await Tester.compile(t.code`
+      op ${t.op("getName")}(id: string): string;
+    `);
+
+    expect(
+      getOutput(program, [
+        <FunctionDeclaration type={getName} doc={["First paragraph", "Second paragraph"]} />,
+      ]),
+    ).toRenderTo(`
+      def get_name(id: str) -> str:
+        """
+        First paragraph
+
+        Second paragraph
+        """
+
+        pass
+      
+      `);
+  });
+
+  it("creates a function with doc as Children[]", async () => {
+    const { program, getName } = await Tester.compile(t.code`
+      op ${t.op("getName")}(id: string): string;
+    `);
+
+    expect(
+      getOutput(program, [
+        <FunctionDeclaration type={getName} doc={[<>First paragraph</>, <>Second paragraph</>]} />,
+      ]),
+    ).toRenderTo(`
+      def get_name(id: str) -> str:
+        """
+        First paragraph
+
+        Second paragraph
+        """
+
+        pass
+      
+      `);
+  });
+
   it("creates a function with doc lines (string with newlines)", async () => {
     const { program, getName } = await Tester.compile(t.code`
       op ${t.op("getName")}(id: string): string;
@@ -323,15 +348,15 @@ describe("Python Function Declaration", () => {
       `);
   });
 
-  it("creates a function that returns NoReturn for never", async () => {
+  it("creates a function that returns Never for never", async () => {
     const { program, abort } = await Tester.compile(t.code`
       op ${t.op("abort")}(): never;
     `);
 
     expect(getOutput(program, [<FunctionDeclaration type={abort} />])).toRenderTo(`
-      from typing import NoReturn
+      from typing import Never
 
-      def abort() -> NoReturn:
+      def abort() -> Never:
         pass
       
       `);

@@ -77,7 +77,6 @@ export function TypeExpression(props: TypeExpressionProps) {
 
     // TODO: Models will be implemented separately
     // return <InterfaceExpression type={type} />;
-    // TODO: Functions will be implemented separately
     case "Operation": {
       // Render function types as typing.Callable[[ArgTypes...], ReturnType]
       // If parameters cannot be enumerated, fall back to Callable[..., ReturnType]
@@ -130,7 +129,7 @@ const intrinsicNameToPythonType = new Map<string, string | null>([
   ["boolean", "bool"], // Matches Python's `bool`
   ["null", "None"], // Matches Python's `None`
   ["void", "None"], // Matches Python's `None`
-  ["never", "NoReturn"], // Matches Python's `NoReturn`
+  ["never", "Never"], // Matches Python's `Never`
   ["bytes", "bytes"], // Matches Python's `bytes`
 
   // Numeric types
@@ -164,7 +163,7 @@ const intrinsicNameToPythonType = new Map<string, string | null>([
 
 const pythonTypeToImport = new Map<string, any>([
   ["Any", typingModule["."]["Any"]],
-  ["NoReturn", typingModule["."]["NoReturn"]],
+  ["Never", typingModule["."]["Never"]],
   ["Tuple", typingModule["."]["Tuple"]],
   ["datetime", datetimeModule["."]["datetime"]],
   ["Decimal", decimalModule["."]["Decimal"]],

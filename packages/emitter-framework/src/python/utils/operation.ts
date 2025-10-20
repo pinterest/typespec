@@ -72,6 +72,14 @@ export function buildParameterDescriptor(
   };
 }
 
+const rawTypeMap = {
+  string: "str",
+  number: "float",
+  boolean: "bool",
+  any: typingModule["."]["Any"],
+  never: typingModule["."]["Never"],
+};
+
 /**
  * Convert a parameter descriptor array, string array, or undefined to
  * a parameter descriptor array.
@@ -81,23 +89,6 @@ function normalizeParameters(
 ): py.ParameterDescriptor[] {
   if (!params) return [];
 
-  const mapRawType = (t: string): any => {
-    switch (t) {
-      case "string":
-        return "str";
-      case "number":
-        return "float";
-      case "boolean":
-        return "bool";
-      case "any":
-        return typingModule["."]["Any"];
-      case "never":
-        return typingModule["."]["NoReturn"];
-      default:
-        return t;
-    }
-  };
-
   return params.map((param) => {
     if (typeof param === "string") {
       return { name: param };
@@ -105,7 +96,7 @@ function normalizeParameters(
     if (typeof (param as any).type === "string") {
       return {
         ...param,
-        type: mapRawType((param as any).type as string),
+        type: rawTypeMap[param.type as keyof typeof rawTypeMap] ?? param.type,
       } as py.ParameterDescriptor;
     }
     return param;
