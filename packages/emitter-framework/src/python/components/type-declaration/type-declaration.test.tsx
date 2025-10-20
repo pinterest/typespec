@@ -36,8 +36,9 @@ describe("Python TypeDeclaration dispatcher", () => {
     const output = getOutput(program, [<TypeDeclaration type={MyDate} />]);
     expect(output).toRenderTo(d`
       from datetime import datetime
+      from typing import TypeAlias
 
-      my_date: datetime`);
+      my_date: TypeAlias = datetime`);
   });
 
   it("dispatches arrays (model is Array<T>) to type alias with list[T]", async () => {
@@ -47,6 +48,8 @@ describe("Python TypeDeclaration dispatcher", () => {
 
     const output = getOutput(program, [<TypeDeclaration type={Items} />]);
     expect(output).toRenderTo(d`
-      items: list[int]`);
+      from typing import TypeAlias
+
+      items: TypeAlias = list[int]`);
   });
 });

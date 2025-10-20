@@ -16,12 +16,12 @@ export function TypeDeclaration(props: TypeDeclarationProps) {
   const { $ } = useTsp();
   const { type, ...restProps } = props;
   const doc = props.doc ?? $.type.getDoc(type);
-  if (type.kind === "Enum") {
-    return <EnumDeclaration doc={doc} type={type} {...restProps} />;
+  switch (type.kind) {
+    case "Enum":
+      return <EnumDeclaration doc={doc} type={type} {...restProps} />;
+    // TODO: Handle models, interfaces and operations
+    default:
+      // All other kinds map to a Python type alias using TypeExpression
+      return <TypeAliasDeclaration doc={doc} type={type} {...restProps} />;
   }
-
-  // TODO: Handle models, interfaces and operations
-
-  // All other kinds map to a Python type alias using TypeExpression
-  return <TypeAliasDeclaration doc={doc} type={type} {...restProps} />;
 }
