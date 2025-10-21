@@ -35,6 +35,6 @@ export const decimalModule = createModule({
 export const typingModule = createModule({
   name: "typing",
   descriptor: {
-    ".": ["Any", "Literal", "Never", "NoReturn", "Protocol", "Tuple"],
+    ".": ["Any", "Literal", "Never", "NoReturn", "Protocol", "TypeAlias", "Tuple"],
   },
 });
