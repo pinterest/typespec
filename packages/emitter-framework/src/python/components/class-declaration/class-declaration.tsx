@@ -1,7 +1,8 @@
-import { abcModule, dataclassesModule } from "#python/builtins.js";
-import { type Children, For, List, mapJoin, Show } from "@alloy-js/core";
+import { abcModule, dataclassesModule, typingModule } from "#python/builtins.js";
+import { type Children, code, For, List, mapJoin, Show } from "@alloy-js/core";
 import * as py from "@alloy-js/python";
 import { type Interface, type Model, type ModelProperty, type Operation } from "@typespec/compiler";
+import type { TemplateDeclarationNode } from "@typespec/compiler/ast";
 import type { Typekit } from "@typespec/compiler/typekit";
 import { createRekeyableMap } from "@typespec/compiler/utils";
 import { useTsp } from "../../../core/context/tsp-context.js";
@@ -152,17 +153,70 @@ function getExtendsType($: Typekit, type: Model | Interface): Children | undefin
  * @param abstract - Whether the class is abstract.
  * @returns The bases type for the class declaration.
  */
-function createBasesType($: Typekit, props: ClassDeclarationProps, abstract: boolean) {
-  const globalBasesType = isTypedClassDeclarationProps(props)
-    ? getExtendsType($, props.type)
-    : undefined;
-  let basesType = props.bases ? props.bases : (globalBasesType ?? undefined);
+function createBasesType(
+  $: Typekit,
+  props: ClassDeclarationProps,
+  abstract: boolean,
+  extraBases: Children[] = [],
+) {
+  if (isTypedClassDeclarationProps(props)) {
+    const extend = getExtendsType($, props.type);
+    if (extend) {
+      extraBases.push(extend);
+    }
+  }
+  const allBases = (props.bases ? props.bases : []).concat(extraBases);
+  const basesType = allBases.length > 0 ? allBases : undefined;
   if (!abstract) return basesType;
 
   const abcBase = abcModule["."]["ABC"];
-  if (Array.isArray(basesType)) return [abcBase, ...basesType];
-  if (basesType != null) return [abcBase, basesType];
+  if (Array.isArray(basesType)) return [...basesType, abcBase];
+  if (basesType != null) return [basesType, abcBase];
   return [abcBase];
+}
+
+/**
+ * Builds TypeVar declarations and the Generic[...] base for templated types,
+ * in case the type is a model with template parameters.
+ */
+function buildTypeVarsAndGenericBase(
+  $: Typekit,
+  type: Model | Interface,
+): { typeVars: Children | null; genericBase?: Children } {
+  if (!("isFinished" in type)) {
+    return { typeVars: null };
+  }
+  const templateParameters = (type.node as TemplateDeclarationNode)?.templateParameters;
+  if (type.isFinished || !templateParameters) {
+    return { typeVars: null };
+  }
+
+  const typeVars = (
+    <>
+      <For each={templateParameters} hardline>
+        {(node) => {
+          const typeVar = (
+            <py.FunctionCallExpression
+              target={typingModule["."].TypeVar}
+              args={[<py.Atom jsValue={node.id.sv} />]}
+            />
+          );
+          return <py.VariableDeclaration name={node.id.sv} initializer={typeVar} />;
+        }}
+      </For>
+    </>
+  );
+
+  const typeArgs: Children[] = [];
+  for (const templateParameter of templateParameters) {
+    typeArgs.push(code`${templateParameter.id.sv}`);
+  }
+  const genericBase =
+    typeArgs.length > 0 ? (
+      <py.TypeReference refkey={typingModule["."].Generic} typeArgs={typeArgs} />
+    ) : undefined;
+
+  return { typeVars, genericBase };
 }
 
 /**
@@ -174,10 +228,21 @@ export function ClassDeclaration(props: ClassDeclarationProps) {
   const { $ } = useTsp();
 
   // If we are explicitly overriding the class as abstract or the type is not a model, we need to create an abstract class
-  let abstract =
+  const abstract =
     ("abstract" in props && props.abstract) || ("type" in props && !$.model.is(props.type));
-  let docElement = createDocElement($, props);
-  let basesType = createBasesType($, props, abstract);
+  const docElement = createDocElement($, props);
+
+  const extraBases = [];
+  let typeVars = null;
+  if (isTypedClassDeclarationProps(props)) {
+    const generic = buildTypeVarsAndGenericBase($, props.type);
+    typeVars = generic.typeVars;
+    if (generic.genericBase) {
+      extraBases.push(generic.genericBase);
+    }
+  }
+
+  const basesType = createBasesType($, props, abstract, extraBases);
 
   if (!isTypedClassDeclarationProps(props)) {
     return (
@@ -199,12 +264,10 @@ export function ClassDeclaration(props: ClassDeclarationProps) {
 
   const refkeys = declarationRefkeys(props.refkey, props.type);
   let dataclass: any = null;
-  if (!abstract) {
-    // Array-based models should be rendered as normal classes, not dataclasses (e.g., model Foo is Array<T>)
-    const isArrayModel = $.model.is(props.type) && $.array.is(props.type);
-    if (!isArrayModel) {
-      dataclass = dataclassesModule["."]["dataclass"];
-    }
+  // Array-based models should be rendered as normal classes, not dataclasses (e.g., model Foo is Array<T>)
+  const isArrayModel = $.model.is(props.type) && $.array.is(props.type);
+  if (!isArrayModel) {
+    dataclass = dataclassesModule["."]["dataclass"];
   }
   const classBody = createClassBody($, props, abstract);
 
@@ -218,11 +281,13 @@ export function ClassDeclaration(props: ClassDeclarationProps) {
 
   return (
     <>
-      <Show when={dataclass}>
-        @{dataclass}
+      <Show when={!!typeVars}>
+        {typeVars}
         <hbr />
+        <line />
       </Show>
-      <Show when={abstract}>
+      <Show when={dataclass}>
+        @{dataclass}(kw_only=True)
         <hbr />
       </Show>
       <MethodProvider value={props.methodType}>

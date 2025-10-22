@@ -12,7 +12,7 @@ describe("map Typespec types to Python built-in types", () => {
     ["boolean", "bool"],
     ["null", "None"],
     ["void", "None"],
-    ["never", "NoReturn", "from typing import NoReturn"],
+    ["never", "Never", "from typing import Never"],
     ["bytes", "bytes"],
     ["numeric", "number"],
     ["integer", "int"],

@@ -1,4 +1,3 @@
-import { getOutput } from "#python/test-utils.jsx";
 import { Tester } from "#test/test-host.js";
 import { List } from "@alloy-js/core";
 import * as py from "@alloy-js/python";
@@ -7,6 +6,8 @@ import { describe, expect, it } from "vitest";
 import { ClassDeclaration } from "../../../../src/python/components/class-declaration/class-declaration.js";
 import { Method } from "../../../../src/python/components/class-declaration/class-method.js";
 import { EnumDeclaration } from "../../../../src/python/components/enum-declaration/enum-declaration.js";
+import { getOutput } from "../../test-utils.jsx";
+import { TypeAliasDeclaration } from "../type-alias-declaration/type-alias-declaration.jsx";
 
 describe("Python Class from model", () => {
   it("creates a class", async () => {
@@ -32,8 +33,9 @@ describe("Python Class from model", () => {
       `
           from dataclasses import dataclass
           from typing import Literal
+          from typing import Optional
 
-          @dataclass
+          @dataclass(kw_only=True)
           class Widget:
             id: str
             weight: int
@@ -41,7 +43,7 @@ describe("Python Class from model", () => {
             is_active: bool
             color: Literal["blue", "red"]
             promotional_price: float
-            description: str = "This is a widget"
+            description: Optional[str] = "This is a widget"
             created_at: int = 1717334400
             tags: list[str] = ["tag1", "tag2"]
             is_deleted: bool = False
@@ -64,11 +66,12 @@ describe("Python Class from model", () => {
     expect(getOutput(program, [<ClassDeclaration type={Widget} />])).toRenderTo(
       `
           from dataclasses import dataclass
+          from typing import Optional
 
-          @dataclass
+          @dataclass(kw_only=True)
           class Widget:
             id: str
-            description: str = "This is a widget"
+            description: Optional[str] = "This is a widget"
           
           `,
     );
@@ -87,10 +90,11 @@ describe("Python Class from model", () => {
     expect(getOutput(program, [<ClassDeclaration type={Widget} />])).toRenderTo(
       `
           from dataclasses import dataclass
+          from typing import Optional
 
-          @dataclass
+          @dataclass(kw_only=True)
           class Widget:
-            description: str = "This is a widget"
+            description: Optional[str] = "This is a widget"
             id: str
           
           `,
@@ -112,7 +116,7 @@ describe("Python Class from model", () => {
       `
           from dataclasses import dataclass
 
-          @dataclass
+          @dataclass(kw_only=True)
           class Foo:
             """
             This is a test
@@ -146,7 +150,7 @@ describe("Python Class from model", () => {
       `
           from dataclasses import dataclass
 
-          @dataclass
+          @dataclass(kw_only=True)
           class Foo:
             """
             This is an overridden doc comment
@@ -176,7 +180,7 @@ describe("Python Class from model", () => {
       `
           from dataclasses import dataclass
 
-          @dataclass
+          @dataclass(kw_only=True)
           class Foo:
             """
             First paragraph
@@ -207,7 +211,7 @@ describe("Python Class from model", () => {
       `
           from dataclasses import dataclass
 
-          @dataclass
+          @dataclass(kw_only=True)
           class Foo:
             """
             Alpha
@@ -232,7 +236,7 @@ describe("Python Class from model", () => {
       `
           from dataclasses import dataclass
 
-          @dataclass
+          @dataclass(kw_only=True)
           class Foo:
             """
             This is a test
@@ -258,7 +262,7 @@ describe("Python Class from model", () => {
       `
           from dataclasses import dataclass
 
-          @dataclass
+          @dataclass(kw_only=True)
           class Foo:
             """
             This is a test
@@ -358,7 +362,7 @@ describe("Python Class from model", () => {
         BLUE = "BLUE"
 
 
-      @dataclass
+      @dataclass(kw_only=True)
       class Widget:
         id: str = "123"
         weight: int = 100
@@ -379,7 +383,7 @@ describe("Python Class from model", () => {
       from dataclasses import dataclass
       from typing import Never
 
-      @dataclass
+      @dataclass(kw_only=True)
       class Widget:
         property: Never
 
@@ -400,7 +404,7 @@ describe("Python Class from model", () => {
       from dataclasses import dataclass
       from typing import Literal
 
-      @dataclass
+      @dataclass(kw_only=True)
       class MyOperations:
         id: str
         weight: int
@@ -431,7 +435,7 @@ describe("Python Class from model", () => {
       from dataclasses import dataclass
       from typing import Literal
 
-      @dataclass
+      @dataclass(kw_only=True)
       class MyOperations:
         id: str
         weight: int
@@ -463,14 +467,14 @@ describe("Python Class from model", () => {
       from dataclasses import dataclass
       from typing import Literal
 
-      @dataclass
+      @dataclass(kw_only=True)
       class Widget:
         id: str
         weight: int
         color: Literal["blue", "red"]
 
 
-      @dataclass
+      @dataclass(kw_only=True)
       class ErrorWidget(Widget):
         code: int
         message: str
@@ -490,8 +494,9 @@ describe("Python Class from interface", () => {
     expect(getOutput(program, [<ClassDeclaration type={WidgetOperations} />])).toRenderTo(`
       from abc import ABC
       from abc import abstractmethod
+      from dataclasses import dataclass
 
-
+      @dataclass(kw_only=True)
       class WidgetOperations(ABC):
         @abstractmethod
         def get_name(self, id: str) -> str:
@@ -523,12 +528,12 @@ describe("Python Class from interface", () => {
       from abc import abstractmethod
       from dataclasses import dataclass
 
-      @dataclass
+      @dataclass(kw_only=True)
       class Foo:
         name: str
 
 
-
+      @dataclass(kw_only=True)
       class WidgetOperations(ABC):
         @abstractmethod
         def get_name(self, foo: Foo) -> str:
@@ -577,7 +582,7 @@ describe("Python Class from interface", () => {
       from dataclasses import dataclass
       from typing import Literal
 
-
+      @dataclass(kw_only=True)
       class WidgetOperations(ABC):
         """
         Operations for Widget
@@ -591,7 +596,7 @@ describe("Python Class from interface", () => {
 
 
 
-      @dataclass
+      @dataclass(kw_only=True)
       class Widget:
         id: str
         weight: int
@@ -630,7 +635,7 @@ describe("Python Class from interface", () => {
       from dataclasses import dataclass
       from typing import Literal
 
-
+      @dataclass(kw_only=True)
       class WidgetOperations(ABC):
         @abstractmethod
         def get_name(self, id: str) -> Widget:
@@ -638,7 +643,7 @@ describe("Python Class from interface", () => {
 
 
 
-
+      @dataclass(kw_only=True)
       class WidgetOperationsExtended(ABC):
         @abstractmethod
         def get_name(self, id: str) -> Widget:
@@ -650,7 +655,7 @@ describe("Python Class from interface", () => {
 
 
 
-      @dataclass
+      @dataclass(kw_only=True)
       class Widget:
         id: str
         weight: int
@@ -682,7 +687,7 @@ describe("Python Class overrides", () => {
     ).toRenderTo(`
       from dataclasses import dataclass
 
-      @dataclass
+      @dataclass(kw_only=True)
       class WidgetOperations:
         id: str
         weight: int
@@ -718,7 +723,7 @@ describe("Python Class overrides", () => {
     ).toRenderTo(`
       from dataclasses import dataclass
 
-      @dataclass
+      @dataclass(kw_only=True)
       class WidgetOperations:
         id: str
         weight: int
@@ -754,7 +759,7 @@ describe("Python Class overrides", () => {
     ).toRenderTo(`
       from dataclasses import dataclass
 
-      @dataclass
+      @dataclass(kw_only=True)
       class WidgetOperations:
         id: str
         weight: int
@@ -791,7 +796,7 @@ describe("Python Class overrides", () => {
     ).toRenderTo(`
       from dataclasses import dataclass
 
-      @dataclass
+      @dataclass(kw_only=True)
       class WidgetOperations:
         id: str
         weight: int
@@ -817,8 +822,9 @@ describe("Python Class overrides", () => {
     expect(getOutput(program, [<ClassDeclaration type={WidgetOperations} />])).toRenderTo(`
       from abc import ABC
       from abc import abstractmethod
+      from dataclasses import dataclass
 
-
+      @dataclass(kw_only=True)
       class WidgetOperations(ABC):
         @abstractmethod
         def get_name(self, id: str) -> str:
@@ -839,8 +845,9 @@ describe("Python Class overrides", () => {
       .toRenderTo(`
       from abc import ABC
       from abc import abstractmethod
+      from dataclasses import dataclass
 
-
+      @dataclass(kw_only=True)
       class WidgetOperations(ABC):
         @abstractmethod
         def get_name(self, id: str) -> str:
@@ -861,8 +868,9 @@ describe("Python Class overrides", () => {
       .toRenderTo(`
       from abc import ABC
       from abc import abstractmethod
+      from dataclasses import dataclass
 
-
+      @dataclass(kw_only=True)
       class WidgetOperations(ABC):
         @classmethod
         @abstractmethod
@@ -884,8 +892,9 @@ describe("Python Class overrides", () => {
       .toRenderTo(`
       from abc import ABC
       from abc import abstractmethod
+      from dataclasses import dataclass
 
-
+      @dataclass(kw_only=True)
       class WidgetOperations(ABC):
         @staticmethod
         @abstractmethod
@@ -893,6 +902,39 @@ describe("Python Class overrides", () => {
           pass
 
 
+      `);
+  });
+
+  it("Adds a Generic import if the model has template parameters", async () => {
+    const { program, Response, StringResponse } = await Tester.compile(t.code`
+    model ${t.model("Response")}<T> {
+      data: T;
+      status: string;
+    }
+
+    alias ${t.type("StringResponse")} = Response<string>;
+    `);
+
+    expect(
+      getOutput(program, [
+        <ClassDeclaration type={Response} />,
+        <TypeAliasDeclaration type={StringResponse} />,
+      ]),
+    ).toRenderTo(`
+      from dataclasses import dataclass
+      from typing import Generic
+      from typing import TypeAlias
+      from typing import TypeVar
+
+      t = TypeVar("T")
+
+      @dataclass(kw_only=True)
+      class Response(Generic[T]):
+        data: T
+        status: str
+
+
+      StringResponse: TypeAlias = Response[str]
       `);
   });
 });
