@@ -29,6 +29,26 @@ describe("Python ProtocolDeclaration", () => {
       `);
   });
 
+  it("emits no return annotation when return type omitted", async () => {
+    const { program, getName } = await Tester.compile(t.code`
+      op ${t.op("getName")}(id: string): string;
+    `);
+
+    // Create a shallow clone without returnType to simulate missing return info
+    const getNameNoReturn: any = { ...(getName as any) };
+    delete getNameNoReturn.returnType;
+
+    expect(getOutput(program, [<ProtocolDeclaration type={getNameNoReturn} />])).toRenderTo(`
+      from typing import Protocol
+
+      class GetName(Protocol):
+        def __call__(self, id: str):
+          ...
+
+      
+      `);
+  });
+
   it("emits a Protocol for a TypeSpec interface (methods only)", async () => {
     const { program, Greeter } = await Tester.compile(t.code`
       interface ${t.interface("Greeter")} {
