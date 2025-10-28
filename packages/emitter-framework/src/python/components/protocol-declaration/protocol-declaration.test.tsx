@@ -1,9 +1,9 @@
+import { TypeExpression } from "#python/components/type-expression/type-expression.jsx";
 import { Tester } from "#test/test-host.js";
 import { t } from "@typespec/compiler/testing";
 import { describe, expect, it } from "vitest";
 import { getOutput } from "../../test-utils.js";
 import { ProtocolDeclaration } from "./protocol-declaration.jsx";
-import { TypeExpression } from "#python/components/type-expression/type-expression.jsx";
 
 describe("Python ProtocolDeclaration", () => {
   it("emits a callback Protocol for an operation", async () => {
@@ -12,7 +12,12 @@ describe("Python ProtocolDeclaration", () => {
       op ${t.op("getOtherName")}(id: string): string;
     `);
 
-    expect(getOutput(program, [<ProtocolDeclaration type={getName} />, <ProtocolDeclaration type={getOtherName} />])).toRenderTo(`
+    expect(
+      getOutput(program, [
+        <ProtocolDeclaration type={getName} />,
+        <ProtocolDeclaration type={getOtherName} />,
+      ]),
+    ).toRenderTo(`
       from typing import Protocol
 
       class GetName(Protocol):
@@ -95,5 +100,3 @@ describe("Python ProtocolDeclaration", () => {
       `);
   });
 });
-
-
