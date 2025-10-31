@@ -98,6 +98,16 @@ export function TypeExpression(props: TypeExpressionProps) {
           </>
         );
       }
+
+      // Regular named models should be handled as references
+      if (type.name) {
+        return (
+          <Experimental_OverridableComponent reference type={type}>
+            <py.Reference refkey={efRefkey(type)} />
+          </Experimental_OverridableComponent>
+        );
+      }
+
       reportPythonDiagnostic($.program, { code: "python-unsupported-type", target: type });
       break;
     case "TemplateParameter":

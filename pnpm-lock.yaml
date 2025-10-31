@@ -8,7 +8,7 @@ overrides:
   cross-spawn@>=7.0.0 <7.0.5: ^7.0.5
   rollup: 4.49.0
   '@alloy-js/core': ^0.22.0-dev.3
-  '@alloy-js/python': 0.3.0-dev.2
+  '@alloy-js/python': 0.3.0-dev.3
   '@alloy-js/babel-plugin': 0.2.1
 
 importers:
@@ -425,8 +425,8 @@ importers:
         specifier: ^0.22.0-dev.3
         version: 0.22.0-dev.3
       '@alloy-js/python':
-        specifier: 0.3.0-dev.2
-        version: 0.3.0-dev.2
+        specifier: 0.3.0-dev.3
+        version: 0.3.0-dev.3
       '@alloy-js/rollup-plugin':
         specifier: ^0.1.0
         version: 0.1.0(@babel/core@7.28.4)(@types/babel__core@7.20.5)(rollup@4.49.0)
@@ -2686,8 +2686,8 @@ packages:
   '@alloy-js/markdown@0.20.0':
     resolution: {integrity: sha512-c1Q4dzUvWC4Bdoi6dRT9yAYVoCiqz3ZMClV8CHzEsgZYjjdS0S2ZWWmgxzS87rSDHSjmQIXJ4BcUZfKyfnMrFA==}
 
-  '@alloy-js/python@0.3.0-dev.2':
-    resolution: {integrity: sha512-bdWbEjvAVQwWd0Utf4PTuAuhpnS4kmz1wT5nsCUfzLveTz9/xJFDAPg2CUip0c5glT03gbF+dP4Sl8Rg2nYq+Q==}
+  '@alloy-js/python@0.3.0-dev.3':
+    resolution: {integrity: sha512-b4PLoc6PzJIsviTLjYt6O3Estlz92sTgL3QcgH1zapr5sj5csOWzJ8vR3/+4Tl8nLKUk7s+H5+L80PRXvDj/Tg==}
 
   '@alloy-js/rollup-plugin@0.1.0':
     resolution: {integrity: sha512-MXR8mBdSh/pxMP8kIXAcMYKsm5yOWZ+igxcaRX1vBXFiHU4eK7gE/5q6Fk8Vdydh+MItWtgekwIhUWvcszdNFQ==}
@@ -13585,7 +13585,7 @@ snapshots:
       '@alloy-js/core': 0.22.0-dev.3
       yaml: 2.8.0
 
-  '@alloy-js/python@0.3.0-dev.2':
+  '@alloy-js/python@0.3.0-dev.3':
     dependencies:
       '@alloy-js/core': 0.22.0-dev.3
       change-case: 5.4.4
@@ -19458,7 +19458,7 @@ snapshots:
       algoliasearch: 4.25.2
       clipanion: 4.0.0-rc.4(typanion@3.14.0)
       diff: 5.2.0
-      ink: 3.2.0(@types/react@18.3.23)(react@17.0.2)
+      ink: 3.2.0(@types/react@18.3.23)(react@18.3.1)
       ink-text-input: 4.0.3(ink@3.2.0(@types/react@18.3.23)(react@17.0.2))(react@17.0.2)
       react: 17.0.2
       semver: 7.7.2
@@ -19606,7 +19606,7 @@ snapshots:
       '@yarnpkg/parsers': 3.0.3
       '@yarnpkg/plugin-git': 3.1.2(@yarnpkg/core@4.4.2(typanion@3.14.0))(typanion@3.14.0)
       clipanion: 4.0.0-rc.4(typanion@3.14.0)
-      ink: 3.2.0(@types/react@18.3.23)(react@18.3.1)
+      ink: 3.2.0(@types/react@18.3.23)(react@17.0.2)
       lodash: 4.17.21
       react: 17.0.2
       semver: 7.7.2

@@ -1,4 +1,4 @@
-import { abcModule, dataclassesModule, typingModule } from "#python/builtins.js";
+import { abcModule, typingModule } from "#python/builtins.js";
 import { type Children, code, For, List, mapJoin, Show } from "@alloy-js/core";
 import * as py from "@alloy-js/python";
 import { type Interface, type Model, type ModelProperty, type Operation } from "@typespec/compiler";
@@ -26,8 +26,6 @@ function isTypedClassDeclarationProps(
 ): props is ClassDeclarationPropsWithType {
   return "type" in props;
 }
-
-// (removed getValidTypeMembers; inline logic where needed)
 
 /**
  * Creates the doc element for the class declaration, either from the props or from the type.
@@ -121,7 +119,8 @@ function getExtendsType($: Typekit, type: Model | Interface): Children | undefin
       // Record-based scenarios are not supported
       // do nothing here.
     } else {
-      extending.push(efRefkey(type.baseModel));
+      // Use py.Reference to wrap the refkey for proper resolution
+      extending.push(<py.Reference refkey={efRefkey(type.baseModel)} />);
     }
   }
 
@@ -263,12 +262,9 @@ export function ClassDeclaration(props: ClassDeclarationProps) {
   name = namePolicy.getName(name, "class");
 
   const refkeys = declarationRefkeys(props.refkey, props.type);
-  let dataclass: any = null;
   // Array-based models should be rendered as normal classes, not dataclasses (e.g., model Foo is Array<T>)
   const isArrayModel = $.model.is(props.type) && $.array.is(props.type);
-  if (!isArrayModel) {
-    dataclass = dataclassesModule["."]["dataclass"];
-  }
+  const useDataclass = !isArrayModel;
   const classBody = createClassBody($, props, abstract);
 
   // Throw error for models with additional properties (Record-based scenarios)
@@ -279,6 +275,8 @@ export function ClassDeclaration(props: ClassDeclarationProps) {
     }
   }
 
+  const ClassComponent = useDataclass ? py.DataclassDeclaration : py.ClassDeclaration;
+
   return (
     <>
       <Show when={!!typeVars}>
@@ -286,19 +284,16 @@ export function ClassDeclaration(props: ClassDeclarationProps) {
         <hbr />
         <line />
       </Show>
-      <Show when={dataclass}>
-        @{dataclass}(kw_only=True)
-        <hbr />
-      </Show>
       <MethodProvider value={props.methodType}>
-        <py.ClassDeclaration
+        <ClassComponent
           doc={docElement}
           name={name}
           {...(basesType !== undefined ? { bases: basesType as Children[] } : {})}
           refkey={refkeys}
+          {...(useDataclass ? { kwOnly: true } : {})}
         >
           {classBody}
-        </py.ClassDeclaration>
+        </ClassComponent>
       </MethodProvider>
     </>
   );

@@ -18,13 +18,6 @@ export const datetimeModule = createModule({
   },
 });
 
-export const dataclassesModule = createModule({
-  name: "dataclasses",
-  descriptor: {
-    ".": ["dataclass", "field"],
-  },
-});
-
 export const decimalModule = createModule({
   name: "decimal",
   descriptor: {
