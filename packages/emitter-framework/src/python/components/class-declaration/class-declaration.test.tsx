@@ -122,6 +122,7 @@ describe("Python Class from model", () => {
             This is a test
             with multiple lines
             """
+
             known_prop: str
 
           `,
@@ -156,6 +157,7 @@ describe("Python Class from model", () => {
             This is an overridden doc comment
             with multiple lines
             """
+
             known_prop: str
 
           `,
@@ -187,6 +189,7 @@ describe("Python Class from model", () => {
 
             Second paragraph
             """
+
             known_prop: str
 
           `,
@@ -218,6 +221,7 @@ describe("Python Class from model", () => {
 
             Beta
             """
+
             known_prop: str
 
           `,
@@ -241,6 +245,7 @@ describe("Python Class from model", () => {
             """
             This is a test
             """
+
             known_prop: str
 
           `,
@@ -267,6 +272,7 @@ describe("Python Class from model", () => {
             """
             This is a test
             """
+
             # This is a known property
             known_prop: str
 
@@ -587,6 +593,7 @@ describe("Python Class from interface", () => {
         """
         Operations for Widget
         """
+
         @abstractmethod
         def get_name(self, id: str) -> Widget:
           """

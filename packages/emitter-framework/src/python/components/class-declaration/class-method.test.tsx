@@ -106,7 +106,7 @@ describe("interface methods with a `type` prop", () => {
       ]),
     ).toRenderTo(`
       class BasicInterface:
-        def get_name(self, id: str, foo: string) -> str:
+        def get_name(self, id: str, foo: str) -> str:
           pass
 
 
@@ -130,7 +130,7 @@ describe("interface methods with a `type` prop", () => {
       ]),
     ).toRenderTo(`
       class BasicInterface:
-        def get_name(self, foo: string, id: str) -> str:
+        def get_name(self, foo: str, id: str) -> str:
           pass
 
 
@@ -157,7 +157,7 @@ describe("interface methods with a `type` prop", () => {
       ]),
     ).toRenderTo(`
       class BasicInterface:
-        def get_name(self, foo: string, bar: number) -> str:
+        def get_name(self, foo: str, bar: float) -> str:
           pass
 
 
