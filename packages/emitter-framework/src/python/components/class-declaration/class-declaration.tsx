@@ -77,8 +77,10 @@ function createClassBody($: Typekit, props: ClassDeclarationProps, abstract: boo
   const validTypeMembers = isTypedClassDeclarationProps(props)
     ? (() => {
         if ($.model.is(props.type)) {
+          // For models, extract properties to render as dataclass fields
           return Array.from($.model.getProperties(props.type).values());
         } else {
+          // For interfaces, extract operations to render as abstract methods
           const ops = (props.type as { operations: Map<string, Operation> }).operations;
           return Array.from(createRekeyableMap(ops).values());
         }
@@ -103,9 +105,10 @@ function createClassBody($: Typekit, props: ClassDeclarationProps, abstract: boo
  * Creates the extends types for the class declaration.
  * @param $ - The Typekit.
  * @param type - The type to create the extends type for.
- * @returns The extends types for the class declaration.
+ * @returns The extends types for the class declaration, or undefined for interfaces.
  */
 function getExtendsType($: Typekit, type: Model | Interface): Children | undefined {
+  // For interfaces, return undefined because inheritance is flattened by TypeSpec
   if (!$.model.is(type)) {
     return undefined;
   }
@@ -219,13 +222,22 @@ function buildTypeVarsAndGenericBase(
 }
 
 /**
- * Creates the class declaration for the class.
+ * Converts TypeSpec Models and Interfaces to Python classes.
+ *
+ * - **Models** are converted into Dataclasses with `@dataclass(kw_only=True)` + fields
+ * - **Interfaces** are converted into Abstract classes (ABC) with abstract methods
+ * - For models that extends another model, we convert that into Python class inheritance
+ * - For interfaces that extends another interface, there's no inheritance, since
+ *   TypeSpec flattens the inheritance
+ *
  * @param props - The props for the class declaration.
  * @returns The class declaration.
  */
 export function ClassDeclaration(props: ClassDeclarationProps) {
   const { $ } = useTsp();
 
+  // Interfaces are rendered as abstract classes (ABC) with abstract methods
+  // Models are rendered as concrete dataclasses with fields
   // If we are explicitly overriding the class as abstract or the type is not a model, we need to create an abstract class
   const abstract =
     ("abstract" in props && props.abstract) || ("type" in props && !$.model.is(props.type));
@@ -326,6 +338,8 @@ function ClassBody(
   if ($.model.is(props.type)) {
     const additionalPropsRecord = $.model.getAdditionalPropertiesRecord(props.type);
     if (additionalPropsRecord) {
+      // Python dataclasses don't support dynamic properties, so an additionalProperties
+      // field would just be another fixed field, not a "catch-all" for arbitrary properties.
       throw new Error("Models with additional properties (Record[…]) are not supported");
     }
   }
