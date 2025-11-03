@@ -34,7 +34,6 @@ export const typingModule = createModule({
       "Generic",
       "Literal",
       "Never",
-      "NoReturn",
       "Optional",
       "Protocol",
       "TypeAlias",
