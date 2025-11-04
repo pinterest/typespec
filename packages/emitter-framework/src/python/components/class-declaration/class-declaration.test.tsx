@@ -378,6 +378,126 @@ describe("Python Class from model", () => {
     );
   });
 
+  it("handles a union of variant references in a class property", async () => {
+    const { program, Color, Widget } = await Tester.compile(t.code`
+      union ${t.union("Color")} {
+        red: "RED",
+        blue: "BLUE",
+        green: "GREEN",
+      }
+  
+      model ${t.model("Widget")} {
+        id: string;
+        primaryColor: Color.red | Color.blue;
+      }
+      `);
+
+    expect(
+      getOutput(program, [<EnumDeclaration type={Color} />, <ClassDeclaration type={Widget} />]),
+    ).toRenderTo(
+      `
+      from dataclasses import dataclass
+      from enum import StrEnum
+      from typing import Literal
+
+      class Color(StrEnum):
+        RED = "RED"
+        BLUE = "BLUE"
+        GREEN = "GREEN"
+
+
+      @dataclass(kw_only=True)
+      class Widget:
+        id: str
+        primary_color: Literal[Color.RED, Color.BLUE]
+
+      `,
+    );
+  });
+
+  it("handles a union of integer literals in a class property", async () => {
+    const { program, Widget } = await Tester.compile(t.code`
+      model ${t.model("Widget")} {
+        id: string;
+        priority: 1 | 2 | 3;
+      }
+      `);
+
+    expect(
+      getOutput(program, [<ClassDeclaration type={Widget} />]),
+    ).toRenderTo(
+      `
+      from dataclasses import dataclass
+      from typing import Literal
+
+      @dataclass(kw_only=True)
+      class Widget:
+        id: str
+        priority: Literal[1, 2, 3]
+
+      `,
+    );
+  });
+
+  it("handles a union of boolean literals in a class property", async () => {
+    const { program, Widget } = await Tester.compile(t.code`
+      model ${t.model("Widget")} {
+        id: string;
+        isActiveOrEnabled: true | false;
+      }
+      `);
+
+    expect(
+      getOutput(program, [<ClassDeclaration type={Widget} />]),
+    ).toRenderTo(
+      `
+      from dataclasses import dataclass
+      from typing import Literal
+
+      @dataclass(kw_only=True)
+      class Widget:
+        id: str
+        is_active_or_enabled: Literal[True, False]
+
+      `,
+    );
+  });
+
+  it("handles a mixed union of literals and variant references", async () => {
+    const { program, Color, Widget } = await Tester.compile(t.code`
+      union ${t.union("Color")} {
+        red: "RED",
+        blue: "BLUE",
+      }
+  
+      model ${t.model("Widget")} {
+        id: string;
+        mixedValue: "custom" | 42 | true | Color.red;
+      }
+      `);
+
+    expect(
+      getOutput(program, [<EnumDeclaration type={Color} />, <ClassDeclaration type={Widget} />]),
+    ).toRenderTo(
+      `
+      from dataclasses import dataclass
+      from enum import StrEnum
+      from typing import Literal
+
+      class Color(StrEnum):
+        RED = "RED"
+        BLUE = "BLUE"
+
+
+      @dataclass(kw_only=True)
+      class Widget:
+        id: str
+        mixed_value: Literal["custom", 42, True, Color.RED]
+
+      `,
+    );
+  });
+
   it("renders a never-typed member as typing.Never", async () => {
     const { program, Widget } = await Tester.compile(t.code`
     model ${t.model("Widget")} {
@@ -942,6 +1062,207 @@ describe("Python Class overrides", () => {
 
 
       StringResponse: TypeAlias = Response[str]
+      `);
+  });
+
+  it("Handles multiple template parameters", async () => {
+    const { program, Result } = await Tester.compile(t.code`
+    model ${t.model("Result")}<T, E> {
+      value: T;
+      error: E;
+    }
+    `);
+
+    expect(
+      getOutput(program, [<ClassDeclaration type={Result} />]),
+    ).toRenderTo(`
+      from dataclasses import dataclass
+      from typing import Generic
+      from typing import TypeVar
+
+      t = TypeVar("T")
+      e = TypeVar("E")
+
+      @dataclass(kw_only=True)
+      class Result(Generic[T, E]):
+        value: T
+        error: E
+
+      `);
+  });
+
+  it("Handles template parameter with constraint (bound)", async () => {
+    const { program, Container } = await Tester.compile(t.code`
+    model ${t.model("Container")}<T extends string> {
+      value: T;
+    }
+    `);
+
+    expect(
+      getOutput(program, [<ClassDeclaration type={Container} />]),
+    ).toRenderTo(`
+      from dataclasses import dataclass
+      from typing import Generic
+      from typing import TypeVar
+
+      t = TypeVar("T", bound=str)
+
+      @dataclass(kw_only=True)
+      class Container(Generic[T]):
+        value: T
+
+      `);
+  });
+
+  it("Handles multiple template parameters with mixed constraints", async () => {
+    const { program, Result } = await Tester.compile(t.code`
+    model ${t.model("Result")}<T extends string, E> {
+      value: T;
+      error: E;
+    }
+    `);
+
+    expect(
+      getOutput(program, [<ClassDeclaration type={Result} />]),
+    ).toRenderTo(`
+      from dataclasses import dataclass
+      from typing import Generic
+      from typing import TypeVar
+
+      t = TypeVar("T", bound=str)
+      e = TypeVar("E")
+
+      @dataclass(kw_only=True)
+      class Result(Generic[T, E]):
+        value: T
+        error: E
+
+      `);
+  });
+
+  it("Does not add Generic for template instances", async () => {
+    const { program, Response, ConcreteResponse } = await Tester.compile(t.code`
+    model ${t.model("Response")}<T> {
+      data: T;
+      status: string;
+    }
+
+    model ${t.model("ConcreteResponse")} extends Response<string> {
+      timestamp: string;
+    }
+    `);
+
+    expect(
+      getOutput(program, [
+        <ClassDeclaration type={Response} />,
+        <ClassDeclaration type={ConcreteResponse} />,
+      ]),
+    ).toRenderTo(`
+      from dataclasses import dataclass
+      from typing import Generic
+      from typing import TypeVar
+
+      t = TypeVar("T")
+
+      @dataclass(kw_only=True)
+      class Response(Generic[T]):
+        data: T
+        status: str
+
+
+      @dataclass(kw_only=True)
+      class ConcreteResponse(Response[str]):
+        timestamp: str
+
+      `);
+  });
+
+  it("Generates TypeVars for templated interfaces", async () => {
+    const { program, Repository } = await Tester.compile(t.code`
+    interface ${t.interface("Repository")}<T> {
+      get(id: string): T;
+      list(): T[];
+    }
+    `);
+
+    expect(
+      getOutput(program, [<ClassDeclaration type={Repository} />]),
+    ).toRenderTo(`
+      from abc import ABC
+      from abc import abstractmethod
+      from dataclasses import dataclass
+      from typing import Generic
+      from typing import TypeVar
+
+      t = TypeVar("T")
+
+      @dataclass(kw_only=True)
+      class Repository(Generic[T], ABC):
+        @abstractmethod
+        def get(self, id: str) -> T:
+          pass
+
+        @abstractmethod
+        def list(self) -> Array[T]:
+          pass
+
+
+      `);
+  });
+
+  it("Does not generate TypeVars for interface instances", async () => {
+    const { program, Repository, StringRepository } = await Tester.compile(t.code`
+    interface ${t.interface("Repository")}<T> {
+      get(id: string): T;
+      list(): T[];
+    }
+
+    interface ${t.interface("StringRepository")} extends Repository<string> {
+      findByPrefix(prefix: string): string[];
+    }
+    `);
+
+    expect(
+      getOutput(program, [
+        <ClassDeclaration type={Repository} />,
+        <ClassDeclaration type={StringRepository} />,
+      ]),
+    ).toRenderTo(`
+      from abc import ABC
+      from abc import abstractmethod
+      from dataclasses import dataclass
+      from typing import Generic
+      from typing import TypeVar
+
+      t = TypeVar("T")
+
+      @dataclass(kw_only=True)
+      class Repository(Generic[T], ABC):
+        @abstractmethod
+        def get(self, id: str) -> T:
+          pass
+
+        @abstractmethod
+        def list(self) -> Array[T]:
+          pass
+
+
+
+      @dataclass(kw_only=True)
+      class StringRepository(ABC):
+        @abstractmethod
+        def get(self, id: str) -> str:
+          pass
+
+        @abstractmethod
+        def list(self) -> list[str]:
+          pass
+
+        @abstractmethod
+        def find_by_prefix(self, prefix: str) -> list[str]:
+          pass
+
+
       `);
   });
 });

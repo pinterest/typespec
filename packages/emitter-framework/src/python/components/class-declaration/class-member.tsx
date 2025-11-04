@@ -1,5 +1,5 @@
 import { typingModule } from "#python/builtins.js";
-import { type Children } from "@alloy-js/core";
+import { type Children, code, mapJoin } from "@alloy-js/core";
 import * as py from "@alloy-js/python";
 import { type ModelProperty, type Operation } from "@typespec/compiler";
 import { useTsp } from "../../../core/context/tsp-context.js";
@@ -44,18 +44,15 @@ function buildPrimitiveInitializerFromDefault(
       // Example: value is { value: "100", isInteger: true }
       if (raw && typeof raw === "object" && "value" in raw) raw = raw.value;
 
-      // Float-ish property types should render with a float hint if integral
-      if ($.scalar.is(propertyType)) {
-        const base = $.scalar.getStdBase(propertyType)?.name;
-        const isFloatish =
-          base === "float" ||
-          base === "float32" ||
-          base === "float64" ||
-          base === "decimal" ||
-          base === "decimal128";
-        if (isFloatish) {
-          return <Atom value={defaultValue} assumeFloat />;
-        }
+      // Float-like property types (including custom subtypes) should render with float hint
+      if (
+        $.scalar.extendsFloat(propertyType) ||
+        $.scalar.extendsFloat32(propertyType) ||
+        $.scalar.extendsFloat64(propertyType) ||
+        $.scalar.extendsDecimal(propertyType) ||
+        $.scalar.extendsDecimal128(propertyType)
+      ) {
+        return <Atom value={defaultValue} assumeFloat />;
       }
 
       // Otherwise output as a number atom
@@ -69,14 +66,21 @@ function buildPrimitiveInitializerFromDefault(
 }
 
 /**
- * Builds the type node for the property. This is used to handle union of string literals and union variant references.
- * If the type is a union of string literals, it returns a Literal["a", "b"] type.
- * If the type is a union variant reference, it returns a Literal[Color.MEMBER] type.
+ * Builds the type node for the property. This handles various literal and union variant scenarios:
+ * - Single union variant reference: Color.blue produces Literal[Color.BLUE]
+ * - Union of string literals: "a" | "b" produces Literal["a", "b"]
+ * - Union of integer literals: 1 | 2 | 3 produces Literal[1, 2, 3]
+ * - Union of boolean literals: true | false produces Literal[True, False]
+ * - Union of variant references: Color.red | Color.blue produces Literal[Color.RED, Color.BLUE]
+ * - Mixed literal unions: "a" | 1 | true | Color.RED produces Literal["a", 1, True, Color.RED]
+ * 
  * @param unpackedType - The unpacked type.
- * @returns The type node, or undefined if the type is not a union of string literals or union variant reference.
+ * @returns The type node, or undefined if the type doesn't match any supported literal pattern.
  */
 function buildTypeNodeForProperty(unpackedType: any): Children | undefined {
-  // Union variant reference - Literal[Color.MEMBER]
+  const { $ } = useTsp();
+  
+  // Single union variant reference - Literal[Color.MEMBER]
   if (unpackedType && unpackedType.kind === "UnionVariant" && unpackedType.union) {
     const unionType = unpackedType.union;
     const variantValue = unpackedType.type;
@@ -91,19 +95,50 @@ function buildTypeNodeForProperty(unpackedType: any): Children | undefined {
     );
   }
 
-  // Union of string literals - Literal["a", "b"]
+  // Union of literals or variant references (including mixed)
   if (
     unpackedType &&
     unpackedType.kind === "Union" &&
     Array.isArray((unpackedType as any).options)
   ) {
     const opts: any[] = (unpackedType as any).options;
-    const allStringLiterals = opts.every((opt) => opt && opt.kind === "String");
-    if (allStringLiterals) {
-      const literalValues = opts.map((opt) => JSON.stringify(opt.value)).join(", ");
+    
+    // Check if all options are valid literal types using typekit
+    const allLiterals = opts.every((opt) => 
+      opt && (
+        $.literal.isString(opt) ||
+        $.literal.isNumeric(opt) ||
+        $.literal.isBoolean(opt) ||
+        opt.kind === "UnionVariant"
+      )
+    );
+    
+    if (allLiterals) {
+      const literalValues = opts.map((opt) => {
+        if ($.literal.isString(opt)) {
+          // String literals need quotes
+          return JSON.stringify(opt.value);
+        } else if ($.literal.isNumeric(opt)) {
+          // Number literals render directly
+          return String(opt.value);
+        } else if ($.literal.isBoolean(opt)) {
+          // Boolean literals render as True/False (Python capitalization)
+          return opt.value ? "True" : "False";
+        } else if (opt.kind === "UnionVariant") {
+          // Variant references need enum reference
+          const variantValue = opt.type;
+          const enumMemberName =
+            variantValue && typeof variantValue.value === "string"
+              ? variantValue.value
+              : String(variantValue?.value ?? "");
+          return code`${efRefkey(opt.union)}.${enumMemberName}`;
+        }
+        return undefined;
+      }).filter(Boolean);
+      
       return (
         <>
-          {typingModule["."]["Literal"]}[{literalValues}]
+          {typingModule["."]["Literal"]}[{mapJoin(() => literalValues, (val) => val, { joiner: ", " })}]
         </>
       );
     }
@@ -141,7 +176,7 @@ export function ClassMember(props: ClassMemberProps) {
       unpackedTypeNode
     );
 
-    const interfaceMemberProps = {
+    const classMemberProps = {
       doc,
       name,
       optional: isOptional,
@@ -149,7 +184,7 @@ export function ClassMember(props: ClassMemberProps) {
       ...(initializer ? { initializer } : {}),
       omitNone: !isOptional,
     };
-    return <py.VariableDeclaration {...interfaceMemberProps} />;
+    return <py.VariableDeclaration {...classMemberProps} />;
   }
 
   if ($.operation.is(props.type)) {
