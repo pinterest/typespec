@@ -2,11 +2,12 @@ import { type Children, type Component, List } from "@alloy-js/core";
 
 /**
  * Normalize various doc sources into a Python doc element.
+ * The exact shape of the doc that will be created is determined by the DocComponent parameter.
  *
  * Accepts:
- * - string → split into lines and render as a multi-line docstring
- * - string[] | Children[] → rendered as separate paragraphs
- * - Children (e.g., an explicit Doc component) → returned as-is
+ * - string - split into lines and render as a multi-line docstring
+ * - string[] | Children[] - rendered as separate paragraphs
+ * - Children (e.g., an explicit Doc component) - returned as-is
  * 
  * @param source - The documentation source (string, array, or JSX)
  * @param DocComponent - The Python doc component to use (ClassDoc, FunctionDoc, MethodDoc, etc.)
