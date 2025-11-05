@@ -4,6 +4,7 @@ import * as py from "@alloy-js/python";
 import { type ModelProperty, type Operation } from "@typespec/compiler";
 import { useTsp } from "../../../core/context/tsp-context.js";
 import { efRefkey } from "../../utils/refkey.js";
+import { areAllLiterals } from "../../utils/type.js";
 import { Atom } from "../atom/atom.jsx";
 import { TypeExpression } from "../type-expression/type-expression.jsx";
 import { Method } from "./class-method.jsx";
@@ -45,13 +46,7 @@ function buildPrimitiveInitializerFromDefault(
       if (raw && typeof raw === "object" && "value" in raw) raw = raw.value;
 
       // Float-like property types (including custom subtypes) should render with float hint
-      if (
-        $.scalar.extendsFloat(propertyType) ||
-        $.scalar.extendsFloat32(propertyType) ||
-        $.scalar.extendsFloat64(propertyType) ||
-        $.scalar.extendsDecimal(propertyType) ||
-        $.scalar.extendsDecimal128(propertyType)
-      ) {
+      if ($.scalar.extendsFloat(propertyType) || $.scalar.extendsDecimal(propertyType)) {
         return <Atom value={defaultValue} assumeFloat />;
       }
 
@@ -73,13 +68,13 @@ function buildPrimitiveInitializerFromDefault(
  * - Union of boolean literals: true | false produces Literal[True, False]
  * - Union of variant references: Color.red | Color.blue produces Literal[Color.RED, Color.BLUE]
  * - Mixed literal unions: "a" | 1 | true | Color.RED produces Literal["a", 1, True, Color.RED]
- * 
+ *
  * @param unpackedType - The unpacked type.
  * @returns The type node, or undefined if the type doesn't match any supported literal pattern.
  */
 function buildTypeNodeForProperty(unpackedType: any): Children | undefined {
   const { $ } = useTsp();
-  
+
   // Single union variant reference - Literal[Color.MEMBER]
   if (unpackedType && unpackedType.kind === "UnionVariant" && unpackedType.union) {
     const unionType = unpackedType.union;
@@ -102,43 +97,42 @@ function buildTypeNodeForProperty(unpackedType: any): Children | undefined {
     Array.isArray((unpackedType as any).options)
   ) {
     const opts: any[] = (unpackedType as any).options;
-    
-    // Check if all options are valid literal types using typekit
-    const allLiterals = opts.every((opt) => 
-      opt && (
-        $.literal.isString(opt) ||
-        $.literal.isNumeric(opt) ||
-        $.literal.isBoolean(opt) ||
-        opt.kind === "UnionVariant"
-      )
-    );
-    
-    if (allLiterals) {
-      const literalValues = opts.map((opt) => {
-        if ($.literal.isString(opt)) {
-          // String literals need quotes
-          return JSON.stringify(opt.value);
-        } else if ($.literal.isNumeric(opt)) {
-          // Number literals render directly
-          return String(opt.value);
-        } else if ($.literal.isBoolean(opt)) {
-          // Boolean literals render as True/False (Python capitalization)
-          return opt.value ? "True" : "False";
-        } else if (opt.kind === "UnionVariant") {
-          // Variant references need enum reference
-          const variantValue = opt.type;
-          const enumMemberName =
-            variantValue && typeof variantValue.value === "string"
-              ? variantValue.value
-              : String(variantValue?.value ?? "");
-          return code`${efRefkey(opt.union)}.${enumMemberName}`;
-        }
-        return undefined;
-      }).filter(Boolean);
-      
+
+    // Check if all options are valid literal types
+    if (areAllLiterals($, opts)) {
+      const literalValues = opts
+        .map((opt) => {
+          if ($.literal.isString(opt)) {
+            // String literals need quotes
+            return JSON.stringify(opt.value);
+          } else if ($.literal.isNumeric(opt)) {
+            // Number literals render directly
+            return String(opt.value);
+          } else if ($.literal.isBoolean(opt)) {
+            // Boolean literals render as True/False (Python capitalization)
+            return opt.value ? "True" : "False";
+          } else if (opt.kind === "UnionVariant") {
+            // Variant references need enum reference
+            const variantValue = opt.type;
+            const enumMemberName =
+              variantValue && typeof variantValue.value === "string"
+                ? variantValue.value
+                : String(variantValue?.value ?? "");
+            return code`${efRefkey(opt.union)}.${enumMemberName}`;
+          }
+          return undefined;
+        })
+        .filter(Boolean);
+
       return (
         <>
-          {typingModule["."]["Literal"]}[{mapJoin(() => literalValues, (val) => val, { joiner: ", " })}]
+          {typingModule["."]["Literal"]}[
+          {mapJoin(
+            () => literalValues,
+            (val) => val,
+            { joiner: ", " },
+          )}
+          ]
         </>
       );
     }

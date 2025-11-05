@@ -423,9 +423,7 @@ describe("Python Class from model", () => {
       }
       `);
 
-    expect(
-      getOutput(program, [<ClassDeclaration type={Widget} />]),
-    ).toRenderTo(
+    expect(getOutput(program, [<ClassDeclaration type={Widget} />])).toRenderTo(
       `
       from dataclasses import dataclass
       from typing import Literal
@@ -447,9 +445,7 @@ describe("Python Class from model", () => {
       }
       `);
 
-    expect(
-      getOutput(program, [<ClassDeclaration type={Widget} />]),
-    ).toRenderTo(
+    expect(getOutput(program, [<ClassDeclaration type={Widget} />])).toRenderTo(
       `
       from dataclasses import dataclass
       from typing import Literal
@@ -1073,9 +1069,7 @@ describe("Python Class overrides", () => {
     }
     `);
 
-    expect(
-      getOutput(program, [<ClassDeclaration type={Result} />]),
-    ).toRenderTo(`
+    expect(getOutput(program, [<ClassDeclaration type={Result} />])).toRenderTo(`
       from dataclasses import dataclass
       from typing import Generic
       from typing import TypeVar
@@ -1098,9 +1092,7 @@ describe("Python Class overrides", () => {
     }
     `);
 
-    expect(
-      getOutput(program, [<ClassDeclaration type={Container} />]),
-    ).toRenderTo(`
+    expect(getOutput(program, [<ClassDeclaration type={Container} />])).toRenderTo(`
       from dataclasses import dataclass
       from typing import Generic
       from typing import TypeVar
@@ -1122,9 +1114,7 @@ describe("Python Class overrides", () => {
     }
     `);
 
-    expect(
-      getOutput(program, [<ClassDeclaration type={Result} />]),
-    ).toRenderTo(`
+    expect(getOutput(program, [<ClassDeclaration type={Result} />])).toRenderTo(`
       from dataclasses import dataclass
       from typing import Generic
       from typing import TypeVar
@@ -1185,9 +1175,7 @@ describe("Python Class overrides", () => {
     }
     `);
 
-    expect(
-      getOutput(program, [<ClassDeclaration type={Repository} />]),
-    ).toRenderTo(`
+    expect(getOutput(program, [<ClassDeclaration type={Repository} />])).toRenderTo(`
       from abc import ABC
       from abc import abstractmethod
       from dataclasses import dataclass

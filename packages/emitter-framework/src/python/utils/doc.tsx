@@ -8,7 +8,7 @@ import { type Children, type Component, List } from "@alloy-js/core";
  * - string - split into lines and render as a multi-line docstring
  * - string[] | Children[] - rendered as separate paragraphs
  * - Children (e.g., an explicit Doc component) - returned as-is
- * 
+ *
  * @param source - The documentation source (string, array, or JSX)
  * @param DocComponent - The Python doc component to use (ClassDoc, FunctionDoc, MethodDoc, etc.)
  * @returns The rendered doc element, or undefined if no documentation
@@ -45,4 +45,3 @@ export function createDocElement(
   // Doc provided as JSX - pass through unchanged
   return source as Children;
 }
-

@@ -1,5 +1,5 @@
 import { abcModule, typingModule } from "#python/builtins.js";
-import { type Children, code, createContentSlot, For, List, mapJoin, Show } from "@alloy-js/core";
+import { code, createContentSlot, For, mapJoin, Show, type Children } from "@alloy-js/core";
 import * as py from "@alloy-js/python";
 import {
   isTemplateDeclaration,
@@ -53,12 +53,11 @@ function getTypeMembers($: Typekit, type: Model | Interface): (ModelProperty | O
   }
 }
 
-
 /**
  * Creates the class body for the class declaration.
  * Returns a ClassBody component if there are members or children to render,
  * otherwise returns undefined (which will render "pass" in Python).
- * 
+ *
  * @param $ - The Typekit.
  * @param props - The props for the class declaration.
  * @param abstract - Whether the class is abstract.
@@ -74,21 +73,21 @@ function createClassBody($: Typekit, props: ClassDeclarationProps, abstract: boo
       </>
     );
   }
-  
+
   const validTypeMembers = getTypeMembers($, props.type);
-  
+
   return <ClassBody {...props} validTypeMembers={validTypeMembers} abstract={abstract} />;
 }
 
 /**
  * Creates the extends types for the class declaration.
- * 
+ *
  * - Template instances (e.g., `Response<string>` → `Response[str]`) - Use TypeExpression to render with type args
  * - Partial templates (e.g., `Response<T> -> Response[T]`) - Use TypeExpression to render with type args
  * - Regular models (e.g., `BaseWidget`) - Use py.Reference for simple name resolution
  * - Arrays - Use TypeExpression for `typing.Sequence[T]` rendering
  * - Records - Not supported, ignored
- * 
+ *
  * @param $ - The Typekit.
  * @param type - The type to create the extends type for.
  * @returns The extends types for the class declaration, or undefined for interfaces.
@@ -123,14 +122,20 @@ function getExtendsType($: Typekit, type: Model | Interface): Children | undefin
     extending.push(<TypeExpression type={indexType} />);
   }
 
-  return extending.length > 0 ? mapJoin(() => extending, (ext) => ext, { joiner: "," }) : undefined;
+  return extending.length > 0
+    ? mapJoin(
+        () => extending,
+        (ext) => ext,
+        { joiner: "," },
+      )
+    : undefined;
 }
 
 /**
  * Creates the bases (inheritance) list for the class declaration.
  * Combines explicit bases from props, inherited bases from the type, and ABC if abstract.
  * ABC is always added last to maintain proper Python MRO.
- * 
+ *
  * @param $ - The Typekit.
  * @param props - The props for the class declaration.
  * @param abstract - Whether the class is abstract.
@@ -150,10 +155,10 @@ function createBasesType(
       extraBases.push(extend);
     }
   }
-  
+
   // Combine explicit bases from props with extraBases (Generic, extends, etc.)
   const allBases = (props.bases ?? []).concat(extraBases);
-  
+
   // For non-abstract classes, return bases or undefined
   if (!abstract) {
     return allBases.length > 0 ? allBases : undefined;
@@ -166,7 +171,7 @@ function createBasesType(
 
 /**
  * Builds TypeVar declarations and the Generic[...] base for templated types.
- * 
+ *
  * **Template Detection Logic**:
  * Uses TypeSpec's `isTemplateDeclaration` utility to correctly identify:
  * - **Template Declaration** (e.g., `model Response<T>`) - Generate TypeVars
@@ -174,7 +179,7 @@ function createBasesType(
  * - **Partial Template** (e.g., nested `Op<T>` inside `interface Foo<T>`) - Skip TypeVars
  * - **Nested Template** (e.g., `interface Foo<T> { op: Op<T> }`) - Skip TypeVars
  * - **Regular Type** (e.g., `model Widget`) - Skip TypeVars
- * 
+ *
  * @param $ - The Typekit
  * @param type - The model or interface type to analyze
  * @returns TypeVar declarations and Generic base, or null if not a template declaration
@@ -203,23 +208,21 @@ function buildTypeVarsAndGenericBase(
         {(node) => {
           // Build TypeVar arguments: name + optional bound
           const typeVarArgs: Children[] = [<py.Atom jsValue={node.id.sv} />];
-          
+
           // Check if template parameter has a constraint (bound)
           if (node.constraint) {
             // Converts the AST node to a TypeSpec type
             const constraintType = $.program.checker.getTypeForNode(node.constraint);
             typeVarArgs.push(
               <>
-                bound=<TypeExpression type={constraintType} />
-              </>
+                bound=
+                <TypeExpression type={constraintType} />
+              </>,
             );
           }
-          
+
           const typeVar = (
-            <py.FunctionCallExpression
-              target={typingModule["."].TypeVar}
-              args={typeVarArgs}
-            />
+            <py.FunctionCallExpression target={typingModule["."].TypeVar} args={typeVarArgs} />
           );
           return <py.VariableDeclaration name={node.id.sv} initializer={typeVar} />;
         }}
@@ -231,10 +234,8 @@ function buildTypeVarsAndGenericBase(
   for (const templateParameter of templateParameters) {
     typeArgs.push(code`${templateParameter.id.sv}`);
   }
-  
-  const genericBase = (
-    <py.TypeReference refkey={typingModule["."].Generic} typeArgs={typeArgs} />
-  );
+
+  const genericBase = <py.TypeReference refkey={typingModule["."].Generic} typeArgs={typeArgs} />;
 
   return { typeVars, genericBase };
 }
@@ -259,7 +260,7 @@ export function ClassDeclaration(props: ClassDeclarationProps) {
   // If we are explicitly overriding the class as abstract or the type is not a model, we need to create an abstract class
   const abstract =
     ("abstract" in props && props.abstract) || ("type" in props && !$.model.is(props.type));
-  
+
   const docSource = props.doc ?? ("type" in props ? $.type.getDoc(props.type) : undefined);
   const docElement = createDocElement(docSource, py.ClassDoc);
 
@@ -295,7 +296,7 @@ export function ClassDeclaration(props: ClassDeclarationProps) {
   name = namePolicy.getName(name, "class");
 
   const refkeys = declarationRefkeys(props.refkey, props.type);
-  
+
   // Check for models with additional properties (Record-based scenarios)
   // This check must happen here (in addition to ClassBody) because models with no properties
   // (e.g., `model Foo is Record<string>`) won't render a ClassBody, so the error would never be thrown
@@ -305,7 +306,7 @@ export function ClassDeclaration(props: ClassDeclarationProps) {
       throw new Error("Models with additional properties (Record[…]) are not supported");
     }
   }
-  
+
   // Array-based models (e.g., model Foo is Array<T>) use regular classes, not dataclasses,
   // since Array models in TypeSpec can't have properties, so they behave more like a class
   // that inherits from a list.

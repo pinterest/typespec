@@ -1,7 +1,6 @@
 import { useTsp } from "#core/index.js";
 import { buildParameterDescriptors } from "#python/utils/operation.js";
 import { declarationRefkeys } from "#python/utils/refkey.js";
-import { type Children } from "@alloy-js/core";
 import * as py from "@alloy-js/python";
 import type { Model, Operation } from "@typespec/compiler";
 import { createDocElement } from "../../utils/doc.jsx";

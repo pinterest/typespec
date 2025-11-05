@@ -53,7 +53,7 @@ export function Method(props: Readonly<MethodProps>) {
   // unless explicitly overridden by props.abstract === false
   const abstractFlag = (() => {
     const explicit = (props as any).abstract as boolean | undefined;
-    return explicit ?? (!isTypeSpecTyped ? false : undefined)
+    return explicit ?? (!isTypeSpecTyped ? false : undefined);
   })();
 
   /**
