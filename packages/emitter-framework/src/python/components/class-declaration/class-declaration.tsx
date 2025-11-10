@@ -173,12 +173,12 @@ function createBasesType(
  * Builds TypeVar declarations and the Generic[...] base for templated types.
  *
  * **Template Detection Logic**:
- * Uses TypeSpec's `isTemplateDeclaration` utility to correctly identify:
- * - **Template Declaration** (e.g., `model Response<T>`) - Generate TypeVars
- * - **Template Instance** (e.g., `Response<string>`) - Skip TypeVars
- * - **Partial Template** (e.g., nested `Op<T>` inside `interface Foo<T>`) - Skip TypeVars
- * - **Nested Template** (e.g., `interface Foo<T> { op: Op<T> }`) - Skip TypeVars
- * - **Regular Type** (e.g., `model Widget`) - Skip TypeVars
+ * Only generates TypeVars for true template declarations (e.g., `model Response<T>` or `interface Foo<T>`).
+ *
+ * Skips TypeVars for:
+ * - **Template Instances** - e.g., `Response<string>` (concrete type instantiation)
+ * - **Operations in Template Interfaces** - e.g., `interface Foo<T> { op(item: T): T }` (operations inherit parent's template params)
+ * - **Regular Types** - e.g., `model Widget` (no template parameters)
  *
  * @param $ - The Typekit
  * @param type - The model or interface type to analyze
@@ -188,12 +188,8 @@ function buildTypeVarsAndGenericBase(
   $: Typekit,
   type: Model | Interface,
 ): { typeVars: Children | null; genericBase?: Children } {
-  // Ensuring that we only generate TypeVars for true template declarations
-  // Correctly handles all edge cases:
-  // - Partial template mappers
-  // - Nested template mappers
-  // - Template instances
-  // - Regular types
+  // Only generate TypeVars for true template declarations
+  // (skips template instances, operations in template interfaces, and regular types)
   if (!isTemplateDeclaration(type)) {
     return { typeVars: null };
   }
