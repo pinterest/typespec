@@ -1,5 +1,19 @@
 # Changelog - @typespec/http-client
 
+## 0.12.0
+
+### Bump dependencies
+
+- [#8823](https://github.com/microsoft/typespec/pull/8823) Upgrade dependencies
+
+
+## 0.11.0
+
+### Features
+
+- [#8440](https://github.com/microsoft/typespec/pull/8440) Introduce `@experimental` decorator to tag client features as unstable
+
+
 ## 0.10.0
 
 ### Bump dependencies

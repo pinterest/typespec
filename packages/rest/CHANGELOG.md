@@ -1,5 +1,19 @@
 # Change Log - @typespec/rest
 
+## 0.76.0
+
+### Bump dependencies
+
+- [#8823](https://github.com/microsoft/typespec/pull/8823) Upgrade dependencies
+
+
+## 0.75.0
+
+### Bug Fixes
+
+- [#8644](https://github.com/microsoft/typespec/pull/8644) Fix crash when resource would recursively reference itself via `@parentResource`
+
+
 ## 0.74.0
 
 ### Bump dependencies

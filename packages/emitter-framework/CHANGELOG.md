@@ -1,5 +1,31 @@
 # Changelog - @typespec/emitter-framework
 
+## 0.13.0
+
+### Features
+
+- [#8415](https://github.com/microsoft/typespec/pull/8415) [c#] Support encode when generating csharp property.
+
+### Bump dependencies
+
+- [#8823](https://github.com/microsoft/typespec/pull/8823) Upgrade dependencies
+
+
+## 0.12.0
+
+### Features
+
+- [#8686](https://github.com/microsoft/typespec/pull/8686) Make C# and TypeScript TypeExpression overridable for unsupported types.
+
+### Bump dependencies
+
+- [#8437](https://github.com/microsoft/typespec/pull/8437) Upgrade dependencies
+
+### Bug Fixes
+
+- [#8474](https://github.com/microsoft/typespec/pull/8474) Remove development exports from published package
+
+
 ## 0.11.0
 
 ### Features

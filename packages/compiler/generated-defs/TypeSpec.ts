@@ -9,6 +9,7 @@ import type {
   Numeric,
   Operation,
   Scalar,
+  ScalarValue,
   Type,
   Union,
   UnionVariant,
@@ -380,7 +381,7 @@ export type MaxItemsDecorator = (
 export type MinValueDecorator = (
   context: DecoratorContext,
   target: Scalar | ModelProperty,
-  value: Numeric,
+  value: Numeric | ScalarValue | ScalarValue | ScalarValue | ScalarValue | ScalarValue,
 ) => void;
 
 /**
@@ -396,7 +397,7 @@ export type MinValueDecorator = (
 export type MaxValueDecorator = (
   context: DecoratorContext,
   target: Scalar | ModelProperty,
-  value: Numeric,
+  value: Numeric | ScalarValue | ScalarValue | ScalarValue | ScalarValue | ScalarValue,
 ) => void;
 
 /**
@@ -413,7 +414,7 @@ export type MaxValueDecorator = (
 export type MinValueExclusiveDecorator = (
   context: DecoratorContext,
   target: Scalar | ModelProperty,
-  value: Numeric,
+  value: Numeric | ScalarValue | ScalarValue | ScalarValue | ScalarValue | ScalarValue,
 ) => void;
 
 /**
@@ -430,11 +431,11 @@ export type MinValueExclusiveDecorator = (
 export type MaxValueExclusiveDecorator = (
   context: DecoratorContext,
   target: Scalar | ModelProperty,
-  value: Numeric,
+  value: Numeric | ScalarValue | ScalarValue | ScalarValue | ScalarValue | ScalarValue,
 ) => void;
 
 /**
- * Mark this string as a secret value that should be treated carefully to avoid exposure
+ * Mark this value as a secret value that should be treated carefully to avoid exposure
  *
  * @example
  * ```typespec
@@ -442,7 +443,10 @@ export type MaxValueExclusiveDecorator = (
  * scalar Password is string;
  * ```
  */
-export type SecretDecorator = (context: DecoratorContext, target: Scalar | ModelProperty) => void;
+export type SecretDecorator = (
+  context: DecoratorContext,
+  target: Scalar | ModelProperty | Model | Union | Enum,
+) => void;
 
 /**
  * Attaches a tag to an operation, interface, or namespace. Multiple `@tag` decorators can be specified to attach multiple tags to a TypeSpec element.

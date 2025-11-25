@@ -1,5 +1,53 @@
 # Change Log - @typespec/openapi3
 
+## 1.6.0
+
+### Features
+
+- [#8888](https://github.com/microsoft/typespec/pull/8888) adds support for emission and import of SSE for OpenAPI 3.2
+- [#8828](https://github.com/microsoft/typespec/pull/8828) added support for OpenAPI 3.2.0 emission
+- [#8830](https://github.com/microsoft/typespec/pull/8830) [converter] Generate separate operations with @sharedRoute for operations with multiple incompatible content types (e.g., multipart/form-data and application/json)
+- [#8727](https://github.com/microsoft/typespec/pull/8727) [converter] Generated doc comments render on a single line unless doc has new lines
+- [#8580](https://github.com/microsoft/typespec/pull/8580) Add support for min/max value for date time and duration types
+
+### Bump dependencies
+
+- [#8823](https://github.com/microsoft/typespec/pull/8823) Upgrade dependencies
+
+### Bug Fixes
+
+- [#8945](https://github.com/microsoft/typespec/pull/8945) [importer] adds missing value checks before attempting conversion
+- [#8773](https://github.com/microsoft/typespec/pull/8773) [importer] fix support of type arrays with null
+- [#8829](https://github.com/microsoft/typespec/pull/8829) Fix escaping of ${...} in string literals to prevent interpolation
+- [#8871](https://github.com/microsoft/typespec/pull/8871) Import: Convert OpenAPI unixtime format to utcDateTime with @encode decorator
+- [#8764](https://github.com/microsoft/typespec/pull/8764) [converter] Fix multi line docs for server variables producing invalid syntax
+- [#8727](https://github.com/microsoft/typespec/pull/8727) [converter] Render `@server` with multi line doc correctly
+- [#8711](https://github.com/microsoft/typespec/pull/8711) Addressed an issue where `@discriminated` union envelope schemas could sometimes have duplicate names in the context of visibility transforms.
+
+
+## 1.5.0
+
+### Features
+
+- [#8632](https://github.com/microsoft/typespec/pull/8632) Add a new `operation-id-strategy` option.
+  
+  - `parent-container` (default and previous behavior) Join operation name with its parent if applicable with an underscore
+  - `fqn` Join the path from the service root to the operation with `.`
+  - `none` Do not generate operation ids, only include explicit ones set with `@operationId`
+
+### Bug Fixes
+
+- [#8584](https://github.com/microsoft/typespec/pull/8584) [importer] fixes import of additional properties : true {} to result in Record<unknown>
+- [#8621](https://github.com/microsoft/typespec/pull/8621) [importer] unwrap single any/oneOf to get semantically meaningful types
+- [#8419](https://github.com/microsoft/typespec/pull/8419) adds enum prefix for defaults values of enums on import
+- [#8434](https://github.com/microsoft/typespec/pull/8434) do not emit defaults for each member type when importing openapi descriptions
+- [#8514](https://github.com/microsoft/typespec/pull/8514) [converter] anyOf/oneOf type + type:null gets imported properly and maintains decorators, documentation,...
+- [#8623](https://github.com/microsoft/typespec/pull/8623) [importer] only import multipart request body when it's present
+- [#8432](https://github.com/microsoft/typespec/pull/8432) fixes a regression where a null valued default would make the import crash
+- [#8605](https://github.com/microsoft/typespec/pull/8605) Fix crash when using a property called `set`
+- [#8632](https://github.com/microsoft/typespec/pull/8632) Deduplicate operation ids that would resolve to the same one
+
+
 ## 1.4.0
 
 ### Features

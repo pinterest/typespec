@@ -75,17 +75,26 @@ namespace SampleTypeSpec
             if (Optional.IsDefined(OptionalLiteralString))
             {
                 writer.WritePropertyName("optionalLiteralString"u8);
-                writer.WriteStringValue(OptionalLiteralString);
+                writer.WriteStringValue(OptionalLiteralString.Value.ToString());
+            }
+            if (Optional.IsDefined(RequiredNullableLiteralString))
+            {
+                writer.WritePropertyName("requiredNullableLiteralString"u8);
+                writer.WriteStringValue(RequiredNullableLiteralString.Value.ToString());
+            }
+            else
+            {
+                writer.WriteNull("requiredNullableLiteralString"u8);
             }
             if (Optional.IsDefined(OptionalLiteralInt))
             {
                 writer.WritePropertyName("optionalLiteralInt"u8);
-                writer.WriteNumberValue(OptionalLiteralInt.Value);
+                writer.WriteNumberValue(OptionalLiteralInt.Value.ToSerialInt32());
             }
             if (Optional.IsDefined(OptionalLiteralFloat))
             {
                 writer.WritePropertyName("optionalLiteralFloat"u8);
-                writer.WriteNumberValue(OptionalLiteralFloat.Value);
+                writer.WriteNumberValue(OptionalLiteralFloat.Value.ToSerialSingle());
             }
             if (Optional.IsDefined(OptionalLiteralBool))
             {
@@ -168,9 +177,10 @@ namespace SampleTypeSpec
             int requiredLiteralInt = default;
             float requiredLiteralFloat = default;
             bool requiredLiteralBool = default;
-            string optionalLiteralString = default;
-            int? optionalLiteralInt = default;
-            float? optionalLiteralFloat = default;
+            ThingOptionalLiteralString? optionalLiteralString = default;
+            ThingRequiredNullableLiteralString1? requiredNullableLiteralString = default;
+            ThingOptionalLiteralInt? optionalLiteralInt = default;
+            ThingOptionalLiteralFloat? optionalLiteralFloat = default;
             bool? optionalLiteralBool = default;
             string requiredBadDescription = default;
             IList<int> optionalNullableList = default;
@@ -230,7 +240,21 @@ namespace SampleTypeSpec
                 }
                 if (prop.NameEquals("optionalLiteralString"u8))
                 {
-                    optionalLiteralString = prop.Value.GetString();
+                    if (prop.Value.ValueKind == JsonValueKind.Null)
+                    {
+                        continue;
+                    }
+                    optionalLiteralString = new ThingOptionalLiteralString(prop.Value.GetString());
+                    continue;
+                }
+                if (prop.NameEquals("requiredNullableLiteralString"u8))
+                {
+                    if (prop.Value.ValueKind == JsonValueKind.Null)
+                    {
+                        requiredNullableLiteralString = null;
+                        continue;
+                    }
+                    requiredNullableLiteralString = new ThingRequiredNullableLiteralString1(prop.Value.GetString());
                     continue;
                 }
                 if (prop.NameEquals("optionalLiteralInt"u8))
@@ -239,7 +263,7 @@ namespace SampleTypeSpec
                     {
                         continue;
                     }
-                    optionalLiteralInt = prop.Value.GetInt32();
+                    optionalLiteralInt = new ThingOptionalLiteralInt(prop.Value.GetInt32());
                     continue;
                 }
                 if (prop.NameEquals("optionalLiteralFloat"u8))
@@ -248,7 +272,7 @@ namespace SampleTypeSpec
                     {
                         continue;
                     }
-                    optionalLiteralFloat = prop.Value.GetSingle();
+                    optionalLiteralFloat = new ThingOptionalLiteralFloat(prop.Value.GetSingle());
                     continue;
                 }
                 if (prop.NameEquals("optionalLiteralBool"u8))
@@ -309,6 +333,7 @@ namespace SampleTypeSpec
                 requiredLiteralFloat,
                 requiredLiteralBool,
                 optionalLiteralString,
+                requiredNullableLiteralString,
                 optionalLiteralInt,
                 optionalLiteralFloat,
                 optionalLiteralBool,
@@ -346,7 +371,7 @@ namespace SampleTypeSpec
             switch (format)
             {
                 case "J":
-                    using (JsonDocument document = JsonDocument.Parse(data))
+                    using (JsonDocument document = JsonDocument.Parse(data, ModelSerializationExtensions.JsonDocumentOptions))
                     {
                         return DeserializeThing(document.RootElement, options);
                     }
@@ -371,8 +396,8 @@ namespace SampleTypeSpec
         /// <param name="result"> The <see cref="ClientResult"/> to deserialize the <see cref="Thing"/> from. </param>
         public static explicit operator Thing(ClientResult result)
         {
-            using PipelineResponse response = result.GetRawResponse();
-            using JsonDocument document = JsonDocument.Parse(response.Content);
+            PipelineResponse response = result.GetRawResponse();
+            using JsonDocument document = JsonDocument.Parse(response.Content, ModelSerializationExtensions.JsonDocumentOptions);
             return DeserializeThing(document.RootElement, ModelSerializationExtensions.WireOptions);
         }
     }

@@ -71,6 +71,40 @@ Expects header 'x-ms-api-key': 'valid-key'
 
 Expects header 'authorization': 'Bearer https://security.microsoft.com/.default'
 
+### Documentation_Lists_bulletPointsOp
+
+- Endpoint: `get /documentation/lists/bullet-points/op`
+
+Test simple bullet points in documentation.
+Expected behavior: Should render properly formatted bullet lists.
+
+### Documentation_Lists_numbered
+
+- Endpoint: `get /documentation/lists/numbered`
+
+Test numbered lists.
+Expected behavior: Should render numbered list properly.
+
+### Documentation_TextFormatting_boldText
+
+- Endpoint: `get /documentation/text-formatting/bold`
+
+Expected behavior: Text between \*\* should render as bold.
+
+### Documentation_TextFormatting_combinedFormatting
+
+- Endpoint: `get /documentation/text-formatting/combined`
+
+Test combined bold and italic formatting.
+Expected behavior: Should handle nested and combined formatting.
+
+### Documentation_TextFormatting_italicText
+
+- Endpoint: `get /documentation/text-formatting/italic`
+
+Test italic text formatting using _single asterisks_.
+Expected behavior: Text between \* should render as italic.
+
 ### Encode_Bytes_Header_base64
 
 - Endpoint: `get /encode/bytes/header/base64`
@@ -538,12 +572,28 @@ Expected header `duration: 35.625`
 Test float milliseconds encode for a duration header.
 Expected header `duration: 35625`
 
+### Encode_Duration_Header_floatMillisecondsLargerUnit
+
+- Endpoint: `get /encode/duration/header/float-milliseconds-larger-unit`
+
+Test float milliseconds encode for a duration header where the duration is several minutes.
+Languages that support duration primitives should use the largest possible unit, e.g. TimeSpan.FromMinutes(3.5) in C#.
+Expected header `duration: 210000.0`
+
 ### Encode_Duration_Header_floatSeconds
 
 - Endpoint: `get /encode/duration/header/float-seconds`
 
 Test float seconds encode for a duration header.
 Expected header `duration: 35.625`
+
+### Encode_Duration_Header_floatSecondsLargerUnit
+
+- Endpoint: `get /encode/duration/header/float-seconds-larger-unit`
+
+Test float seconds encode for a duration header where the duration is several minutes.
+Languages that support duration primitives should use the largest possible unit, e.g. TimeSpan.FromMinutes(2.5) in C#.
+Expected header `duration: 150.0`
 
 ### Encode_Duration_Header_int32Milliseconds
 
@@ -559,12 +609,28 @@ Expected header `duration: 36000`
 Test int32 milliseconds encode for a duration array header.
 Expected header `duration: [36000,47000]`
 
+### Encode_Duration_Header_int32MillisecondsLargerUnit
+
+- Endpoint: `get /encode/duration/header/int32-milliseconds-larger-unit`
+
+Test int32 milliseconds encode for a duration header where the duration is several minutes.
+Languages that support duration primitives should use the largest possible unit, e.g. TimeSpan.FromMinutes(3) in C#.
+Expected header `duration: 180000`
+
 ### Encode_Duration_Header_int32Seconds
 
 - Endpoint: `get /encode/duration/header/int32-seconds`
 
 Test int32 seconds encode for a duration header.
 Expected header `duration: 36`
+
+### Encode_Duration_Header_int32SecondsLargerUnit
+
+- Endpoint: `get /encode/duration/header/int32-seconds-larger-unit`
+
+Test int32 seconds encode for a duration header where the duration is several minutes.
+Languages that support duration primitives should use the largest possible unit, e.g. TimeSpan.FromMinutes(2) in C#.
+Expected header `duration: 120`
 
 ### Encode_Duration_Header_iso8601
 
@@ -685,6 +751,28 @@ Expected response body:
 }
 ```
 
+### Encode_Duration_Property_floatMillisecondsLargerUnit
+
+- Endpoint: `get /encode/duration/property/float-milliseconds-larger-unit`
+
+Test operation with request and response model contains a duration property with float milliseconds encode where the duration is several minutes.
+Languages that support duration primitives should use the largest possible unit, e.g. TimeSpan.FromMinutes(3.5) in C#.
+Expected request body:
+
+```json
+{
+  "value": 210000.0
+}
+```
+
+Expected response body:
+
+```json
+{
+  "value": 210000.0
+}
+```
+
 ### Encode_Duration_Property_floatSeconds
 
 - Endpoint: `get /encode/duration/property/float-seconds`
@@ -727,6 +815,28 @@ Expected response body:
 }
 ```
 
+### Encode_Duration_Property_floatSecondsLargerUnit
+
+- Endpoint: `get /encode/duration/property/float-seconds-larger-unit`
+
+Test operation with request and response model contains a duration property with float seconds encode where the duration is several minutes.
+Languages that support duration primitives should use the largest possible unit, e.g. TimeSpan.FromMinutes(2.5) in C#.
+Expected request body:
+
+```json
+{
+  "value": 150.0
+}
+```
+
+Expected response body:
+
+```json
+{
+  "value": 150.0
+}
+```
+
 ### Encode_Duration_Property_int32Milliseconds
 
 - Endpoint: `get /encode/duration/property/int32-milliseconds`
@@ -748,6 +858,28 @@ Expected response body:
 }
 ```
 
+### Encode_Duration_Property_int32MillisecondsLargerUnit
+
+- Endpoint: `get /encode/duration/property/int32-milliseconds-larger-unit`
+
+Test operation with request and response model contains a duration property with int32 milliseconds encode where the duration is several minutes.
+Languages that support duration primitives should use the largest possible unit, e.g. TimeSpan.FromMinutes(3) in C#.
+Expected request body:
+
+```json
+{
+  "value": 180000
+}
+```
+
+Expected response body:
+
+```json
+{
+  "value": 180000
+}
+```
+
 ### Encode_Duration_Property_int32Seconds
 
 - Endpoint: `get /encode/duration/property/int32-seconds`
@@ -766,6 +898,28 @@ Expected response body:
 ```json
 {
   "value": 36
+}
+```
+
+### Encode_Duration_Property_int32SecondsLargerUnit
+
+- Endpoint: `get /encode/duration/property/int32-seconds-larger-unit`
+
+Test operation with request and response model contains a duration property with int32 seconds encode where the duration is several minutes.
+Languages that support duration primitives should use the largest possible unit, e.g. TimeSpan.FromMinutes(2) in C#.
+Expected request body:
+
+```json
+{
+  "value": 120
+}
+```
+
+Expected response body:
+
+```json
+{
+  "value": 120
 }
 ```
 
@@ -818,12 +972,28 @@ Expected query parameter `input=35.625`
 Test float milliseconds encode for a duration parameter.
 Expected query parameter `input=35625`
 
+### Encode_Duration_Query_floatMillisecondsLargerUnit
+
+- Endpoint: `get /encode/duration/query/float-milliseconds-larger-unit`
+
+Test float milliseconds encode for a duration parameter where the duration is several minutes.
+Languages that support duration primitives should use the largest possible unit, e.g. TimeSpan.FromMinutes(3.5) in C#.
+Expected query parameter `input=210000.0`
+
 ### Encode_Duration_Query_floatSeconds
 
 - Endpoint: `get /encode/duration/query/float-seconds`
 
 Test float seconds encode for a duration parameter.
 Expected query parameter `input=35.625`
+
+### Encode_Duration_Query_floatSecondsLargerUnit
+
+- Endpoint: `get /encode/duration/query/float-seconds-larger-unit`
+
+Test float seconds encode for a duration parameter where the duration is several minutes.
+Languages that support duration primitives should use the largest possible unit, e.g. TimeSpan.FromMinutes(2.5) in C#.
+Expected query parameter `input=150.0`
 
 ### Encode_Duration_Query_int32Milliseconds
 
@@ -839,6 +1009,14 @@ Expected query parameter `input=36000`
 Test int32 milliseconds encode for a duration array parameter.
 Expected query parameter `input=36000,47000`
 
+### Encode_Duration_Query_int32MillisecondsLargerUnit
+
+- Endpoint: `get /encode/duration/query/int32-milliseconds-larger-unit`
+
+Test int32 milliseconds encode for a duration parameter where the duration is several minutes.
+Languages that support duration primitives should use the largest possible unit, e.g. TimeSpan.FromMinutes(3) in C#.
+Expected query parameter `input=180000`
+
 ### Encode_Duration_Query_int32Seconds
 
 - Endpoint: `get /encode/duration/query/int32-seconds`
@@ -852,6 +1030,14 @@ Expected query parameter `input=36`
 
 Test int32 seconds encode for a duration array parameter.
 Expected query parameter `input=36,47`
+
+### Encode_Duration_Query_int32SecondsLargerUnit
+
+- Endpoint: `get /encode/duration/query/int32-seconds-larger-unit`
+
+Test int32 seconds encode for a duration parameter where the duration is several minutes.
+Languages that support duration primitives should use the largest possible unit, e.g. TimeSpan.FromMinutes(2) in C#.
+Expected query parameter `input=120`
 
 ### Encode_Duration_Query_iso8601
 
@@ -3205,6 +3391,29 @@ Expected header parameters:
 - Endpoint: `post /special-headers/repeatability/immediateSuccess`
 
 Check we recognize Repeatability-Request-ID and Repeatability-First-Sent.
+
+### SpecialWords_ModelProperties_dictMethods
+
+- Endpoint: `get /special-words/model-properties/dict-methods`
+
+Verify that model properties can use names that are Python dict methods. These names (keys, items, values, etc.) may conflict with Python's dict class methods.
+
+Send
+
+```json
+{
+  "keys": "ok",
+  "items": "ok",
+  "values": "ok",
+  "popitem": "ok",
+  "clear": "ok",
+  "update": "ok",
+  "setdefault": "ok",
+  "pop": "ok",
+  "get": "ok",
+  "copy": "ok"
+}
+```
 
 ### SpecialWords_ModelProperties_sameAsModel
 

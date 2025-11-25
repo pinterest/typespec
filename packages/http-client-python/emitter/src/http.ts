@@ -441,18 +441,35 @@ function emitHttpParameters(
 ): Record<string, any>[] {
   const parameters: Record<string, any>[] = [...context.__endpointPathParameters];
 
-  // handle @override for parameters reorder
+  // handle @override
   const httpParameters = method.isOverride
     ? (() => {
-        const parametersFromMethod = method.parameters
-          .map((param) => getHttpOperationParameter(method, param))
-          .filter((result) => result !== undefined);
+        const parametersFromMethod = [];
+        for (const param of method.parameters) {
+          const httpParam = getHttpOperationParameter(method, param);
+          if (httpParam) {
+            // override properties of the http parameter
+            httpParam.optional = param.optional;
+            parametersFromMethod.push(httpParam);
+          }
+        }
 
-        const parametersFromOperation = operation.parameters.filter(
-          (param) => !parametersFromMethod.includes(param),
-        );
+        if (parametersFromMethod.length > 0) {
+          // TCGC doesn't set apiVersion in method parameters since TCGC already set it as client level parameter.
+          // But Python emitter still need it as kwargs signature of operation so we need special logic to add it if needed.
+          // And same for subscriptionId.
+          for (const param of operation.parameters) {
+            if (
+              (param.kind === "query" && param.isApiVersionParam) ||
+              (param.serializedName === "subscriptionId" && param.kind === "path")
+            ) {
+              parametersFromMethod.push(param);
+            }
+          }
+          return parametersFromMethod;
+        }
 
-        return [...parametersFromMethod, ...parametersFromOperation];
+        return operation.parameters;
       })()
     : operation.parameters;
 

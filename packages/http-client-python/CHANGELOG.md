@@ -1,5 +1,77 @@
 # Change Log - @typespec/http-client-python
 
+## 0.20.3
+
+### Bump dependencies
+
+- [#8992](https://github.com/microsoft/typespec/pull/8992) Bump typespec dependency
+
+### Bug Fixes
+
+- [#8948](https://github.com/microsoft/typespec/pull/8948) Fix subscriptionId missing for override
+
+
+## 0.20.2
+
+### Bug Fixes
+
+- [#8905](https://github.com/microsoft/typespec/pull/8905) Avoid duplicated delete operation for autorest emitter
+
+
+## 0.20.1
+
+### Bug Fixes
+
+- [7eda352](https://github.com/microsoft/typespec/commit/7eda3523a429568b5c713d70d45976c2676fa702) [python] add flag for clear output folder and set default to false
+
+
+## 0.20.0
+
+### Features
+
+- [#8716](https://github.com/microsoft/typespec/pull/8716) Add logic to clear output folder
+
+### Bug Fixes
+
+- [#8866](https://github.com/microsoft/typespec/pull/8866) Fix bad indent
+- [#8867](https://github.com/microsoft/typespec/pull/8867) Fix setting attribute of flattened property when flattened property's name is not `properties`
+
+
+## 0.19.2
+
+### Bug Fixes
+
+- [#8720](https://github.com/microsoft/typespec/pull/8720) Fix api-version for @override
+- [#8806](https://github.com/microsoft/typespec/pull/8806) Fix runtime error for constant query parameter
+- [#8749](https://github.com/microsoft/typespec/pull/8749) Additional fixes to documentation with bullet points
+
+
+## 0.19.1
+
+### Bump dependencies
+
+- [#8638](https://github.com/microsoft/typespec/pull/8638) Bump dep of `@azure-tools/typespec-client-generator-core` to hotfix `0.60.3`
+
+### Bug Fixes
+
+- [#8647](https://github.com/microsoft/typespec/pull/8647) Fix outputted bullet-point documentation to pass sphinx
+- [#8680](https://github.com/microsoft/typespec/pull/8680) Fix indentation issue when deserializing internal error model
+- [#8679](https://github.com/microsoft/typespec/pull/8679) Exclude `generated_samples` and `generated_tests` from wheel
+
+
+## 0.19.0
+
+### Features
+
+- [#8558](https://github.com/microsoft/typespec/pull/8558) Support move method level signature to client level
+
+### Bug Fixes
+
+- [#8603](https://github.com/microsoft/typespec/pull/8603) support `@override` completely
+- [#8607](https://github.com/microsoft/typespec/pull/8607) [python] ensure first line in param description wrap around is a space
+- [#8381](https://github.com/microsoft/typespec/pull/8381) Fix bugs related to import and pylint for libraries with only internal models
+
+
 ## 0.18.1
 
 ### Bug Fixes

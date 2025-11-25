@@ -919,6 +919,56 @@ namespace Microsoft.TypeSpec.Generator.ClientModel.Tests.Providers
             Assert.AreEqual(new CSharpType(typeof(ClientResult<BinaryData>)), responseType);
         }
 
+        [Test]
+        public void RequiredLiteralParametersAreFilteredFromParameters()
+        {
+            var inputUnionFooType = InputFactory.Union([InputFactory.Model("Foo", properties:
+            [
+                InputFactory.Property("name", InputPrimitiveType.String, isRequired: true),
+            ])], "foo");
+            var inputType = InputFactory.Union([inputUnionFooType], "bar");
+            var inputOperation = InputFactory.Operation(
+                "GetOperation",
+                parameters:
+                [
+                    InputFactory.QueryParameter("queryParam", InputFactory.Literal.String("value"), isRequired: true),
+                    InputFactory.HeaderParameter("headerParam", InputFactory.Literal.String("value"), isRequired: true),
+                    InputFactory.BodyParameter("bodyParam", InputFactory.Literal.String("value"), isRequired: true)
+                ],
+                responses: [InputFactory.OperationResponse([200], inputType!)]);
+
+            var inputServiceMethod = InputFactory.BasicServiceMethod(
+                "GetOperation",
+                inputOperation,
+                parameters:
+                [
+                    InputFactory.MethodParameter("queryParam", InputFactory.Literal.String("value"), isRequired: true, location: InputRequestLocation.Query),
+                    InputFactory.MethodParameter("headerParam", InputFactory.Literal.String("value"), isRequired: true, location: InputRequestLocation.Header),
+                    InputFactory.MethodParameter("bodyParam", InputFactory.Literal.String("value"), isRequired: true, location: InputRequestLocation.Body)
+                ]);
+
+            var inputClient = InputFactory.Client("TestClient", methods: [inputServiceMethod]);
+
+            MockHelpers.LoadMockGenerator();
+            var client = ScmCodeModelGenerator.Instance.TypeFactory.CreateClient(inputClient);
+
+            var methodCollection = new ScmMethodProviderCollection(inputServiceMethod, client!);
+            Assert.IsNotNull(methodCollection);
+
+            var convenienceMethod = methodCollection.FirstOrDefault(m
+                => m.Signature.Parameters.All(p => p.Name != "options")
+                   && m.Signature.Name == $"{inputOperation.Name.ToIdentifierName()}");
+
+            Assert.IsNotNull(convenienceMethod);
+            Assert.AreEqual(1, convenienceMethod!.Signature.Parameters.Count);
+
+            var protocolMethod = methodCollection.FirstOrDefault(m
+                => m.Signature.Parameters.Any(p => p.Name == "options")
+                   && m.Signature.Name == $"{inputOperation.Name.ToIdentifierName()}");
+            Assert.IsNotNull(protocolMethod);
+            Assert.AreEqual(1, protocolMethod!.Signature.Parameters.Count);
+        }
+
         [TestCase(typeof(int))]
         [TestCase(typeof(long))]
         [TestCase(typeof(float))]
@@ -1023,5 +1073,65 @@ namespace Microsoft.TypeSpec.Generator.ClientModel.Tests.Providers
                     ]));
             }
         }
+
+        [Test]
+        public void TestMethodTypeIdentification()
+        {
+            MockHelpers.LoadMockGenerator();
+
+            var inputOperation = InputFactory.Operation("TestOperation");
+            var inputServiceMethod = InputFactory.BasicServiceMethod("Test", inputOperation);
+            var inputClient = InputFactory.Client("TestClient", methods: [inputServiceMethod]);
+            var client = ScmCodeModelGenerator.Instance.TypeFactory.CreateClient(inputClient);
+            var methodCollection = new ScmMethodProviderCollection(inputServiceMethod, client!);
+
+            // Verify protocol methods
+            var protocolMethods = methodCollection.Where(m => ((ScmMethodProvider)m).Kind == ScmMethodKind.Protocol).ToList();
+            Assert.AreEqual(2, protocolMethods.Count); // sync + async
+
+            // Verify convenience methods
+            var convenienceMethods = methodCollection.Where(m => ((ScmMethodProvider)m).Kind == ScmMethodKind.Convenience).ToList();
+            Assert.AreEqual(2, convenienceMethods.Count); // sync + async
+
+            // Verify CreateRequest method
+            var createRequestMethod = (ScmMethodProvider)client!.RestClient.GetCreateRequestMethod(inputOperation);
+            Assert.AreEqual(ScmMethodKind.CreateRequest, createRequestMethod.Kind);
+        }
+
+        [Test]
+        public async Task CollectionResultDefinitionAddedEvenWhenPagingMethodsCustomized()
+        {
+            var pagingMetadata = InputFactory.PagingMetadata(
+                ["items"],
+                null,
+                null);
+            var inputModel = InputFactory.Model("cat", properties:
+            [
+                InputFactory.Property("color", InputPrimitiveType.String, isRequired: true),
+            ]);
+
+            var response = InputFactory.OperationResponse(
+                [200],
+                InputFactory.Model(
+                    "page",
+                    properties: [InputFactory.Property("cats", InputFactory.Array(inputModel))]));
+            var operation = InputFactory.Operation("getCats", responses: [response]);
+            var inputServiceMethod = InputFactory.PagingServiceMethod("Test", operation, pagingMetadata: pagingMetadata);
+            var inputClient = InputFactory.Client("TestClient", methods: [inputServiceMethod]);
+
+            await MockHelpers.LoadMockGeneratorAsync(
+                compilation: async () => await Helpers.GetCompilationFromDirectoryAsync(),
+                inputModels: () => [inputModel],
+                clients: () => [inputClient]);
+
+            var client = ScmCodeModelGenerator.Instance.TypeFactory.CreateClient(inputClient);
+            Assert.IsNotNull(client);
+
+            // Verify CollectionResultDefinition is still added even though methods are customized
+            var collectionResultDefinition = ScmCodeModelGenerator.Instance.OutputLibrary.TypeProviders.FirstOrDefault(
+                t => t is CollectionResultDefinition);
+            Assert.IsNotNull(collectionResultDefinition, "CollectionResultDefinition should be added even when paging methods are customized");
+        }
+
     }
 }
