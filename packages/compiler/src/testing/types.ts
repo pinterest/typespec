@@ -59,6 +59,22 @@ export type TestCompileResult<T extends Record<string, Entity>> = T & {
 
   /** Position of all markers */
   readonly pos: Record<keyof T | string, PositionedMarkerInFile>;
+
+  /**
+   * Get a mutated version of a type from a specific transform.
+   * This is used with lazy transformations where mutations are applied on-demand.
+   *
+   * @param transformId - The full transform ID (e.g., "@typespec/graphql/rename-types")
+   * @param type - The source type to get the mutated version of
+   * @returns The mutated type
+   *
+   * @example
+   * ```ts
+   * const result = await tester.compile(t.code`model ${t.model("Foo")} {}`);
+   * const mutatedFoo = result.getMutatedType("@typespec/graphql/rename-types", result.Foo);
+   * ```
+   */
+  getMutatedType?<TType extends Type>(transformId: string, type: TType): TType;
 } & Record<string, Entity>;
 
 export interface TestCompileOptions {

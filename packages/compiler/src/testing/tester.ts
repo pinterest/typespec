@@ -1,3 +1,4 @@
+import { MutationOptions } from "@typespec/mutator-framework";
 import { realpath } from "fs/promises";
 import { pathToFileURL } from "url";
 import { compilerAssert } from "../core/diagnostics.js";
@@ -501,17 +502,79 @@ async function createTesterInstance(params: TesterInternalParams): Promise<Teste
     savedProgram = program;
 
     const entities = extractMarkedEntities(program, markerPositions, markerConfigs);
+
+    // Helper to get mutated types from transformer engines
+    const getMutatedType = <TType extends import("../core/types.js").Type>(
+      transformId: string,
+      type: TType,
+    ): TType => {
+      const transformedProgram = program as import("../core/program.js").TransformedProgram;
+      const engine = transformedProgram.transformerResult?.engines.get(transformId);
+      if (!engine) {
+        throw new Error(
+          `Transform "${transformId}" not found. Available transforms: ${Array.from(transformedProgram.transformerResult?.engines.keys() ?? []).join(", ")}`,
+        );
+      }
+      // Get the default subgraph from the engine
+      const MutationOptionsClass = (engine as any).constructor.MutationOptions;
+      const options = MutationOptionsClass ? new MutationOptionsClass() : new MutationOptions();
+      const subgraph = (engine as any).getDefaultMutationSubgraph?.(options);
+      if (!subgraph) {
+        throw new Error(`Engine for transform "${transformId}" does not have a default subgraph`);
+      }
+      // Type cast needed because tests use source types but mutator-framework uses compiled types
+      return engine.getMutatedType(subgraph as any, type as any) as TType;
+    };
+
+    // If transforms are enabled, automatically return mutated versions of entities
+    const transformedProgram = program as import("../core/program.js").TransformedProgram;
+    const mutatedEntities =
+      transformedProgram.transformerResult && transformedProgram.transformerResult.engines.size > 0
+        ? applyAllTransforms(entities, transformedProgram)
+        : entities;
+
     return [
       {
         program,
         fs,
         pos: Object.fromEntries(markerPositions.map((x) => [x.name, x])) as any,
+        getMutatedType,
         ...(typesCollected as GetMarkedEntities<T>),
-        ...entities,
+        ...mutatedEntities,
       },
       program.diagnostics,
     ];
   }
+}
+
+function applyAllTransforms(
+  entities: Record<string, Entity>,
+  transformedProgram: import("../core/program.js").TransformedProgram,
+): Record<string, Entity> {
+  if (!transformedProgram.transformerResult) return entities;
+
+  const mutatedEntities: Record<string, Entity> = {};
+  const engines = Array.from(transformedProgram.transformerResult.engines.values());
+
+  for (const [name, entity] of Object.entries(entities)) {
+    // Apply all transformation engines in sequence
+    let mutated: any = entity;
+    if (entity.entityKind === "Type") {
+      for (const engine of engines) {
+        // Get the default subgraph from the engine
+        const MutationOptionsClass = (engine as any).constructor.MutationOptions;
+        const options = MutationOptionsClass ? new MutationOptionsClass() : new MutationOptions();
+        const subgraph = (engine as any).getDefaultMutationSubgraph?.(options);
+        if (subgraph) {
+          // Type cast needed because tests use source types but mutator-framework uses compiled types
+          mutated = engine.getMutatedType(subgraph as any, mutated as any);
+        }
+      }
+    }
+    mutatedEntities[name] = mutated;
+  }
+
+  return mutatedEntities;
 }
 
 function extractMarkedEntities(

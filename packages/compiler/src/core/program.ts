@@ -143,7 +143,12 @@ export interface Program {
   readonly projectRoot: string;
 }
 
-export interface TransformedProgram extends Program {}
+export interface TransformedProgram extends Program {
+  /**
+   * Result from running transformers, including mutation engines for accessing transformed types.
+   */
+  readonly transformerResult?: import("./transformer.js").TransformerResult;
+}
 
 interface EmitterRef {
   emitFunction: EmitterFunc;
@@ -353,7 +358,12 @@ async function createProgram(
   runtimeStats.transformer = transformResult.stats.runtime;
   program.reportDiagnostics(transformResult.diagnostics);
 
-  return { program: transformResult.program, shouldAbort: false };
+  // Attach transformer result to the program so consumers can access mutation engines
+  const transformedProgram: TransformedProgram = Object.assign(transformResult.program, {
+    transformerResult: transformResult,
+  });
+
+  return { program: transformedProgram, shouldAbort: false };
 
   /**
    * Validate the libraries loaded during the compilation process are compatible.

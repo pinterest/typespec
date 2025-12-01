@@ -6,17 +6,23 @@ import {
   resolveTransformerDefinition,
 } from "../../src/core/transformer.js";
 import type { TransformerDefinition, TransformerLibraryInstance } from "../../src/index.js";
+import { $ } from "../../src/typekit/index.js";
 import { createTransform, createTypeSpecLibrary } from "../../src/index.js";
 import {
   createTestHost,
   expectDiagnosticEmpty,
   expectDiagnostics,
 } from "../../src/testing/index.js";
+import { SimpleMutationEngine } from "@typespec/mutator-framework";
 
 const noopTransform = createTransform({
   name: "noop",
   description: "No operation transform",
-  mutators: [],
+  createEngine: (program) => {
+    // Create a simple mutation engine with no custom mutations
+    const tk = $(program);
+    return new SimpleMutationEngine(tk, {});
+  },
 });
 
 describe("compiler: transformer", () => {

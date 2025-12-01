@@ -1,4 +1,4 @@
-import { mutateSubgraphWithNamespace } from "../experimental/mutators.js";
+import type { MutationEngine } from "@typespec/mutator-framework";
 import { compilerAssert, createDiagnosticCollector } from "./diagnostics.js";
 import type { Program, TransformedProgram } from "./program.js";
 import { startTimer } from "./stats.js";
@@ -18,18 +18,27 @@ export interface Transformer {
   extendTransformSet(transformSet: TransformSet): Promise<readonly Diagnostic[]>;
   registerTransformLibrary(name: string, lib?: TransformerLibraryInstance): void;
   transform(): TransformerResult;
+  /**
+   * Get the mutation engine for a specific transform.
+   * Useful for debugging and inspecting transform state.
+   * @param transformId - The fully qualified transform ID (e.g., "library/transform-name")
+   * @returns The mutation engine if it exists, undefined otherwise
+   */
+  getEngine(transformId: string): MutationEngine<any> | undefined;
 }
 
 export interface TransformerStats {
   runtime: {
     total: number;
     transforms: Record<string, number>;
+    engineCreation: Record<string, number>;
   };
 }
 export interface TransformerResult {
   readonly diagnostics: readonly Diagnostic[];
   readonly program: TransformedProgram;
   readonly stats: TransformerStats;
+  readonly engines: ReadonlyMap<string, MutationEngine<any>>;
 }
 
 /** Resolve a transformer definition for a library. */
@@ -70,11 +79,13 @@ export function createTransformer(
   const transformMap = new Map<string, Transform<string>>();
   const enabledTransforms = new Map<string, Transform<string>>();
   const transformerLibraries = new Map<string, TransformerLibraryInstance | undefined>();
+  const engines = new Map<string, MutationEngine<any>>();
 
   return {
     extendTransformSet,
     registerTransformLibrary,
     transform,
+    getEngine: (transformId: string) => engines.get(transformId),
   };
 
   async function extendTransformSet(transformSet: TransformSet): Promise<readonly Diagnostic[]> {
@@ -153,6 +164,7 @@ export function createTransformer(
       runtime: {
         total: 0,
         transforms: {},
+        engineCreation: {},
       },
     };
     tracer.trace(
@@ -162,24 +174,47 @@ export function createTransformer(
     );
 
     const timer = startTimer();
-    for (const t of enabledTransforms.values()) {
-      const createTiming = startTimer();
-      // TODO is this okay?
-      mutateSubgraphWithNamespace(program, t.mutators, program.getGlobalNamespaceType());
-      stats.runtime.transforms[t.id] = createTiming.end();
-      // TODO fix timing
-      // for (const [name, cb] of Object.entries(listener)) {
-      //   const timedCb = (...args: any[]) => {
-      //     const duration = time(() => (cb as any)(...args));
-      //     stats.runtime.transforms[t.id] += duration;
-      //   };
-      //   eventEmitter.on(name as any, timedCb);
-      // }
+
+    // Step 1: Create mutation engines for all enabled transforms
+    for (const [id, t] of enabledTransforms.entries()) {
+      const engineTimer = startTimer();
+      try {
+        tracer.trace("transform.create-engine", `Creating engine for ${id}`);
+        const engine = t.createEngine(program);
+        engines.set(id, engine);
+        stats.runtime.engineCreation[id] = engineTimer.end();
+        tracer.trace("transform.engine-created", `Created engine for ${id}`);
+      } catch (error) {
+        diagnostics.add({
+          code: "transform-engine-error",
+          message: `Failed to create mutation engine for transform '${id}': ${error}`,
+          severity: "error",
+          target: NoTarget,
+        });
+        stats.runtime.engineCreation[id] = engineTimer.end();
+      }
     }
-    // navigateProgram(program, mapEventEmitterToNodeListener(eventEmitter));
+
+    // Step 2: Engines are now ready
+    // Note: With the mutator-framework, mutations are lazy - they happen when types are accessed,
+    // not upfront. The engines are stored and will be used when transformed types are requested.
+    // We don't need to actively "run" the transformations here.
+    for (const [id, t] of enabledTransforms.entries()) {
+      const transformTimer = startTimer();
+      tracer.trace("transform.ready", `Transform ${id} engine is ready for lazy mutation`);
+      stats.runtime.transforms[id] = transformTimer.end();
+    }
+
     stats.runtime.total = timer.end();
+
     // For now, return the original program as the transformed program placeholder.
-    return { diagnostics: diagnostics.diagnostics, program: program as TransformedProgram, stats };
+    // TODO: Create a true TransformedProgram that references the mutated type graph
+    return {
+      diagnostics: diagnostics.diagnostics,
+      program: program as TransformedProgram,
+      stats,
+      engines,
+    };
   }
 
   async function resolveLibrary(name: string): Promise<TransformerLibraryInstance | undefined> {

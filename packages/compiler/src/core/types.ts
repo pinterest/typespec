@@ -1,6 +1,6 @@
+import type { MutationEngine } from "@typespec/mutator-framework";
 import type { JSONSchemaType as AjvJSONSchemaType } from "ajv";
-import type { ModuleResolutionResult } from "../module-resolver/module-resolver.js";
-import { Mutator } from "../experimental/mutators.js";
+import type { ModuleResolutionResult } from "../module-resolver/types.js";
 import type { YamlPathTarget, YamlScript } from "../yaml/types.js";
 import type { Numeric } from "./numeric.js";
 import type { Program } from "./program.js";
@@ -2438,8 +2438,29 @@ export interface TransformDefinition<N extends string> {
   description: string;
   /** Specifies the URL at which the full documentation can be accessed. */
   url?: string;
-  /** Creator */
-  mutators: Mutator[];
+  /**
+   * Factory function that creates a mutation engine for this transform.
+   *
+   * The mutation engine defines how types in the type graph should be transformed.
+   * It manages mutation nodes, subgraphs, and caching of transformed types.
+   *
+   * @param program - The TypeSpec program to transform
+   * @returns A mutation engine configured for this transform
+   *
+   * @example
+   * ```ts
+   * import { $ } from "@typespec/compiler/typekit";
+   * import { SimpleMutationEngine, ModelMutation } from "@typespec/mutator-framework";
+   *
+   * createEngine: (program) => {
+   *   const tk = $(program);
+   *   return new SimpleMutationEngine(tk, {
+   *     Model: RenameModelMutation,
+   *   });
+   * }
+   * ```
+   */
+  createEngine: (program: Program) => MutationEngine<any>;
 }
 
 /** Resolved instance of a transform that will run. */

@@ -1,5 +1,6 @@
 // TODO: rename?
 
+import { SimpleMutationEngine } from "@typespec/mutator-framework";
 import { strictEqual } from "assert";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { resolvePath } from "../../src/core/path-utils.js";
@@ -19,6 +20,7 @@ import { mockFile } from "../../src/testing/fs.js";
 import { t } from "../../src/testing/marked-template.js";
 import { resolveVirtualPath } from "../../src/testing/test-utils.js";
 import { createTester } from "../../src/testing/tester.js";
+import { $ } from "../../src/typekit/index.js";
 
 const Tester = createTester(resolvePath(import.meta.dirname, "../.."), { libraries: [] });
 
@@ -373,7 +375,10 @@ describe("transformer", () => {
           createTransform({
             name: "dummy-transform",
             description: "A dummy transform.",
-            mutators: [],
+            createEngine: (program) => {
+              const tk = $(program);
+              return new SimpleMutationEngine(tk, {});
+            },
           }),
         ],
       }),
