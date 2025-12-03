@@ -561,13 +561,16 @@ function applyAllTransforms(
     let mutated: any = entity;
     if (entity.entityKind === "Type") {
       for (const engine of engines) {
-        // Get the default subgraph from the engine
+        // Get the default mutation options
         const MutationOptionsClass = (engine as any).constructor.MutationOptions;
         const options = MutationOptionsClass ? new MutationOptionsClass() : new MutationOptions();
-        const subgraph = (engine as any).getDefaultMutationSubgraph?.(options);
-        if (subgraph) {
-          // Type cast needed because tests use source types but mutator-framework uses compiled types
-          mutated = engine.getMutatedType(subgraph as any, mutated as any);
+
+        // Mutate the entity using the engine's mutate() method
+        // This triggers the Mutation class's mutate() method
+        // Type cast needed because tests use source types but mutator-framework uses compiled types
+        const mutation = (engine as any).mutate?.(mutated, options);
+        if (mutation) {
+          mutated = mutation.getMutatedType();
         }
       }
     }

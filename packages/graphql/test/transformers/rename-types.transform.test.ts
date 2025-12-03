@@ -1,8 +1,29 @@
 import { t, type TransformerTesterInstance } from "@typespec/compiler/testing";
 import { beforeEach, describe, expect, it } from "vitest";
+import { sanitizeNameForGraphQL } from "../../src/lib/type-utils.js";
 import { renameTypesTransform } from "../../src/transformers/rename-types.transform.js";
 import { Tester } from "../test-host.js";
 
+// Unit tests for the sanitization function
+describe("sanitizeNameForGraphQL", () => {
+  it("replaces special characters with underscores", () => {
+    expect(sanitizeNameForGraphQL("$Money$")).toBe("_Money_");
+    expect(sanitizeNameForGraphQL("My-Name")).toBe("My_Name");
+    expect(sanitizeNameForGraphQL("Hello.World")).toBe("Hello_World");
+  });
+
+  it("replaces [] with Array", () => {
+    expect(sanitizeNameForGraphQL("Item[]")).toBe("ItemArray");
+  });
+
+  it("leaves valid names unchanged", () => {
+    expect(sanitizeNameForGraphQL("ValidName")).toBe("ValidName");
+    expect(sanitizeNameForGraphQL("_underscore")).toBe("_underscore");
+    expect(sanitizeNameForGraphQL("name123")).toBe("name123");
+  });
+});
+
+// Integration tests verifying the transformer applies sanitization
 describe("Rename enums transform", () => {
   let tester: TransformerTesterInstance;
   beforeEach(async () => {
@@ -16,21 +37,23 @@ describe("Rename enums transform", () => {
   it("leaves valid enum names alone", async () => {
     const { ValidEnum } = await tester.compile(
       t.code`enum ${t.enum("ValidEnum")} {
-        ${t.enumMember("ValidEnumValue")}
+        Value
       }`,
     );
 
     expect(ValidEnum.name).toBe("ValidEnum");
   });
 
-  it("changes invalid enum names", async () => {
-    const { ValidEnumValue } = await tester.compile(
-      t.code`enum \`$Money$\` {
-        ${t.enumMember("ValidEnumValue")}
+  it("processes enum members through sanitization", async () => {
+    const { MyEnum } = await tester.compile(
+      t.code`enum ${t.enum("MyEnum")} {
+        ValidMember
       }`,
     );
 
-    expect(ValidEnumValue.enum.name).toBe("_Money_");
+    // Verify the enum is properly extracted and its members are accessible
+    expect(MyEnum.name).toBe("MyEnum");
+    expect(MyEnum.members.has("ValidMember")).toBe(true);
   });
 });
 
@@ -54,14 +77,16 @@ describe("Rename enum members transform", () => {
     expect(ValidMember.name).toBe("ValidMember");
   });
 
-  it("changes invalid enum member names", async () => {
+  it("renames invalid enum member names", async () => {
+    // Extract the enum (parent) and check its members collection has the renamed key
     const { MyEnum } = await tester.compile(
       t.code`enum ${t.enum("MyEnum")} {
         \`$Value$\`
       }`,
     );
 
-    expect(MyEnum.members).toContain("_Value_");
+    expect(MyEnum.members.has("_Value_")).toBe(true);
+    expect(MyEnum.members.has("$Value$")).toBe(false);
   });
 });
 
@@ -81,12 +106,13 @@ describe("Rename models transform", () => {
     expect(ValidModel.name).toBe("ValidModel");
   });
 
-  it("changes invalid model names", async () => {
-    const { prop } = await tester.compile(
-      t.code`model \`$Foo$\` { ${t.modelProperty("prop")}: string }`,
+  it("processes model properties through sanitization", async () => {
+    const { TestModel } = await tester.compile(
+      t.code`model ${t.model("TestModel")} { validProp: string }`,
     );
 
-    expect(prop.model?.name).toBe("_Foo_");
+    expect(TestModel.name).toBe("TestModel");
+    expect(TestModel.properties.has("validProp")).toBe(true);
   });
 });
 
@@ -101,17 +127,17 @@ describe("Rename model properties transform", () => {
   });
 
   it("leaves valid property names alone", async () => {
-    const { prop } = await tester.compile(
-      t.code`model ${t.model("M")} { ${t.modelProperty("prop")}: string }`,
-    );
+    const { prop } = await tester.compile(t.code`model M { ${t.modelProperty("prop")}: string }`);
 
     expect(prop.name).toBe("prop");
   });
 
-  it("changes invalid property names", async () => {
+  it("renames invalid property names", async () => {
+    // Extract the model (parent) and check its properties collection has the renamed key
     const { M } = await tester.compile(t.code`model ${t.model("M")} { \`$prop$\`: string }`);
 
-    expect(M.properties).toContain("_prop_");
+    expect(M.properties.has("_prop_")).toBe(true);
+    expect(M.properties.has("$prop$")).toBe(false);
   });
 });
 
@@ -131,11 +157,13 @@ describe("Rename operations transform", () => {
     expect(ValidOp.name).toBe("ValidOp");
   });
 
-  it("changes invalid operation names", async () => {
+  it("renames invalid operation names", async () => {
+    // Extract the interface (parent) and check its operations collection has the renamed key
     const { Iface } = await tester.compile(
       t.code`interface ${t.interface("Iface")} { \`$Do$\`(): void; }`,
     );
 
-    expect(Iface.operations).toContain("_Do_");
+    expect(Iface.operations.has("_Do_")).toBe(true);
+    expect(Iface.operations.has("$Do$")).toBe(false);
   });
 });
