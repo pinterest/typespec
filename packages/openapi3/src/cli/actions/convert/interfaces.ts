@@ -77,6 +77,19 @@ export interface TSValue {
   value: string;
 }
 
+export interface ExampleData {
+  value: unknown;
+  title?: string;
+  description?: string;
+}
+
+export interface OperationExampleData {
+  parameters?: unknown;
+  returnType?: unknown;
+  title?: string;
+  description?: string;
+}
+
 export interface TypeSpecAugmentation extends TypeSpecDecorator {
   target: string;
 }
@@ -116,6 +129,8 @@ export interface TypeSpecModel extends TypeSpecDeclaration {
    * The encoding information to use, if any, for the multipart request body.
    */
   encoding?: Record<string, OpenAPI3Encoding>;
+
+  examples?: ExampleData[];
 }
 
 export interface TypeSpecAlias extends Pick<TypeSpecDeclaration, "name" | "doc" | "scope"> {
@@ -126,16 +141,19 @@ export interface TypeSpecAlias extends Pick<TypeSpecDeclaration, "name" | "doc" 
 export interface TypeSpecEnum extends TypeSpecDeclaration {
   kind: "enum";
   schema: SupportedOpenAPISchema;
+  examples?: ExampleData[];
 }
 
 export interface TypeSpecUnion extends TypeSpecDeclaration {
   kind: "union";
   schema: SupportedOpenAPISchema;
+  examples?: ExampleData[];
 }
 
 export interface TypeSpecScalar extends TypeSpecDeclaration {
   kind: "scalar";
   schema: SupportedOpenAPISchema;
+  examples?: ExampleData[];
 }
 
 export interface TypeSpecModelProperty {
@@ -149,6 +167,7 @@ export interface TypeSpecModelProperty {
    */
   decorators: TypeSpecDecorator[];
   schema: Refable<SupportedOpenAPISchema>;
+  examples?: ExampleData[];
 }
 
 export interface TypeSpecOperation extends TypeSpecDeclaration {
@@ -157,6 +176,7 @@ export interface TypeSpecOperation extends TypeSpecDeclaration {
   requestBodies: TypeSpecRequestBody[];
   responses: OpenAPI3Responses;
   tags: string[];
+  opExamples?: OperationExampleData[];
 }
 
 export interface TypeSpecOperationParameter {

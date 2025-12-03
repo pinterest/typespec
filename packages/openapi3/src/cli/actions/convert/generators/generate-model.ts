@@ -1,6 +1,7 @@
 import { printIdentifier } from "@typespec/compiler";
 import { OpenAPI3Encoding, Refable, SupportedOpenAPISchema } from "../../../../types.js";
 import {
+  ExampleData,
   TypeSpecAlias,
   TypeSpecDataTypes,
   TypeSpecEnum,
@@ -10,7 +11,10 @@ import {
   TypeSpecUnion,
 } from "../interfaces.js";
 import { Context } from "../utils/context.js";
-import { getDecoratorsForSchema } from "../utils/decorators.js";
+import {
+  getDecoratorsForSchema,
+  normalizeObjectValueToTSValueExpression,
+} from "../utils/decorators.js";
 import { generateDocs } from "../utils/docs.js";
 import { generateDecorators } from "./generate-decorators.js";
 import {
@@ -21,6 +25,26 @@ import {
 } from "./generate-types.js";
 
 const SSE_TERMINAL_EVENT_EXTENSION = "x-ms-sse-terminal-event";
+
+/**
+ * Generates @example decorators from example data.
+ */
+function generateExampleDecorators(examples: ExampleData[] | undefined): string[] {
+  if (!examples || examples.length === 0) return [];
+
+  return examples.map((example) => {
+    const valueExpr = normalizeObjectValueToTSValueExpression(example.value);
+
+    if (example.title || example.description) {
+      const options: string[] = [];
+      if (example.title) options.push(`title: ${JSON.stringify(example.title)}`);
+      if (example.description) options.push(`description: ${JSON.stringify(example.description)}`);
+      return `@example(${valueExpr}, #{${options.join(", ")}})`;
+    }
+
+    return `@example(${valueExpr})`;
+  });
+}
 
 export function generateDataType(type: TypeSpecDataTypes, context: Context): string {
   switch (type.kind) {
@@ -52,6 +76,7 @@ function generateEnum(tsEnum: TypeSpecEnum): string {
     definitions.push(generateDocs(tsEnum.doc));
   }
 
+  definitions.push(...generateExampleDecorators(tsEnum.examples));
   definitions.push(...generateDecorators(tsEnum.decorators));
   definitions.push(`enum ${tsEnum.name} {`);
 
@@ -73,6 +98,7 @@ function generateScalar(scalar: TypeSpecScalar, context: Context): string {
     definitions.push(generateDocs(scalar.doc));
   }
 
+  definitions.push(...generateExampleDecorators(scalar.examples));
   definitions.push(...generateDecorators(scalar.decorators));
   const type = context.generateTypeFromRefableSchema(scalar.schema, scalar.scope);
 
@@ -231,6 +257,7 @@ function generateUnion(union: TypeSpecUnion, context: Context): string {
     definitions.push(generateDocs(union.doc));
   }
 
+  definitions.push(...generateExampleDecorators(union.examples));
   definitions.push(...generateDecorators(union.decorators));
 
   definitions.push(`union ${union.name} {`);
@@ -331,6 +358,7 @@ function generateModel(model: TypeSpecModel, context: Context): string {
     definitions.push(generateDocs(model.doc));
   }
 
+  definitions.push(...generateExampleDecorators(model.examples));
   definitions.push(...generateDecorators(model.decorators));
   definitions.push(modelDeclaration.open);
 
@@ -372,6 +400,7 @@ export function generateModelProperty(
 
   // Decorators will be a combination of top-level (parameters) and
   // schema-level decorators.
+  const exampleDecorators = generateExampleDecorators(prop.examples).join(" ");
   const decorators = generateDecorators(
     [...prop.decorators, ...getDecoratorsForSchema(prop.schema)],
     isModelReferencedAsMultipartRequestBody
@@ -379,12 +408,14 @@ export function generateModelProperty(
       : [],
   ).join(" ");
 
+  const allDecorators = [exampleDecorators, decorators].filter(Boolean).join(" ");
+
   const isEnumType = isReferencedEnumType(prop.schema, context);
   const isUnionType = isReferencedUnionType(prop.schema, context);
 
   const doc = prop.doc ? generateDocs(prop.doc) : "";
 
-  return `${doc}${decorators} ${prop.name}${prop.isOptional ? "?" : ""}: ${context.getPartType(propertyType, prop.name, isModelReferencedAsMultipartRequestBody ?? false, encoding, isEnumType, isUnionType)};`;
+  return `${doc}${allDecorators} ${prop.name}${prop.isOptional ? "?" : ""}: ${context.getPartType(propertyType, prop.name, isModelReferencedAsMultipartRequestBody ?? false, encoding, isEnumType, isUnionType)};`;
 }
 
 export function generateModelExpression(

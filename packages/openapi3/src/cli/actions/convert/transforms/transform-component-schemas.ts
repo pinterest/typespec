@@ -1,6 +1,7 @@
 import { printIdentifier } from "@typespec/compiler";
 import { Refable, SupportedOpenAPISchema } from "../../../../types.js";
 import {
+  ExampleData,
   TypeSpecDataTypes,
   TypeSpecDecorator,
   TypeSpecEnum,
@@ -75,12 +76,14 @@ export function transformComponentSchemas(context: Context, models: TypeSpecData
     schema: Refable<SupportedOpenAPISchema>,
   ): void {
     if ("$ref" in schema) return;
+    const examples = extractSchemaExamples(schema);
     const tsEnum: TypeSpecEnum = {
       kind: "enum",
       ...getScopeAndName(name),
       decorators: getDecoratorsForSchema(schema),
       doc: schema.description,
       schema,
+      examples: examples.length > 0 ? examples : undefined,
     };
 
     types.push(tsEnum);
@@ -105,6 +108,7 @@ export function transformComponentSchemas(context: Context, models: TypeSpecData
     const encoding = isModelReferencedAsMultipartRequestBody
       ? context.getMultipartSchemaEncoding(refName)
       : undefined;
+    const examples = extractSchemaExamples(effectiveSchema);
     types.push({
       kind: "model",
       name,
@@ -129,6 +133,7 @@ export function transformComponentSchemas(context: Context, models: TypeSpecData
       spread: allOfDetails.spread,
       isModelReferencedAsMultipartRequestBody,
       encoding,
+      examples: examples.length > 0 ? examples : undefined,
     });
   }
 
@@ -151,12 +156,14 @@ export function transformComponentSchemas(context: Context, models: TypeSpecData
       decorators.push({ name: "events", args: [] });
     }
 
+    const examples = extractSchemaExamples(schema);
     const union: TypeSpecUnion = {
       kind: "union",
       ...getScopeAndName(name),
       decorators,
       doc: schema.description ?? unionMetadata.description,
       schema,
+      examples: examples.length > 0 ? examples : undefined,
     };
 
     types.push(union);
@@ -211,12 +218,14 @@ export function transformComponentSchemas(context: Context, models: TypeSpecData
     name: string,
     schema: Refable<SupportedOpenAPISchema>,
   ): void {
+    const examples = extractSchemaExamples(schema);
     types.push({
       kind: "scalar",
       ...getScopeAndName(name),
       decorators: getDecoratorsForSchema(schema),
       doc: schema.description,
       schema: "$ref" in schema ? {} : schema,
+      examples: examples.length > 0 ? examples : undefined,
     });
   }
 
@@ -340,6 +349,7 @@ function getModelPropertiesFromObjectSchema({
   const modelProperties: TypeSpecModelProperty[] = [];
   for (const name of Object.keys(properties)) {
     const property = properties[name];
+    const propertyExamples = extractSchemaExamples(property);
 
     modelProperties.push({
       name: printIdentifier(name),
@@ -347,6 +357,7 @@ function getModelPropertiesFromObjectSchema({
       schema: property,
       isOptional: !required.includes(name),
       decorators: [...getDecoratorsForSchema(property)],
+      examples: propertyExamples.length > 0 ? propertyExamples : undefined,
     });
   }
 
@@ -401,4 +412,28 @@ function getTypeSpecKind(schema: Refable<SupportedOpenAPISchema>): TypeSpecDataT
   }
 
   return "scalar";
+}
+
+/**
+ * Extracts examples from an OpenAPI schema.
+ * Handles both OpenAPI 3.0 'example' field and OpenAPI 3.1+ 'examples' array.
+ */
+function extractSchemaExamples(schema: Refable<SupportedOpenAPISchema>): ExampleData[] {
+  if ("$ref" in schema) return [];
+
+  const examples: ExampleData[] = [];
+
+  // OpenAPI 3.0 single example
+  if ("example" in schema && schema.example !== undefined) {
+    examples.push({ value: schema.example });
+  }
+
+  // OpenAPI 3.1+ multiple examples (array format)
+  if ("examples" in schema && Array.isArray(schema.examples)) {
+    for (const ex of schema.examples) {
+      examples.push({ value: ex });
+    }
+  }
+
+  return examples;
 }

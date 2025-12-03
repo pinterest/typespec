@@ -1,14 +1,17 @@
 import { printIdentifier } from "@typespec/compiler";
 import {
+  OpenAPI3Operation,
   OpenAPI3Parameter,
   OpenAPI3PathItem,
   OpenAPI3RequestBody,
+  OpenAPIOperation3_2,
   OpenAPIParameter3_2,
   OpenAPIPathItem3_2,
   OpenAPIRequestBody3_2,
   Refable,
 } from "../../../../types.js";
 import {
+  OperationExampleData,
   TypeSpecOperation,
   TypeSpecOperationParameter,
   TypeSpecRequestBody,
@@ -68,6 +71,7 @@ export function transformPaths(
       }
 
       const requestBodies = transformRequestBodies(operation.requestBody, context);
+      const opExamples = extractOperationExamples(operation, context);
 
       // Check if we need to split the operation due to incompatible content types
       const splitOperations = splitOperationByContentType(
@@ -80,6 +84,7 @@ export function transformPaths(
         tags,
         fixmes,
         usedOperationIds,
+        opExamples,
       );
 
       operations.push(...splitOperations);
@@ -144,6 +149,7 @@ function splitOperationByContentType(
   tags: string[],
   fixmes: string[],
   usedOperationIds: Set<string>,
+  opExamples: OperationExampleData[],
 ): TypeSpecOperation[] {
   // If no request bodies or only one content type, no splitting needed
   if (requestBodies.length <= 1) {
@@ -158,6 +164,7 @@ function splitOperationByContentType(
         responses,
         tags,
         fixmes,
+        opExamples: opExamples.length > 0 ? opExamples : undefined,
       },
     ];
   }
@@ -179,6 +186,7 @@ function splitOperationByContentType(
         responses,
         tags,
         fixmes,
+        opExamples: opExamples.length > 0 ? opExamples : undefined,
       },
     ];
   }
@@ -237,6 +245,7 @@ function splitOperationByContentType(
       responses,
       tags,
       fixmes,
+      opExamples: opExamples.length > 0 ? opExamples : undefined,
     });
   }
 
@@ -274,4 +283,129 @@ function transformRequestBodies(
   }
 
   return typespecBodies;
+}
+
+/**
+ * Extracts examples from an OpenAPI operation.
+ * Handles request body examples and response examples.
+ */
+function extractOperationExamples(
+  operation: OpenAPI3Operation | OpenAPIOperation3_2,
+  context: Context,
+): OperationExampleData[] {
+  const examples: OperationExampleData[] = [];
+
+  // Extract from request body
+  if (operation.requestBody) {
+    let requestBody = operation.requestBody;
+
+    // Resolve $ref if present
+    if ("$ref" in requestBody) {
+      requestBody = context.getByRef<OpenAPI3RequestBody>(requestBody.$ref) ?? requestBody;
+    }
+
+    if (!("$ref" in requestBody) && requestBody.content) {
+      for (const mediaTypeObj of Object.values(requestBody.content)) {
+        // Single example
+        if ("example" in mediaTypeObj && mediaTypeObj.example !== undefined) {
+          examples.push({
+            parameters: mediaTypeObj.example,
+          });
+        }
+
+        // Multiple named examples
+        if ("examples" in mediaTypeObj && mediaTypeObj.examples) {
+          for (const [name, exampleObj] of Object.entries(mediaTypeObj.examples)) {
+            let resolvedExample: any = exampleObj;
+
+            // Resolve $ref if present
+            if (typeof exampleObj === "object" && exampleObj !== null && "$ref" in exampleObj) {
+              const ref = (exampleObj as any).$ref;
+              if (typeof ref === "string") {
+                resolvedExample =
+                  context.getByRef<{ value?: unknown; summary?: string; description?: string }>(
+                    ref,
+                  ) ?? exampleObj;
+              }
+            }
+
+            if (!("$ref" in resolvedExample)) {
+              examples.push({
+                parameters: resolvedExample.value,
+                title: resolvedExample.summary || name,
+                description: resolvedExample.description,
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Extract from responses
+  if (operation.responses) {
+    for (const [statusCode, response] of Object.entries(operation.responses)) {
+      let resolvedResponse = response;
+
+      // Resolve $ref if present
+      if ("$ref" in response) {
+        resolvedResponse = context.getByRef<any>(response.$ref) ?? response;
+      }
+
+      if (
+        !("$ref" in resolvedResponse) &&
+        resolvedResponse.content &&
+        typeof resolvedResponse.content === "object"
+      ) {
+        for (const mediaTypeObj of Object.values(resolvedResponse.content)) {
+          const mtObj = mediaTypeObj as any;
+
+          // Single example
+          if ("example" in mtObj && mtObj.example !== undefined) {
+            const exampleValue =
+              typeof mtObj.example === "object" && mtObj.example !== null
+                ? { ...mtObj.example, statusCode: Number(statusCode) }
+                : mtObj.example;
+
+            examples.push({
+              returnType: exampleValue,
+            });
+          }
+
+          // Multiple named examples
+          if ("examples" in mtObj && mtObj.examples) {
+            for (const [name, exampleObj] of Object.entries(mtObj.examples)) {
+              let resolvedExample: any = exampleObj;
+
+              // Resolve $ref if present
+              if (typeof exampleObj === "object" && exampleObj !== null && "$ref" in exampleObj) {
+                const ref = (exampleObj as any).$ref;
+                if (typeof ref === "string") {
+                  resolvedExample =
+                    context.getByRef<{ value?: unknown; summary?: string; description?: string }>(
+                      ref,
+                    ) ?? exampleObj;
+                }
+              }
+
+              if (!("$ref" in resolvedExample)) {
+                const exampleValue =
+                  typeof resolvedExample.value === "object" && resolvedExample.value !== null
+                    ? { ...resolvedExample.value, statusCode: Number(statusCode) }
+                    : resolvedExample.value;
+
+                examples.push({
+                  returnType: exampleValue,
+                  title: resolvedExample.summary || name,
+                  description: resolvedExample.description,
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return examples;
 }

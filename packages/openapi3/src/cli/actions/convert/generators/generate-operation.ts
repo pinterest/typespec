@@ -1,13 +1,47 @@
 import { Refable } from "../../../../types.js";
 import {
+  OperationExampleData,
   TypeSpecOperation,
   TypeSpecOperationParameter,
   TypeSpecRequestBody,
 } from "../interfaces.js";
 import { Context } from "../utils/context.js";
+import { normalizeObjectValueToTSValueExpression } from "../utils/decorators.js";
 import { generateDocs } from "../utils/docs.js";
 import { generateDecorators } from "./generate-decorators.js";
 import { generateOperationReturnType } from "./generate-response-expressions.js";
+
+/**
+ * Generates @opExample decorators from operation example data.
+ */
+function generateOpExampleDecorators(opExamples: OperationExampleData[] | undefined): string[] {
+  if (!opExamples || opExamples.length === 0) return [];
+
+  return opExamples.map((example) => {
+    const exampleParts: string[] = [];
+
+    if (example.parameters !== undefined) {
+      const paramsExpr = normalizeObjectValueToTSValueExpression(example.parameters);
+      exampleParts.push(`parameters: ${paramsExpr}`);
+    }
+
+    if (example.returnType !== undefined) {
+      const returnExpr = normalizeObjectValueToTSValueExpression(example.returnType);
+      exampleParts.push(`returnType: ${returnExpr}`);
+    }
+
+    const exampleValue = `#{${exampleParts.join(", ")}}`;
+
+    if (example.title || example.description) {
+      const options: string[] = [];
+      if (example.title) options.push(`title: ${JSON.stringify(example.title)}`);
+      if (example.description) options.push(`description: ${JSON.stringify(example.description)}`);
+      return `@opExample(${exampleValue}, #{${options.join(", ")}})`;
+    }
+
+    return `@opExample(${exampleValue})`;
+  });
+}
 
 export function generateOperation(operation: TypeSpecOperation, context: Context): string {
   const definitions: string[] = [];
@@ -15,6 +49,8 @@ export function generateOperation(operation: TypeSpecOperation, context: Context
   if (operation.doc) {
     definitions.push(generateDocs(operation.doc));
   }
+
+  definitions.push(...generateOpExampleDecorators(operation.opExamples));
 
   definitions.push(...operation.tags.map((t) => `@tag("${t}")`));
 
