@@ -22,7 +22,7 @@ const noopTransform = createTransform({
   description: "No operation transform",
   createEngine: (program) => {
     // Create a simple mutation engine with no custom mutations
-    const tk = $(program);
+    const tk = $(program) as any;
     return new SimpleMutationEngine(tk, {});
   },
 });
@@ -41,7 +41,7 @@ const prefixTransform = createTransform({
   name: "prefix",
   description: "Add prefix to model names",
   createEngine: (program) => {
-    const tk = $(program);
+    const tk = $(program) as any;
     return new SimpleMutationEngine(tk, {
       Model: PrefixModelMutation,
     });
@@ -337,7 +337,7 @@ describe("compiler: transformer", () => {
       expect(Foo).toBeDefined();
 
       // Use the engine to get the mutated type
-      const mutation = engine!.mutate(Foo!);
+      const mutation = engine!.mutate(Foo! as any);
       const mutatedFoo = mutation.getMutatedType();
       expect(mutatedFoo.name).toBe("PrefixedFoo");
     });
