@@ -17,11 +17,14 @@ import {
 } from "../../src/testing/index.js";
 import { $ } from "../../src/typekit/index.js";
 
+// Note: `as any` casts are needed below because test files use source types from src/
+// while @typespec/mutator-framework uses compiled types from dist/. This is a common
+// TypeScript monorepo issue that doesn't affect runtime behavior.
+
 const noopTransform = createTransform({
   name: "noop",
   description: "No operation transform",
   createEngine: (program) => {
-    // Create a simple mutation engine with no custom mutations
     const tk = $(program) as any;
     return new SimpleMutationEngine(tk, {});
   },
@@ -107,7 +110,7 @@ describe("compiler: transformer", () => {
       {
         severity: "warning",
         code: "unknown-transform",
-        message: `Unknown transform 'not-a-transform' in library '@typespec/test-transformer'.`,
+        message: /not-a-transform.*@typespec\/test-transformer/,
       },
     );
   });
@@ -121,7 +124,7 @@ describe("compiler: transformer", () => {
       {
         severity: "warning",
         code: "unknown-transform-set",
-        message: `Unknown transform set 'not-a-set' in library '@typespec/test-transformer'.`,
+        message: /not-a-set.*@typespec\/test-transformer/,
       },
     );
   });
@@ -138,7 +141,7 @@ describe("compiler: transformer", () => {
       {
         severity: "warning",
         code: "transform-enabled-disabled",
-        message: `Transform '@typespec/test-transformer/noop' cannot be both enabled and disabled.`,
+        message: /@typespec\/test-transformer\/noop.*enabled.*disabled/,
       },
     );
   });
@@ -285,6 +288,22 @@ describe("compiler: transformer", () => {
       const result = transformer.transform();
       expect(result.stats.runtime.engineCreation["@typespec/test-transformer/noop"]).toBeDefined();
       expect(result.stats.runtime.total).toBeGreaterThanOrEqual(0);
+    });
+
+    it("includes enabled transforms in stats", async () => {
+      const transformer = await createTestTransformer(`model Foo {}`, {
+        transforms: [noopTransform, prefixTransform],
+      });
+      await transformer.extendTransformSet({
+        enable: {
+          "@typespec/test-transformer/noop": true,
+          "@typespec/test-transformer/prefix": true,
+        },
+      });
+      const result = transformer.transform();
+      expect(result.stats.runtime.enabledTransforms).toContain("@typespec/test-transformer/noop");
+      expect(result.stats.runtime.enabledTransforms).toContain("@typespec/test-transformer/prefix");
+      expect(result.stats.runtime.enabledTransforms).toHaveLength(2);
     });
 
     it("runs multiple transforms in sequence", async () => {

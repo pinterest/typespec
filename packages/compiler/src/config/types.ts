@@ -1,4 +1,4 @@
-import type { Diagnostic, RuleRef } from "../core/types.js";
+import type { Diagnostic, RuleRef, TransformSetRef } from "../core/types.js";
 import type { YamlScript } from "../yaml/types.js";
 
 /**
@@ -112,7 +112,7 @@ export interface LinterConfig {
 }
 
 export interface TransformerConfig {
-  extends?: RuleRef[];
-  enable?: Record<RuleRef, boolean>;
-  disable?: Record<RuleRef, string>;
+  extends?: TransformSetRef[];
+  enable?: Record<TransformSetRef, boolean>;
+  disable?: Record<TransformSetRef, string>;
 }

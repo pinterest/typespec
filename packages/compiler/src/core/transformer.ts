@@ -1,5 +1,6 @@
 import type { MutationEngine } from "@typespec/mutator-framework";
 import { compilerAssert, createDiagnosticCollector } from "./diagnostics.js";
+import { createDiagnostic } from "./messages.js";
 import type { Program, TransformedProgram } from "./program.js";
 import { startTimer } from "./stats.js";
 import {
@@ -22,13 +23,30 @@ interface TransformerLibrary {
 }
 
 export interface Transformer {
+  /**
+   * Extend the current transform set with additional transforms.
+   * @param transformSet - The transform set configuration to apply
+   * @returns Diagnostics from processing the transform set
+   */
   extendTransformSet(transformSet: TransformSet): Promise<readonly Diagnostic[]>;
-  registerTransformLibrary(name: string, lib?: TransformerLibrary): void;
+
+  /**
+   * Register a transformer library.
+   * @param name - The library name
+   * @param lib - Optional library instance (will be loaded if not provided)
+   */
+  registerTransformLibrary(name: string, lib?: TransformerLibrary): Promise<void>;
+
+  /**
+   * Execute all enabled transforms and create mutation engines.
+   * @returns The transformation result including diagnostics, program, and engines
+   */
   transform(): TransformerResult;
+
   /**
    * Get the mutation engine for a specific transform.
    * Useful for debugging and inspecting transform state.
-   * @param transformId - The fully qualified transform ID (e.g., "library/transform-name")
+   * @param transformId - The fully qualified transform ID (e.g., "@library/transform-name")
    * @returns The mutation engine if it exists, undefined otherwise
    */
   getEngine(transformId: string): MutationEngine<any> | undefined;
@@ -36,8 +54,11 @@ export interface Transformer {
 
 export interface TransformerStats {
   runtime: {
+    /** List of transform IDs that were enabled */
+    enabledTransforms: readonly string[];
+    /** Total time for all transform operations in milliseconds */
     total: number;
-    transforms: Record<string, number>;
+    /** Time spent creating each engine, keyed by transform ID */
     engineCreation: Record<string, number>;
   };
 }
@@ -65,12 +86,15 @@ export function resolveTransformerDefinition(
       transformSets: transformer.transformSets ?? {},
     };
   } else {
+    // Auto-generate an 'all' transform set that enables all transforms
+    const allEnable: Record<TransformSetRef, boolean> = {};
+    for (const t of transforms) {
+      allEnable[t.id as TransformSetRef] = true;
+    }
     return {
       transforms,
       transformSets: {
-        all: {
-          enable: Object.fromEntries(transforms.map((x) => [x.id, true])) as any,
-        },
+        all: { enable: allEnable },
         ...transformer.transformSets,
       },
     };
@@ -90,7 +114,9 @@ export function createTransformer(
 
   return {
     extendTransformSet,
-    registerTransformLibrary,
+    registerTransformLibrary: async (name: string, lib?: TransformerLibrary) => {
+      await registerTransformLibraryInternal(name, lib);
+    },
     transform,
     getEngine: (transformId: string) => engines.get(transformId),
   };
@@ -100,7 +126,7 @@ export function createTransformer(
     const diagnostics = createDiagnosticCollector();
     if (transformSet.extends) {
       for (const extendingTransformSetName of transformSet.extends) {
-        const ref = parseTransformReference(extendingTransformSetName);
+        const ref = diagnostics.pipe(parseTransformReference(extendingTransformSetName));
         if (ref) {
           const library = await resolveLibrary(ref.libraryName);
           const libTransformerDefinition = library?.transformer;
@@ -108,12 +134,13 @@ export function createTransformer(
           if (extendingTransformSet) {
             await extendTransformSet(extendingTransformSet);
           } else {
-            diagnostics.add({
-              code: "unknown-transform-set",
-              message: `Unknown transform set '${ref.name}' in library '${ref.libraryName}'.`,
-              severity: "warning",
-              target: NoTarget,
-            } as Diagnostic);
+            diagnostics.add(
+              createDiagnostic({
+                code: "unknown-transform-set",
+                format: { libraryName: ref.libraryName, transformSetName: ref.name },
+                target: NoTarget,
+              }),
+            );
           }
         }
       }
@@ -125,7 +152,7 @@ export function createTransformer(
         if (enable === false) {
           continue;
         }
-        const ref = parseTransformReference(transformName as TransformSetRef);
+        const ref = diagnostics.pipe(parseTransformReference(transformName as TransformSetRef));
         if (ref) {
           await resolveLibrary(ref.libraryName);
           const transform = transformMap.get(transformName);
@@ -133,12 +160,13 @@ export function createTransformer(
             enabledInThisSet.add(transformName);
             enabledTransforms.set(transformName, transform);
           } else {
-            diagnostics.add({
-              code: "unknown-transform",
-              message: `Unknown transform '${ref.name}' in library '${ref.libraryName}'.`,
-              severity: "warning",
-              target: NoTarget,
-            } as Diagnostic);
+            diagnostics.add(
+              createDiagnostic({
+                code: "unknown-transform",
+                format: { libraryName: ref.libraryName, transformName: ref.name },
+                target: NoTarget,
+              }),
+            );
           }
         }
       }
@@ -147,12 +175,13 @@ export function createTransformer(
     if (transformSet.disable) {
       for (const transformName of Object.keys(transformSet.disable)) {
         if (enabledInThisSet.has(transformName)) {
-          diagnostics.add({
-            code: "transform-enabled-disabled",
-            message: `Transform '${transformName}' cannot be both enabled and disabled.`,
-            severity: "warning",
-            target: NoTarget,
-          } as Diagnostic);
+          diagnostics.add(
+            createDiagnostic({
+              code: "transform-enabled-disabled",
+              format: { transformName },
+              target: NoTarget,
+            }),
+          );
         }
         enabledTransforms.delete(transformName);
       }
@@ -167,22 +196,23 @@ export function createTransformer(
 
   function transform(): TransformerResult {
     const diagnostics = createDiagnosticCollector();
+    const enabledTransformIds = [...enabledTransforms.keys()];
     const stats: TransformerStats = {
       runtime: {
+        enabledTransforms: enabledTransformIds,
         total: 0,
-        transforms: {},
         engineCreation: {},
       },
     };
     tracer.trace(
       "transform",
       `Running transformer with following transforms:\n` +
-        [...enabledTransforms.keys()].map((x) => ` - ${x}`).join("\n"),
+        enabledTransformIds.map((x) => ` - ${x}`).join("\n"),
     );
 
     const timer = startTimer();
 
-    // Step 1: Create mutation engines for all enabled transforms
+    // Create mutation engines for all enabled transforms
     for (const [id, t] of enabledTransforms.entries()) {
       const engineTimer = startTimer();
       try {
@@ -192,30 +222,22 @@ export function createTransformer(
         stats.runtime.engineCreation[id] = engineTimer.end();
         tracer.trace("transform.engine-created", `Created engine for ${id}`);
       } catch (error) {
-        diagnostics.add({
-          code: "transform-engine-error",
-          message: `Failed to create mutation engine for transform '${id}': ${error}`,
-          severity: "error",
-          target: NoTarget,
-        });
+        diagnostics.add(
+          createDiagnostic({
+            code: "transform-engine-error",
+            format: { transformId: id, error: String(error) },
+            target: NoTarget,
+          }),
+        );
         stats.runtime.engineCreation[id] = engineTimer.end();
       }
     }
 
-    // Step 2: Engines are now ready
     // Note: With the mutator-framework, mutations are lazy - they happen when types are accessed,
     // not upfront. The engines are stored and will be used when transformed types are requested.
-    // We don't need to actively "run" the transformations here.
-    for (const [id, _t] of enabledTransforms.entries()) {
-      const transformTimer = startTimer();
-      tracer.trace("transform.ready", `Transform ${id} engine is ready for lazy mutation`);
-      stats.runtime.transforms[id] = transformTimer.end();
-    }
 
     stats.runtime.total = timer.end();
 
-    // For now, return the original program as the transformed program placeholder.
-    // TODO: Create a true TransformedProgram that references the mutated type graph
     return {
       diagnostics: diagnostics.diagnostics,
       program: program as TransformedProgram,
@@ -227,12 +249,12 @@ export function createTransformer(
   async function resolveLibrary(name: string): Promise<TransformerLibrary | undefined> {
     const loadedLibrary = transformerLibraries.get(name);
     if (loadedLibrary === undefined) {
-      return registerTransformLibrary(name);
+      return registerTransformLibraryInternal(name);
     }
     return loadedLibrary;
   }
 
-  async function registerTransformLibrary(
+  async function registerTransformLibraryInternal(
     name: string,
     lib?: TransformerLibrary,
   ): Promise<TransformerLibrary | undefined> {
@@ -260,14 +282,17 @@ export function createTransformer(
 
   function parseTransformReference(
     ref: TransformSetRef,
-  ): { libraryName: string; name: string } | undefined {
+  ): [{ libraryName: string; name: string } | undefined, readonly Diagnostic[]] {
     const segments = ref.split("/");
     const name = segments.pop();
     const libraryName = segments.join("/");
     if (!libraryName || !name) {
-      return undefined;
+      return [
+        undefined,
+        [createDiagnostic({ code: "invalid-transform-ref", format: { ref }, target: NoTarget })],
+      ];
     }
-    return { libraryName, name };
+    return [{ libraryName, name }, []];
   }
 }
 

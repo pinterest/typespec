@@ -82,8 +82,6 @@ export interface TestCompileOptions {
   readonly compilerOptions?: CompilerOptions;
 }
 
-export interface TestTransformOptions extends TestCompileOptions {}
-
 interface Testable {
   /**
    * Compile the given code and validate no diagnostics(error or warnings) are present.
@@ -182,11 +180,6 @@ export interface TestEmitterCompileResult {
   readonly outputs: Record<string, string>;
 }
 
-export type TestTransformResult<T extends Record<string, Entity>> = T & {
-  /** The program created in this transform. */
-  readonly program: TransformedProgram;
-} & Record<string, Entity>;
-
 export interface OutputTestable<Result> {
   compile(code: string | Record<string, string>, options?: TestCompileOptions): Promise<Result>;
   compileAndDiagnose(
@@ -224,13 +217,6 @@ export interface EmitterTester<Result = TestEmitterCompileResult>
 
 /** Alternate version of the tester which runs the configured transformer */
 export interface TransformerTester extends Testable, TesterBuilder<TransformerTester> {
-  // transform<
-  //   T extends string | TemplateWithMarkers<any> | Record<string, string | TemplateWithMarkers<any>>,
-  // >(
-  //   code: T,
-  //   options?: TestTransformOptions,
-  // ): Promise<TestTransformResult<GetMarkedEntities<T>>>;
-
   /** Create a mutable instance of the tester */
   createInstance(): Promise<TransformerTesterInstance>;
 }

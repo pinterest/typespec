@@ -311,27 +311,8 @@ function createTransformerTesterInternal(
       params,
       createTransformerTesterInternal,
     ),
-    // transform,
     createInstance: () => createTransformerTesterInstance(params),
   };
-
-  // async function transform<
-  //   T extends string | TemplateWithMarkers<any> | Record<string, string | TemplateWithMarkers<any>>,
-  // >(
-  //   code: T,
-  //   options?: TestTransformOptions,
-  // ): Promise<TestTransformResult<GetMarkedEntities<T>>> {
-  //   const tester = await createTesterInstance(params);
-  //
-  //   // todo
-  //   return tester.compile(code, {
-  //     ...options,
-  //     compilerOptions: {
-  //       ...(options ?? {}).compilerOptions,
-  //       transformSet: params.transformSet,
-  //     },
-  //   });
-  // }
 }
 
 async function createEmitterTesterInstance<Result>(
