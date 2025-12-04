@@ -21,9 +21,32 @@ describe("sanitizeNameForGraphQL", () => {
     expect(sanitizeNameForGraphQL("_underscore")).toBe("_underscore");
     expect(sanitizeNameForGraphQL("name123")).toBe("name123");
   });
+
+  it("adds prefix for names starting with numbers", () => {
+    expect(sanitizeNameForGraphQL("123Name")).toBe("_123Name");
+    expect(sanitizeNameForGraphQL("1")).toBe("_1");
+  });
+
+  it("handles multiple special characters", () => {
+    expect(sanitizeNameForGraphQL("$My-Special.Name$")).toBe("_My_Special_Name_");
+  });
+
+  it("handles empty prefix parameter", () => {
+    expect(sanitizeNameForGraphQL("123Name", "")).toBe("_123Name");
+  });
+
+  it("uses custom prefix for invalid starting character", () => {
+    expect(sanitizeNameForGraphQL("123Name", "Num")).toBe("Num_123Name");
+  });
 });
 
 // Integration tests verifying the transformer applies sanitization
+//
+// NOTE: The mutator framework is designed for renaming CHILD elements (properties,
+// members, operations) within their parent containers. Parent type renaming (e.g.,
+// renaming a Model or Enum's own name) only works when that type is directly marked
+// as an entry point - it does NOT propagate through property type references.
+
 describe("Rename enums transform", () => {
   let tester: TransformerTesterInstance;
   beforeEach(async () => {
@@ -165,5 +188,124 @@ describe("Rename operations transform", () => {
 
     expect(Iface.operations.has("_Do_")).toBe(true);
     expect(Iface.operations.has("$Do$")).toBe(false);
+  });
+
+  it("renames operation names with hyphens", async () => {
+    const { Iface } = await tester.compile(
+      t.code`interface ${t.interface("Iface")} { \`get-data\`(): void; }`,
+    );
+
+    expect(Iface.operations.has("get_data")).toBe(true);
+    expect(Iface.operations.has("get-data")).toBe(false);
+  });
+});
+
+describe("Rename scalars transform", () => {
+  let tester: TransformerTesterInstance;
+  beforeEach(async () => {
+    tester = await Tester.transformer({
+      enable: {
+        [`@typespec/graphql/${renameTypesTransform.name}`]: true,
+      },
+    }).createInstance();
+  });
+
+  it("leaves valid scalar names alone", async () => {
+    const { ValidScalar } = await tester.compile(
+      t.code`scalar ${t.scalar("ValidScalar")} extends string;`,
+    );
+
+    expect(ValidScalar.name).toBe("ValidScalar");
+  });
+});
+
+describe("Edge cases", () => {
+  let tester: TransformerTesterInstance;
+  beforeEach(async () => {
+    tester = await Tester.transformer({
+      enable: {
+        [`@typespec/graphql/${renameTypesTransform.name}`]: true,
+      },
+    }).createInstance();
+  });
+
+  it("handles model with multiple invalid properties", async () => {
+    const { M } = await tester.compile(
+      t.code`model ${t.model("M")} { 
+        \`$prop1$\`: string;
+        \`prop-2\`: int32;
+        \`prop.3\`: boolean;
+      }`,
+    );
+
+    expect(M.properties.has("_prop1_")).toBe(true);
+    expect(M.properties.has("prop_2")).toBe(true);
+    expect(M.properties.has("prop_3")).toBe(true);
+    expect(M.properties.has("$prop1$")).toBe(false);
+    expect(M.properties.has("prop-2")).toBe(false);
+    expect(M.properties.has("prop.3")).toBe(false);
+  });
+
+  it("handles enum with multiple invalid members", async () => {
+    const { E } = await tester.compile(
+      t.code`enum ${t.enum("E")} {
+        \`$val1$\`,
+        \`val-2\`,
+        \`val.3\`
+      }`,
+    );
+
+    expect(E.members.has("_val1_")).toBe(true);
+    expect(E.members.has("val_2")).toBe(true);
+    expect(E.members.has("val_3")).toBe(true);
+  });
+
+  it("handles interface with multiple invalid operations", async () => {
+    const { Api } = await tester.compile(
+      t.code`interface ${t.interface("Api")} {
+        \`get-user\`(): void;
+        \`create-user\`(): void;
+        \`delete.user\`(): void;
+      }`,
+    );
+
+    expect(Api.operations.has("get_user")).toBe(true);
+    expect(Api.operations.has("create_user")).toBe(true);
+    expect(Api.operations.has("delete_user")).toBe(true);
+  });
+
+  it("preserves valid underscore-prefixed names", async () => {
+    const { _ValidName } = await tester.compile(t.code`model ${t.model("_ValidName")} { }`);
+
+    expect(_ValidName.name).toBe("_ValidName");
+  });
+
+  it("preserves names with numbers in the middle", async () => {
+    const { Model123 } = await tester.compile(t.code`model ${t.model("Model123")} { }`);
+
+    expect(Model123.name).toBe("Model123");
+  });
+
+  it("handles property names starting with numbers", async () => {
+    const { M } = await tester.compile(t.code`model ${t.model("M")} { \`123prop\`: string; }`);
+
+    expect(M.properties.has("_123prop")).toBe(true);
+    expect(M.properties.has("123prop")).toBe(false);
+  });
+
+  it("handles enum member names starting with numbers", async () => {
+    const { E } = await tester.compile(t.code`enum ${t.enum("E")} { \`123value\` }`);
+
+    expect(E.members.has("_123value")).toBe(true);
+    expect(E.members.has("123value")).toBe(false);
+  });
+
+  it("handles operation names starting with numbers", async () => {
+    const { Api } = await tester.compile(
+      t.code`interface ${t.interface("Api")} { \`123action\`(): void; }`,
+    );
+
+    expect(Api.operations.has("_123action")).toBe(true);
+    expect(Api.operations.has("123action")).toBe(false);
   });
 });

@@ -12,11 +12,18 @@ import {
   TransformerResolvedDefinition,
 } from "./types.js";
 
-type TransformerLibraryInstance = { transformer: TransformerResolvedDefinition };
+/**
+ * Minimal interface for transformer library data needed internally.
+ * The full TransformerLibraryInstance from types.ts includes module metadata
+ * that isn't needed for transformer registration.
+ */
+interface TransformerLibrary {
+  transformer: TransformerResolvedDefinition;
+}
 
 export interface Transformer {
   extendTransformSet(transformSet: TransformSet): Promise<readonly Diagnostic[]>;
-  registerTransformLibrary(name: string, lib?: TransformerLibraryInstance): void;
+  registerTransformLibrary(name: string, lib?: TransformerLibrary): void;
   transform(): TransformerResult;
   /**
    * Get the mutation engine for a specific transform.
@@ -72,13 +79,13 @@ export function resolveTransformerDefinition(
 
 export function createTransformer(
   program: Program,
-  loadLibrary: (name: string) => Promise<TransformerLibraryInstance | undefined>,
+  loadLibrary: (name: string) => Promise<TransformerLibrary | undefined>,
 ): Transformer {
   const tracer = program.tracer.sub("transformer");
 
   const transformMap = new Map<string, Transform<string>>();
   const enabledTransforms = new Map<string, Transform<string>>();
-  const transformerLibraries = new Map<string, TransformerLibraryInstance | undefined>();
+  const transformerLibraries = new Map<string, TransformerLibrary | undefined>();
   const engines = new Map<string, MutationEngine<any>>();
 
   return {
@@ -199,7 +206,7 @@ export function createTransformer(
     // Note: With the mutator-framework, mutations are lazy - they happen when types are accessed,
     // not upfront. The engines are stored and will be used when transformed types are requested.
     // We don't need to actively "run" the transformations here.
-    for (const [id, t] of enabledTransforms.entries()) {
+    for (const [id, _t] of enabledTransforms.entries()) {
       const transformTimer = startTimer();
       tracer.trace("transform.ready", `Transform ${id} engine is ready for lazy mutation`);
       stats.runtime.transforms[id] = transformTimer.end();
@@ -217,7 +224,7 @@ export function createTransformer(
     };
   }
 
-  async function resolveLibrary(name: string): Promise<TransformerLibraryInstance | undefined> {
+  async function resolveLibrary(name: string): Promise<TransformerLibrary | undefined> {
     const loadedLibrary = transformerLibraries.get(name);
     if (loadedLibrary === undefined) {
       return registerTransformLibrary(name);
@@ -227,8 +234,8 @@ export function createTransformer(
 
   async function registerTransformLibrary(
     name: string,
-    lib?: TransformerLibraryInstance,
-  ): Promise<TransformerLibraryInstance | undefined> {
+    lib?: TransformerLibrary,
+  ): Promise<TransformerLibrary | undefined> {
     tracer.trace("register-library", name);
 
     const library = lib ?? (await loadLibrary(name));
@@ -265,7 +272,7 @@ export function createTransformer(
 }
 
 export const builtInTransformerLibraryName = `@typespec/compiler/transformers`;
-export function createBuiltInTransformerLibrary(): TransformerLibraryInstance {
+export function createBuiltInTransformerLibrary(): TransformerLibrary {
   // No built-in transforms yet; provide an empty definition.
   const empty: TransformerResolvedDefinition = {
     transforms: [],

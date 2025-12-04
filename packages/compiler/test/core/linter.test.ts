@@ -4,8 +4,8 @@ import { createLinterRule, createTypeSpecLibrary } from "../../src/core/library.
 import { Linter, createLinter, resolveLinterDefinition } from "../../src/core/linter.js";
 import {
   type Interface,
-  type LinterLibraryInstance,
   type LinterDefinition,
+  type LinterLibraryInstance,
   type LinterRuleContext,
 } from "../../src/index.js";
 import {
