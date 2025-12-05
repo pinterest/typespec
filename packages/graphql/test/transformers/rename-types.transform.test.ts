@@ -40,13 +40,6 @@ describe("sanitizeNameForGraphQL", () => {
   });
 });
 
-// Integration tests verifying the transformer applies sanitization
-//
-// NOTE: The mutator framework is designed for renaming CHILD elements (properties,
-// members, operations) within their parent containers. Parent type renaming (e.g.,
-// renaming a Model or Enum's own name) only works when that type is directly marked
-// as an entry point - it does NOT propagate through property type references.
-
 describe("Rename enums transform", () => {
   let tester: TransformerTesterInstance;
   beforeEach(async () => {
