@@ -1,10 +1,10 @@
 import { ModelPropertyMutation } from "@typespec/mutator-framework";
-import { renameForGraphQL } from "../transforms/index.js";
+import { sanitizeNameForGraphQL } from "../../lib/type-utils.js";
 
 export class GraphQLModelPropertyMutation extends ModelPropertyMutation<any, any> {
   mutate() {
     this.mutateType((property) => {
-      renameForGraphQL(property);
+      property.name = sanitizeNameForGraphQL(property.name);
     });
     super.mutate();
   }

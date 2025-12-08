@@ -1,10 +1,10 @@
 import { EnumMemberMutation } from "@typespec/mutator-framework";
-import { renameForGraphQL } from "../transforms/index.js";
+import { sanitizeNameForGraphQL } from "../../lib/type-utils.js";
 
 export class GraphQLEnumMemberMutation extends EnumMemberMutation<any, any> {
   mutate() {
     this.mutateType((member) => {
-      renameForGraphQL(member);
+      member.name = sanitizeNameForGraphQL(member.name);
     });
     super.mutate();
   }

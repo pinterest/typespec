@@ -1,10 +1,10 @@
 import { OperationMutation } from "@typespec/mutator-framework";
-import { renameForGraphQL } from "../transforms/index.js";
+import { sanitizeNameForGraphQL } from "../../lib/type-utils.js";
 
 export class GraphQLOperationMutation extends OperationMutation<any, any> {
   mutate() {
     this.mutateType((operation) => {
-      renameForGraphQL(operation);
+      operation.name = sanitizeNameForGraphQL(operation.name);
     });
     super.mutate();
   }

@@ -1,10 +1,10 @@
 import { ScalarMutation } from "@typespec/mutator-framework";
-import { renameForGraphQL } from "../transforms/index.js";
+import { sanitizeNameForGraphQL } from "../../lib/type-utils.js";
 
 export class GraphQLScalarMutation extends ScalarMutation<any, any> {
   mutate() {
     this.mutateType((scalar) => {
-      renameForGraphQL(scalar);
+      scalar.name = sanitizeNameForGraphQL(scalar.name);
     });
     super.mutate();
   }
