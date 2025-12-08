@@ -24,9 +24,9 @@
       "types": "./dist/src/index.d.ts",
       "default": "./dist/src/index.js"
     },
-    "./transformer": {
-      "types": "./dist/src/transformers/index.d.ts",
-      "default": "./dist/src/transformers/index.js"
+    "./mutation-engine": {
+      "types": "./dist/src/mutation-engine/index.d.ts",
+      "default": "./dist/src/mutation-engine/index.js"
     }
   },
   "engines": {
