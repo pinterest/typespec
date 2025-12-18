@@ -1,3 +1,4 @@
+import { MutationOptions } from "@typespec/mutator-framework";
 import { realpath } from "fs/promises";
 import { pathToFileURL } from "url";
 import { compilerAssert } from "../core/diagnostics.js";
@@ -8,7 +9,14 @@ import { getIdentifierContext, getNodeAtPosition } from "../core/parser.js";
 import { getRelativePathFromDirectory, joinPaths, resolvePath } from "../core/path-utils.js";
 import { Program, compile as coreCompile } from "../core/program.js";
 import { createSourceLoader } from "../core/source-loader.js";
-import { CompilerHost, Diagnostic, Entity, NoTarget, SourceFile } from "../core/types.js";
+import {
+  CompilerHost,
+  Diagnostic,
+  Entity,
+  NoTarget,
+  SourceFile,
+  TransformSet,
+} from "../core/types.js";
 import { resolveModule } from "../module-resolver/module-resolver.js";
 import { NodePackageResolver } from "../module-resolver/node-package-resolver.js";
 import { ResolveModuleHost } from "../module-resolver/types.js";
@@ -19,7 +27,7 @@ import { createTestFileSystem } from "./fs.js";
 import { GetMarkedEntities, Marker, TemplateWithMarkers } from "./marked-template.js";
 import { StandardTestLibrary, addTestLib } from "./test-compiler-host.js";
 import { resolveVirtualPath } from "./test-utils.js";
-import type {
+import {
   EmitterTester,
   EmitterTesterInstance,
   MockFile,
@@ -31,6 +39,8 @@ import type {
   Tester,
   TesterBuilder,
   TesterInstance,
+  TransformerTester,
+  TransformerTesterInstance,
 } from "./types.js";
 
 export interface TesterOptions {
@@ -163,6 +173,10 @@ interface EmitterTesterInternalParams extends TesterInternalParams {
   emitter: string;
 }
 
+interface TransformerTesterInternalParams extends TesterInternalParams {
+  transformSet: TransformSet;
+}
+
 function createTesterBuilder<
   const I extends TesterInternalParams,
   const O extends TesterBuilder<unknown>,
@@ -227,6 +241,7 @@ function createTesterInternal(params: TesterInternalParams): Tester {
     ...createTesterBuilder(params, createTesterInternal),
     emit,
     createInstance,
+    transformer,
   };
 
   function emit(emitter: string, options?: Record<string, unknown>): EmitterTester {
@@ -242,6 +257,16 @@ function createTesterInternal(params: TesterInternalParams): Tester {
             },
           }
         : params.compilerOptions,
+    });
+  }
+
+  function transformer(
+    transformSet: TransformSet,
+    options?: Record<string, unknown>,
+  ): TransformerTester {
+    return createTransformerTesterInternal({
+      ...params,
+      transformSet,
     });
   }
 
@@ -271,6 +296,22 @@ function createEmitterTesterInternal<Result>(
       });
     },
     createInstance: () => createEmitterTesterInstance(params),
+  };
+}
+
+function createTransformerTesterInternal(
+  params: TransformerTesterInternalParams,
+): TransformerTester {
+  return {
+    ...createCompilable(async (...args) => {
+      const instance = await createTransformerTesterInstance(params);
+      return instance.compileAndDiagnose(...args);
+    }),
+    ...createTesterBuilder<TransformerTesterInternalParams, TransformerTester>(
+      params,
+      createTransformerTesterInternal,
+    ),
+    createInstance: () => createTransformerTesterInstance(params),
   };
 }
 
@@ -320,6 +361,37 @@ async function createEmitterTesterInstance<Result>(
     };
     const final = params.outputProcess ? params.outputProcess(prep) : prep;
     return [final, diagnostics];
+  }
+}
+
+async function createTransformerTesterInstance(
+  params: TransformerTesterInternalParams,
+): Promise<TransformerTesterInstance> {
+  const tester = await createTesterInstance(params);
+  return {
+    fs: tester.fs,
+    ...createCompilable(compileAndDiagnose),
+    get program() {
+      return tester.program;
+    },
+  };
+
+  async function compileAndDiagnose(
+    code: string | TemplateWithMarkers<any> | Record<string, string | TemplateWithMarkers<any>>,
+    options?: TestCompileOptions,
+  ): Promise<[TestCompileResult<any>, readonly Diagnostic[]]> {
+    if (options?.compilerOptions?.transformSet !== undefined) {
+      throw new Error("Cannot set transformSet in options.");
+    }
+    const resolvedOptions: TestCompileOptions = {
+      ...options,
+      compilerOptions: {
+        ...params.compilerOptions,
+        ...options?.compilerOptions,
+        transformSet: params.transformSet,
+      },
+    };
+    return tester.compileAndDiagnose(code, resolvedOptions);
   }
 }
 
@@ -411,17 +483,82 @@ async function createTesterInstance(params: TesterInternalParams): Promise<Teste
     savedProgram = program;
 
     const entities = extractMarkedEntities(program, markerPositions, markerConfigs);
+
+    // Helper to get mutated types from transformer engines
+    const getMutatedType = <TType extends import("../core/types.js").Type>(
+      transformId: string,
+      type: TType,
+    ): TType => {
+      const transformedProgram = program as import("../core/program.js").TransformedProgram;
+      const engine = transformedProgram.transformerResult?.engines.get(transformId);
+      if (!engine) {
+        throw new Error(
+          `Transform "${transformId}" not found. Available transforms: ${Array.from(transformedProgram.transformerResult?.engines.keys() ?? []).join(", ")}`,
+        );
+      }
+      // Get the default subgraph from the engine
+      const MutationOptionsClass = (engine as any).constructor.MutationOptions;
+      const options = MutationOptionsClass ? new MutationOptionsClass() : new MutationOptions();
+      const subgraph = (engine as any).getDefaultMutationSubgraph?.(options);
+      if (!subgraph) {
+        throw new Error(`Engine for transform "${transformId}" does not have a default subgraph`);
+      }
+      // Type cast needed because tests use source types but mutator-framework uses compiled types
+      return engine.getMutatedType(subgraph as any, type as any) as TType;
+    };
+
+    // If transforms are enabled, automatically return mutated versions of entities
+    const transformedProgram = program as import("../core/program.js").TransformedProgram;
+    const mutatedEntities =
+      transformedProgram.transformerResult && transformedProgram.transformerResult.engines.size > 0
+        ? applyAllTransforms(entities, transformedProgram)
+        : entities;
+
     return [
       {
         program,
         fs,
         pos: Object.fromEntries(markerPositions.map((x) => [x.name, x])) as any,
+        getMutatedType,
         ...(typesCollected as GetMarkedEntities<T>),
-        ...entities,
+        ...mutatedEntities,
       },
       program.diagnostics,
     ];
   }
+}
+
+function applyAllTransforms(
+  entities: Record<string, Entity>,
+  transformedProgram: import("../core/program.js").TransformedProgram,
+): Record<string, Entity> {
+  if (!transformedProgram.transformerResult) return entities;
+
+  const mutatedEntities: Record<string, Entity> = {};
+  const engines = Array.from(transformedProgram.transformerResult.engines.values());
+
+  for (const [name, entity] of Object.entries(entities)) {
+    // Apply all transformation engines in sequence
+    let mutated: any = entity;
+    if (entity.entityKind === "Type") {
+      for (const engine of engines) {
+        // Get the default mutation options
+        const MutationOptionsClass = (engine as any).constructor.MutationOptions;
+        const options = MutationOptionsClass ? new MutationOptionsClass() : new MutationOptions();
+
+        // Mutate the entity using the engine's mutate() method
+        // This triggers the Mutation class's mutate() method
+        // Type cast needed because tests use source types but mutator-framework uses compiled types
+        const mutation = (engine as any).mutate?.(mutated, options);
+        if (mutation) {
+          mutated = mutation.getMutatedType();
+        }
+      }
+    }
+    mutatedEntities[name] = mutated;
+  }
+
+  return mutatedEntities;
 }
 
 function extractMarkedEntities(

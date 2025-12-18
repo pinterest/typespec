@@ -25,6 +25,13 @@ export interface RuntimeStats {
       [rule: string]: number;
     };
   };
+  transformer: {
+    enabledTransforms: readonly string[];
+    total: number;
+    engineCreation: {
+      [transformId: string]: number;
+    };
+  };
   emit: {
     total: number;
     emitters: {

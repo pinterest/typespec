@@ -762,6 +762,40 @@ const diagnostics = {
   },
 
   /**
+   * Transformer
+   */
+  "invalid-transform-ref": {
+    severity: "error",
+    messages: {
+      default: paramMessage`Reference "${"ref"}" is not a valid reference to a transform or transform set. It must be in the following format: "<library-name>/<transform-name>"`,
+    },
+  },
+  "unknown-transform": {
+    severity: "warning",
+    messages: {
+      default: paramMessage`Transform "${"transformName"}" is not found in library "${"libraryName"}"`,
+    },
+  },
+  "unknown-transform-set": {
+    severity: "warning",
+    messages: {
+      default: paramMessage`Transform set "${"transformSetName"}" is not found in library "${"libraryName"}"`,
+    },
+  },
+  "transform-enabled-disabled": {
+    severity: "warning",
+    messages: {
+      default: paramMessage`Transform "${"transformName"}" has been enabled and disabled in the same transform set.`,
+    },
+  },
+  "transform-engine-error": {
+    severity: "error",
+    messages: {
+      default: paramMessage`Failed to create mutation engine for transform "${"transformId"}": ${"error"}`,
+    },
+  },
+
+  /**
    * Formatter
    */
   "format-failed": {
