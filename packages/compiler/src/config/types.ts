@@ -1,4 +1,4 @@
-import type { Diagnostic, RuleRef, TransformSetRef } from "../core/types.js";
+import type { Diagnostic, RuleRef } from "../core/types.js";
 import type { YamlScript } from "../yaml/types.js";
 
 /**
@@ -69,8 +69,6 @@ export interface TypeSpecConfig {
   options?: Record<string, EmitterOptions>;
 
   linter?: LinterConfig;
-
-  transformer?: TransformerConfig;
 }
 
 /**
@@ -90,7 +88,6 @@ export interface TypeSpecRawConfig {
   options?: Record<string, EmitterOptions>;
 
   linter?: LinterConfig;
-  transformer?: TransformerConfig;
 }
 
 export interface ConfigEnvironmentVariable {
@@ -109,10 +106,4 @@ export interface LinterConfig {
   extends?: RuleRef[];
   enable?: Record<RuleRef, boolean>;
   disable?: Record<RuleRef, string>;
-}
-
-export interface TransformerConfig {
-  extends?: TransformSetRef[];
-  enable?: Record<TransformSetRef, boolean>;
-  disable?: Record<TransformSetRef, string>;
 }

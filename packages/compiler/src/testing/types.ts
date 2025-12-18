@@ -1,7 +1,6 @@
-import { TransformerConfig } from "../config/index.js";
 import type { CompilerOptions } from "../core/options.js";
-import type { Program, TransformedProgram } from "../core/program.js";
-import { CompilerHost, Diagnostic, Entity, TransformSet, Type } from "../core/types.js";
+import type { Program } from "../core/program.js";
+import { CompilerHost, Diagnostic, Entity, Type } from "../core/types.js";
 import { PositionedMarker } from "./fourslash.js";
 import { GetMarkedEntities, TemplateWithMarkers } from "./marked-template.js";
 
@@ -163,11 +162,6 @@ export interface Tester extends Testable, TesterBuilder<Tester> {
    * @param options - Options to pass to the emitter
    */
   emit(emitter: string, options?: Record<string, unknown>): EmitterTester;
-  /**
-   * Create a transformer tester
-   * @param options - Options to pass to the transformer
-   */
-  transformer(transformSet: TransformSet, options?: TransformerConfig): TransformerTester;
   /** Create an instance of the tester */
   createInstance(): Promise<TesterInstance>;
 }
@@ -215,11 +209,6 @@ export interface EmitterTester<Result = TestEmitterCompileResult>
   createInstance(): Promise<EmitterTesterInstance<Result>>;
 }
 
-/** Alternate version of the tester which runs the configured transformer */
-export interface TransformerTester extends Testable, TesterBuilder<TransformerTester> {
-  /** Create a mutable instance of the tester */
-  createInstance(): Promise<TransformerTesterInstance>;
-}
 
 export interface TesterInstanceBase {
   /** Program created. Only available after calling `compile`, `diagnose` or `compileAndDiagnose` */
@@ -237,11 +226,6 @@ export interface EmitterTesterInstance<Result> extends TesterInstanceBase, Outpu
 export interface PositionedMarkerInFile extends PositionedMarker {
   /** The file where the marker is located */
   readonly filename: string;
-}
-
-/** Instance of a transformer tester */
-export interface TransformerTesterInstance extends TesterInstance {
-  get program(): TransformedProgram;
 }
 
 // #endregion

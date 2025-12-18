@@ -44,12 +44,6 @@ import {
 import { createStateAccessors } from "./state-accessors.js";
 import { ComplexityStats, RuntimeStats, Stats, startTimer, time, timeAsync } from "./stats.js";
 import {
-  builtInTransformerLibraryName,
-  createBuiltInTransformerLibrary,
-  createTransformer,
-  resolveTransformerDefinition,
-} from "./transformer.js";
-import {
   CompilerHost,
   Diagnostic,
   Directive,
@@ -74,7 +68,6 @@ import {
   SyntaxKind,
   TemplateInstanceTarget,
   Tracer,
-  TransformerLibraryInstance,
   Type,
   TypeSpecLibrary,
   TypeSpecScriptNode,
@@ -143,12 +136,7 @@ export interface Program {
   readonly projectRoot: string;
 }
 
-export interface TransformedProgram extends Program {
-  /**
-   * Result from running transformers, including mutation engines for accessing transformed types.
-   */
-  readonly transformerResult?: import("./transformer.js").TransformerResult;
-}
+export interface TransformedProgram extends Program {}
 
 interface EmitterRef {
   emitFunction: EmitterFunc;
@@ -156,7 +144,7 @@ interface EmitterRef {
   metadata: LibraryMetadata;
   emitterOutputDir: string;
   options: Record<string, unknown>;
-  readonly library: LinterLibraryInstance & TransformerLibraryInstance;
+  readonly library: LinterLibraryInstance;
 }
 
 interface Validator {
@@ -317,16 +305,6 @@ async function createProgram(
     program.reportDiagnostics(await linter.extendRuleSet(options.linterRuleSet));
   }
 
-  const transformer = createTransformer(program, (name) => loadLibrary(basedir, name));
-  // Register built-in transformer library (currently empty placeholder)
-  transformer.registerTransformLibrary(
-    builtInTransformerLibraryName,
-    createBuiltInTransformerLibrary(),
-  );
-  if (options.transformSet) {
-    program.reportDiagnostics(await transformer.extendTransformSet(options.transformSet));
-  }
-
   program.checker = createChecker(program, resolver);
   runtimeStats.checker = time(() => program.checker.checkProgram());
 
@@ -353,15 +331,7 @@ async function createProgram(
   runtimeStats.linter = lintResult.stats.runtime;
   program.reportDiagnostics(lintResult.diagnostics);
 
-  // Transform stage
-  const transformResult = transformer.transform();
-  runtimeStats.transformer = transformResult.stats.runtime;
-  program.reportDiagnostics(transformResult.diagnostics);
-
-  // Attach transformer result to the program so consumers can access mutation engines
-  const transformedProgram: TransformedProgram = Object.assign(transformResult.program, {
-    transformerResult: transformResult,
-  });
+  const transformedProgram: TransformedProgram = program;
 
   return { program: transformedProgram, shouldAbort: false };
 
@@ -541,7 +511,7 @@ async function createProgram(
   async function loadLibrary(
     basedir: string,
     libraryNameOrPath: string,
-  ): Promise<(LinterLibraryInstance & TransformerLibraryInstance) | undefined> {
+  ): Promise<LinterLibraryInstance | undefined> {
     const [resolution, diagnostics] = await resolveEmitterModuleAndEntrypoint(
       basedir,
       libraryNameOrPath,
@@ -556,14 +526,11 @@ async function createProgram(
     const libDefinition: TypeSpecLibrary<any> | undefined = entrypoint?.esmExports.$lib;
     const metadata = computeLibraryMetadata(module, libDefinition);
     const linterDef = entrypoint?.esmExports.$linter;
-    const transformerDef = entrypoint?.esmExports.$transformer;
     return {
       ...resolution,
       metadata,
       definition: libDefinition,
       linter: linterDef && resolveLinterDefinition(libraryNameOrPath, linterDef),
-      transformer:
-        transformerDef && resolveTransformerDefinition(libraryNameOrPath, transformerDef),
     };
   }
 
