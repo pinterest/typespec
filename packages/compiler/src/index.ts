@@ -93,11 +93,9 @@ export {
 } from "./core/intrinsic-type-state.js";
 export {
   createLinterRule as createRule,
-  createTransform,
   createTypeSpecLibrary,
   defineLinter,
   definePackageFlags,
-  defineTransformer,
   paramMessage,
   setTypeSpecNamespace,
 } from "./core/library.js";
@@ -442,9 +440,6 @@ export type {
   TextRange,
   Tracer,
   TracerOptions,
-  TransformDefinition,
-  TransformerDefinition,
-  TransformerLibraryInstance,
   Tuple,
   Type,
   TypeInstantiationMap,

@@ -9,8 +9,6 @@ import {
   LinterRuleDefinition,
   PackageFlags,
   StateDef,
-  TransformDefinition,
-  TransformerDefinition,
   TypeSpecLibrary,
   TypeSpecLibraryDef,
 } from "./types.js";
@@ -118,15 +116,6 @@ export function createLinterRule<const N extends string, const T extends Diagnos
   return definition;
 }
 
-export function defineTransformer(def: TransformerDefinition): TransformerDefinition {
-  return def;
-}
-
-/** Create a new transform. */
-export function createTransform<const N extends string>(definition: TransformDefinition<N>) {
-  compilerAssert(!definition.name.includes("/"), "Transform name cannot contain a '/'.");
-  return definition;
-}
 
 /**
  * Set the TypeSpec namespace for that function.
