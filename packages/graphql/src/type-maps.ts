@@ -8,14 +8,13 @@ import type { GraphQLType } from "graphql";
 export interface TSPContext<T extends Type> {
   type: T; // The TypeSpec type
   usageFlag: UsageFlags; // How the type is being used (input, output, etc.)
-  graphqlName?: string; // Optional GraphQL type name override (e.g., "ModelInput" for input types)
-  metadata: Record<string, any>; // Additional metadata
+  metadata?: Record<string, any>; // Optional additional metadata
 }
 
 /**
  * Nominal type for keys in the TypeMap
  */
-type TypeKey = string & { __typeKey: any };
+export type TypeKey = string & { __typeKey: any };
 
 /**
  * Base TypeMap for all GraphQL type mappings
