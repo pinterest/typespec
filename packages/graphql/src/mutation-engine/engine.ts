@@ -1,0 +1,103 @@
+import {
+  type Enum,
+  type Model,
+  type Namespace,
+  type Operation,
+  type Program,
+  type Scalar,
+} from "@typespec/compiler";
+import { $ } from "@typespec/compiler/typekit";
+import {
+  MutationEngine,
+  SimpleInterfaceMutation,
+  SimpleIntrinsicMutation,
+  SimpleLiteralMutation,
+  SimpleUnionMutation,
+  SimpleUnionVariantMutation,
+} from "@typespec/mutator-framework";
+import {
+  GraphQLEnumMemberMutation,
+  GraphQLEnumMutation,
+  GraphQLModelMutation,
+  GraphQLModelPropertyMutation,
+  GraphQLOperationMutation,
+  GraphQLScalarMutation,
+} from "./mutations/index.js";
+import { GraphQLMutationOptions } from "./options.js";
+
+/**
+ * Registry configuration for the GraphQL mutation engine.
+ * Maps TypeSpec type kinds to their corresponding GraphQL mutation classes.
+ */
+const graphqlMutationRegistry = {
+  // Custom GraphQL mutations for types we need to transform
+  Enum: GraphQLEnumMutation,
+  EnumMember: GraphQLEnumMemberMutation,
+  Model: GraphQLModelMutation,
+  ModelProperty: GraphQLModelPropertyMutation,
+  Operation: GraphQLOperationMutation,
+  Scalar: GraphQLScalarMutation,
+  // Use Simple* classes from mutator-framework for types we don't customize
+  Interface: SimpleInterfaceMutation,
+  Union: SimpleUnionMutation,
+  UnionVariant: SimpleUnionVariantMutation,
+  String: SimpleLiteralMutation,
+  Number: SimpleLiteralMutation,
+  Boolean: SimpleLiteralMutation,
+  Intrinsic: SimpleIntrinsicMutation,
+};
+
+/**
+ * GraphQL mutation engine that applies GraphQL-specific transformations
+ * to TypeSpec types, such as name sanitization.
+ */
+export class GraphQLMutationEngine {
+  /**
+   * The underlying mutation engine configured with GraphQL-specific mutation classes.
+   * Type is inferred from graphqlMutationRegistry to avoid complex generic constraints.
+   */
+  private engine;
+
+  constructor(program: Program, _namespace: Namespace) {
+    const tk = $(program);
+    this.engine = new MutationEngine(tk, graphqlMutationRegistry);
+  }
+
+  /**
+   * Mutate a model, applying GraphQL name sanitization.
+   */
+  mutateModel(model: Model): GraphQLModelMutation {
+    return this.engine.mutate(model, new GraphQLMutationOptions()) as GraphQLModelMutation;
+  }
+
+  /**
+   * Mutate an enum, applying GraphQL name sanitization.
+   */
+  mutateEnum(enumType: Enum): GraphQLEnumMutation {
+    return this.engine.mutate(enumType, new GraphQLMutationOptions()) as GraphQLEnumMutation;
+  }
+
+  /**
+   * Mutate an operation, applying GraphQL name sanitization.
+   */
+  mutateOperation(operation: Operation): GraphQLOperationMutation {
+    return this.engine.mutate(operation, new GraphQLMutationOptions()) as GraphQLOperationMutation;
+  }
+
+  /**
+   * Mutate a scalar, applying GraphQL name sanitization.
+   */
+  mutateScalar(scalar: Scalar): GraphQLScalarMutation {
+    return this.engine.mutate(scalar, new GraphQLMutationOptions()) as GraphQLScalarMutation;
+  }
+}
+
+/**
+ * Creates a GraphQL mutation engine for the given program and namespace.
+ */
+export function createGraphQLMutationEngine(
+  program: Program,
+  namespace: Namespace,
+): GraphQLMutationEngine {
+  return new GraphQLMutationEngine(program, namespace);
+}
