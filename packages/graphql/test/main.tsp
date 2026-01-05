@@ -19,7 +19,7 @@ namespace MyLibrary {
   }
 
   enum Genre {
-    Fiction,
+    $Fiction$,
     NonFiction,
     Mystery,
     Fantasy,
