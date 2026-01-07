@@ -65,17 +65,34 @@ class GraphQLSchemaEmitter {
         this.registry.addEnum(mutation.mutatedType);
       },
       model: (node: Model) => {
-        const mutation = this.engine.mutateModel(node);
-        // TODO: Handle input/output variants
-        this.registry.addModel(mutation.mutatedType, UsageFlags.Output);
+        // Mutate the model - returns input/output variants
+        const result = this.engine.mutateModel(node);
+
+        // Register output variant if present
+        if (result.output) {
+          this.registry.addModel(result.output.mutatedType, UsageFlags.Output);
+        }
+
+        // Register input variant if present
+        if (result.input) {
+          this.registry.addModel(result.input.mutatedType, UsageFlags.Input);
+        }
       },
       exitEnum: (node: Enum) => {
         const mutation = this.engine.mutateEnum(node);
         this.registry.materializeEnum(mutation.mutatedType.name);
       },
       exitModel: (node: Model) => {
-        const mutation = this.engine.mutateModel(node);
-        this.registry.materializeModel(mutation.mutatedType.name);
+        // Materialize both input and output variants
+        const result = this.engine.mutateModel(node);
+
+        if (result.output) {
+          this.registry.materializeModel(result.output.mutatedType.name);
+        }
+
+        if (result.input) {
+          this.registry.materializeModel(result.input.mutatedType.name);
+        }
       },
     };
   }

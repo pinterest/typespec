@@ -24,4 +24,6 @@ namespace MyLibrary {
     Mystery,
     Fantasy,
   }
+
+  op createBook(book: Book): Book;
 }
