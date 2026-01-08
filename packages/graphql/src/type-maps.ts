@@ -6,7 +6,7 @@ import type { GraphQLType } from "graphql";
  * @template T - The TypeSpec type
  */
 export interface TSPContext<T extends Type> {
-  type: T; // The TypeSpec type
+  type: T; // The TypeSpec type (mutations should have already been applied)
   usageFlag: UsageFlags; // How the type is being used (input, output, etc.)
   metadata?: Record<string, any>; // Optional additional metadata
 }
