@@ -1,4 +1,8 @@
-export { GraphQLMutationEngine, createGraphQLMutationEngine } from "./engine.js";
+export {
+  GraphQLMutationEngine,
+  createGraphQLMutationEngine,
+  type ModelMutationResult,
+} from "./engine.js";
 export {
   GraphQLEnumMemberMutation,
   GraphQLEnumMutation,

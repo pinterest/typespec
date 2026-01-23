@@ -108,9 +108,10 @@ describe("GraphQL Mutation Engine - Models", () => {
     const { ValidModel } = await tester.compile(t.code`model ${t.model("ValidModel")} { }`);
 
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateModel(ValidModel);
+    const result = engine.mutateModel(ValidModel);
 
-    expect(mutation.mutatedType.name).toBe("ValidModel");
+    // Without operations, models default to output variant
+    expect(result.output?.mutatedType.name).toBe("ValidModel");
   });
 
   it("renames invalid model names", async () => {
@@ -118,9 +119,9 @@ describe("GraphQL Mutation Engine - Models", () => {
 
     const InvalidModel = tester.program.getGlobalNamespaceType().models.get("$Invalid$")!;
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateModel(InvalidModel);
+    const result = engine.mutateModel(InvalidModel);
 
-    expect(mutation.mutatedType.name).toBe("_Invalid_");
+    expect(result.output?.mutatedType.name).toBe("_Invalid_");
   });
 
   it("processes model properties through sanitization", async () => {
@@ -129,10 +130,10 @@ describe("GraphQL Mutation Engine - Models", () => {
     );
 
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateModel(TestModel);
+    const result = engine.mutateModel(TestModel);
 
-    expect(mutation.mutatedType.name).toBe("TestModel");
-    expect(mutation.mutatedType.properties.has("validProp")).toBe(true);
+    expect(result.output?.mutatedType.name).toBe("TestModel");
+    expect(result.output?.mutatedType.properties.has("validProp")).toBe(true);
   });
 });
 
@@ -148,8 +149,8 @@ describe("GraphQL Mutation Engine - Model Properties", () => {
     );
 
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateModel(M);
-    const prop = mutation.mutatedType.properties.get("prop");
+    const result = engine.mutateModel(M);
+    const prop = result.output?.mutatedType.properties.get("prop");
 
     expect(prop?.name).toBe("prop");
   });
@@ -158,11 +159,11 @@ describe("GraphQL Mutation Engine - Model Properties", () => {
     const { M } = await tester.compile(t.code`model ${t.model("M")} { \`$prop$\`: string }`);
 
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateModel(M);
+    const result = engine.mutateModel(M);
 
     // Check that the property was renamed in the mutated model
-    expect(mutation.mutatedType.properties.has("_prop_")).toBe(true);
-    expect(mutation.mutatedType.properties.has("$prop$")).toBe(false);
+    expect(result.output?.mutatedType.properties.has("_prop_")).toBe(true);
+    expect(result.output?.mutatedType.properties.has("$prop$")).toBe(false);
   });
 });
 
@@ -246,15 +247,15 @@ describe("GraphQL Mutation Engine - Edge Cases", () => {
     );
 
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateModel(M);
-    const mutated = mutation.mutatedType;
+    const result = engine.mutateModel(M);
+    const mutated = result.output?.mutatedType;
 
-    expect(mutated.properties.has("_prop1_")).toBe(true);
-    expect(mutated.properties.has("prop_2")).toBe(true);
-    expect(mutated.properties.has("prop_3")).toBe(true);
-    expect(mutated.properties.has("$prop1$")).toBe(false);
-    expect(mutated.properties.has("prop-2")).toBe(false);
-    expect(mutated.properties.has("prop.3")).toBe(false);
+    expect(mutated?.properties.has("_prop1_")).toBe(true);
+    expect(mutated?.properties.has("prop_2")).toBe(true);
+    expect(mutated?.properties.has("prop_3")).toBe(true);
+    expect(mutated?.properties.has("$prop1$")).toBe(false);
+    expect(mutated?.properties.has("prop-2")).toBe(false);
+    expect(mutated?.properties.has("prop.3")).toBe(false);
   });
 
   it("handles enum with multiple invalid members", async () => {
@@ -278,29 +279,29 @@ describe("GraphQL Mutation Engine - Edge Cases", () => {
     const { _ValidName } = await tester.compile(t.code`model ${t.model("_ValidName")} { }`);
 
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateModel(_ValidName);
+    const result = engine.mutateModel(_ValidName);
 
-    expect(mutation.mutatedType.name).toBe("_ValidName");
+    expect(result.output?.mutatedType.name).toBe("_ValidName");
   });
 
   it("preserves names with numbers in the middle", async () => {
     const { Model123 } = await tester.compile(t.code`model ${t.model("Model123")} { }`);
 
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateModel(Model123);
+    const result = engine.mutateModel(Model123);
 
-    expect(mutation.mutatedType.name).toBe("Model123");
+    expect(result.output?.mutatedType.name).toBe("Model123");
   });
 
   it("handles property names starting with numbers", async () => {
     const { M } = await tester.compile(t.code`model ${t.model("M")} { \`123prop\`: string; }`);
 
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateModel(M);
-    const mutated = mutation.mutatedType;
+    const result = engine.mutateModel(M);
+    const mutated = result.output?.mutatedType;
 
-    expect(mutated.properties.has("_123prop")).toBe(true);
-    expect(mutated.properties.has("123prop")).toBe(false);
+    expect(mutated?.properties.has("_123prop")).toBe(true);
+    expect(mutated?.properties.has("123prop")).toBe(false);
   });
 
   it("handles enum member names starting with numbers", async () => {
@@ -311,5 +312,88 @@ describe("GraphQL Mutation Engine - Edge Cases", () => {
 
     expect(mutated.members.has("_123value")).toBe(true);
     expect(mutated.members.has("123value")).toBe(false);
+  });
+});
+
+describe("GraphQL Mutation Engine - Input/Output Splitting", () => {
+  let tester: Awaited<ReturnType<typeof Tester.createInstance>>;
+  beforeEach(async () => {
+    tester = await Tester.createInstance();
+  });
+
+  it("creates input variant for models used as operation parameters", async () => {
+    const { Person } = await tester.compile(
+      t.code`
+        model ${t.model("Person")} { name: string }
+        op createPerson(person: Person): void;
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const result = engine.mutateModel(Person);
+
+    // Should have input variant with "Input" suffix
+    expect(result.input?.mutatedType.name).toBe("PersonInput");
+  });
+
+  it("creates output variant for models used as return types", async () => {
+    const { Person } = await tester.compile(
+      t.code`
+        model ${t.model("Person")} { name: string }
+        op getPerson(): Person;
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const result = engine.mutateModel(Person);
+
+    // Should have output variant without suffix
+    expect(result.output?.mutatedType.name).toBe("Person");
+    // Should not have input variant
+    expect(result.input).toBeUndefined();
+  });
+
+  it("creates both variants for models used as both input and output", async () => {
+    const { Person } = await tester.compile(
+      t.code`
+        model ${t.model("Person")} { name: string }
+        op getPerson(): Person;
+        op updatePerson(person: Person): void;
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const result = engine.mutateModel(Person);
+
+    // Should have both variants
+    expect(result.output?.mutatedType.name).toBe("Person");
+    expect(result.input?.mutatedType.name).toBe("PersonInput");
+  });
+
+  it("applies name sanitization to input variants", async () => {
+    await tester.compile(
+      t.code`
+        model \`$Invalid$\` { name: string }
+        op create(data: \`$Invalid$\`): void;
+      `,
+    );
+
+    const InvalidModel = tester.program.getGlobalNamespaceType().models.get("$Invalid$")!;
+    const engine = createTestEngine(tester.program);
+    const result = engine.mutateModel(InvalidModel);
+
+    // Should sanitize name AND add Input suffix
+    expect(result.input?.mutatedType.name).toBe("_Invalid_Input");
+  });
+
+  it("defaults to output variant when no operations reference the model", async () => {
+    const { Standalone } = await tester.compile(t.code`model ${t.model("Standalone")} { }`);
+
+    const engine = createTestEngine(tester.program);
+    const result = engine.mutateModel(Standalone);
+
+    // Should only have output variant
+    expect(result.output?.mutatedType.name).toBe("Standalone");
+    expect(result.input).toBeUndefined();
   });
 });

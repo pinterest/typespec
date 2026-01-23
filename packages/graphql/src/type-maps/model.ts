@@ -5,6 +5,8 @@ import {
   GraphQLString,
   type GraphQLFieldConfigMap,
   type GraphQLInputFieldConfigMap,
+  type GraphQLInputType,
+  type GraphQLOutputType,
 } from "graphql";
 import { TypeMap, type TSPContext, type TypeKey } from "../type-maps.js";
 
@@ -32,31 +34,35 @@ export class ModelTypeMap extends TypeMap<Model, GraphQLObjectType | GraphQLInpu
 
     // Create InputObjectType for input usage, ObjectType for output
     if (context.usageFlag === UsageFlags.Input) {
-      return this.materializeInputType(name, tspModel);
+      return this.materializeInputType(tspModel, name);
     }
-    return this.materializeOutputType(name, tspModel);
+    return this.materializeOutputType(tspModel, name);
   }
 
-  private materializeOutputType(name: string, tspModel: Model): GraphQLObjectType {
+  /**
+   * Materialize as a GraphQLObjectType (output type).
+   */
+  private materializeOutputType(tspModel: Model, name: string): GraphQLObjectType {
     const fields: GraphQLFieldConfigMap<unknown, unknown> = {};
 
     for (const [propName, prop] of tspModel.properties) {
       fields[propName] = {
-        type: this.mapPropertyType(prop.type),
-        // TODO: Add description from doc comments
+        type: this.mapOutputType(prop.type),
       };
     }
 
     return new GraphQLObjectType({ name, fields });
   }
 
-  private materializeInputType(name: string, tspModel: Model): GraphQLInputObjectType {
+  /**
+   * Materialize as a GraphQLInputObjectType (input type).
+   */
+  private materializeInputType(tspModel: Model, name: string): GraphQLInputObjectType {
     const fields: GraphQLInputFieldConfigMap = {};
 
     for (const [propName, prop] of tspModel.properties) {
       fields[propName] = {
-        type: this.mapPropertyType(prop.type),
-        // TODO: Add description from doc comments
+        type: this.mapInputType(prop.type),
       };
     }
 
@@ -64,10 +70,19 @@ export class ModelTypeMap extends TypeMap<Model, GraphQLObjectType | GraphQLInpu
   }
 
   /**
-   * Map a TypeSpec property type to a GraphQL String type.
+   * Map a TypeSpec property type to a GraphQL output type.
    * TODO: Implement full type mapping with references to other registered types.
    */
-  private mapPropertyType(_type: unknown): typeof GraphQLString {
+  private mapOutputType(_type: unknown): GraphQLOutputType {
+    // Placeholder - will need to resolve references to other types
+    return GraphQLString;
+  }
+
+  /**
+   * Map a TypeSpec property type to a GraphQL input type.
+   * TODO: Implement full type mapping with references to other registered types.
+   */
+  private mapInputType(_type: unknown): GraphQLInputType {
     // Placeholder - will need to resolve references to other types
     return GraphQLString;
   }
