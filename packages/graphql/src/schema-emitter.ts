@@ -1,6 +1,7 @@
 import {
   createDiagnosticCollector,
   navigateTypesInNamespace,
+  UsageFlags,
   type Diagnostic,
   type DiagnosticCollector,
   type EmitContext,
@@ -57,13 +58,14 @@ class GraphQLSchemaEmitter {
         this.registry.addEnum(node);
       },
       model: (node: Model) => {
-        // Add logic to handle the model node
+        // TODO: Determine usageFlag from mutation engine or usage tracking
+        this.registry.addModel(node, UsageFlags.Output);
       },
       exitEnum: (node: Enum) => {
         this.registry.materializeEnum(node.name);
       },
       exitModel: (node: Model) => {
-        // Add logic to handle the exit of the model node
+        this.registry.materializeModel(node.name);
       },
     };
   }

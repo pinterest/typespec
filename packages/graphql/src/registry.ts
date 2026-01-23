@@ -1,13 +1,14 @@
-import { UsageFlags, type Enum } from "@typespec/compiler";
+import { UsageFlags, type Enum, type Model } from "@typespec/compiler";
 import {
   GraphQLBoolean,
   GraphQLEnumType,
+  GraphQLInputObjectType,
   GraphQLObjectType,
   type GraphQLNamedType,
   type GraphQLSchemaConfig,
 } from "graphql";
 import { type TypeKey } from "./type-maps.js";
-import { EnumTypeMap } from "./type-maps/index.js";
+import { EnumTypeMap, ModelTypeMap } from "./type-maps/index.js";
 /**
  * GraphQLTypeRegistry manages the registration and materialization of TypeSpec (TSP)
  * types into their corresponding GraphQL type definitions.
@@ -32,8 +33,9 @@ import { EnumTypeMap } from "./type-maps/index.js";
  *    by using thunks for fields/arguments.
  */
 export class GraphQLTypeRegistry {
-  // TypeMap for enum types
+  // TypeMaps for each type kind
   private enumTypeMap = new EnumTypeMap();
+  private modelTypeMap = new ModelTypeMap();
 
   // Track all registered names to detect cross-TypeMap name collisions
   private allRegisteredNames = new Set<string>();
@@ -55,14 +57,36 @@ export class GraphQLTypeRegistry {
     this.allRegisteredNames.add(enumName);
   }
 
-  // Materializes a TSP Enum into a GraphQLEnumType.
+  addModel(tspModel: Model, usageFlag: UsageFlags): void {
+    const modelName = tspModel.name;
+
+    // Check for duplicate names across all type maps
+    if (this.allRegisteredNames.has(modelName)) {
+      // Already registered (could be same model or name collision)
+      return;
+    }
+
+    this.modelTypeMap.register({
+      type: tspModel,
+      usageFlag,
+    });
+    this.allRegisteredNames.add(modelName);
+  }
+
   materializeEnum(enumName: string): GraphQLEnumType | undefined {
     return this.enumTypeMap.get(enumName as TypeKey);
   }
 
+  materializeModel(modelName: string): GraphQLObjectType | GraphQLInputObjectType | undefined {
+    return this.modelTypeMap.get(modelName as TypeKey);
+  }
+
   materializeSchemaConfig(): GraphQLSchemaConfig {
     // Collect all materialized types from all TypeMaps
-    const allMaterializedGqlTypes: GraphQLNamedType[] = [...this.enumTypeMap.getAllMaterialized()];
+    const allMaterializedGqlTypes: GraphQLNamedType[] = [
+      ...this.enumTypeMap.getAllMaterialized(),
+      ...this.modelTypeMap.getAllMaterialized(),
+    ];
     // TODO: Query type will come from operations
     let queryType: GraphQLObjectType | undefined = undefined;
     if (!queryType) {
