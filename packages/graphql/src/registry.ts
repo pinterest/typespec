@@ -1,4 +1,4 @@
-import { UsageFlags, type Enum, type Model } from "@typespec/compiler";
+import { UsageFlags, type Enum } from "@typespec/compiler";
 import {
   GraphQLBoolean,
   GraphQLEnumType,
@@ -6,15 +6,8 @@ import {
   type GraphQLNamedType,
   type GraphQLSchemaConfig,
 } from "graphql";
-
-// The TSPTypeContext interface represents the intermediate TSP type information before materialization.
-// It stores the raw TSP type and any extracted metadata relevant for GraphQL generation.
-interface TSPTypeContext {
-  tspType: Enum | Model; // Extend with other TSP types like Operation, Interface, TSP Union, etc.
-  name: string;
-  usageFlags?: Set<UsageFlags>;
-  // TODO: Add any other TSP-specific metadata here.
-}
+import { type TypeKey } from "./type-maps.js";
+import { EnumTypeMap } from "./type-maps/index.js";
 /**
  * GraphQLTypeRegistry manages the registration and materialization of TypeSpec (TSP)
  * types into their corresponding GraphQL type definitions.
@@ -39,61 +32,39 @@ interface TSPTypeContext {
  *    by using thunks for fields/arguments.
  */
 export class GraphQLTypeRegistry {
-  // Stores intermediate TSP type information, keyed by TSP type name.
-  // TODO: make this more of a seen set
-  private TSPTypeContextRegistry: Map<string, TSPTypeContext> = new Map();
+  // TypeMap for enum types
+  private enumTypeMap = new EnumTypeMap();
 
-  // Stores materialized GraphQL types, keyed by their GraphQL name.
-  private materializedGraphQLTypes: Map<string, GraphQLNamedType> = new Map();
+  // Track all registered names to detect cross-TypeMap name collisions
+  private allRegisteredNames = new Set<string>();
 
   addEnum(tspEnum: Enum): void {
     const enumName = tspEnum.name;
-    if (this.TSPTypeContextRegistry.has(enumName)) {
-      // Optionally, log a warning or update if new information is more complete.
+
+    // Check for duplicate names across all type maps
+    if (this.allRegisteredNames.has(enumName)) {
+      // Already registered (could be same enum or name collision)
+      // TODO: Add a warning to the diagnostics
       return;
     }
 
-    this.TSPTypeContextRegistry.set(enumName, {
-      tspType: tspEnum,
-      name: enumName,
-      // TODO: Populate usageFlags based on TSP context and other decorator context.
+    this.enumTypeMap.register({
+      type: tspEnum,
+      usageFlag: UsageFlags.Output, // Enums are same for input/output
     });
+    this.allRegisteredNames.add(enumName);
   }
 
   // Materializes a TSP Enum into a GraphQLEnumType.
   materializeEnum(enumName: string): GraphQLEnumType | undefined {
-    // Check if the GraphQL type is already materialized.
-    if (this.materializedGraphQLTypes.has(enumName)) {
-      return this.materializedGraphQLTypes.get(enumName) as GraphQLEnumType;
-    }
-
-    const context = this.TSPTypeContextRegistry.get(enumName);
-    if (!context || context.tspType.kind !== "Enum") {
-      // TODO: Handle error or warning for missing context.
-      return undefined;
-    }
-
-    const tspEnum = context.tspType as Enum;
-
-    const gqlEnum = new GraphQLEnumType({
-      name: context.name,
-      values: Object.fromEntries(
-        Array.from(tspEnum.members.values()).map((member) => [
-          member.name,
-          {
-            value: member.value ?? member.name,
-          },
-        ]),
-      ),
-    });
-
-    this.materializedGraphQLTypes.set(enumName, gqlEnum);
-    return gqlEnum;
+    return this.enumTypeMap.get(enumName as TypeKey);
   }
 
   materializeSchemaConfig(): GraphQLSchemaConfig {
-    const allMaterializedGqlTypes = Array.from(this.materializedGraphQLTypes.values());
-    let queryType = this.materializedGraphQLTypes.get("Query") as GraphQLObjectType | undefined;
+    // Collect all materialized types from all TypeMaps
+    const allMaterializedGqlTypes: GraphQLNamedType[] = [...this.enumTypeMap.getAllMaterialized()];
+    // TODO: Query type will come from operations
+    let queryType: GraphQLObjectType | undefined = undefined;
     if (!queryType) {
       queryType = new GraphQLObjectType({
         name: "Query",
