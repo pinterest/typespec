@@ -1,4 +1,4 @@
-import { UsageFlags, type Model } from "@typespec/compiler";
+import { UsageFlags, type Model, type Program, type Type } from "@typespec/compiler";
 import {
   GraphQLInputObjectType,
   GraphQLObjectType,
@@ -9,6 +9,7 @@ import {
   type GraphQLOutputType,
 } from "graphql";
 import { TypeMap, type TSPContext, type TypeKey } from "../type-maps.js";
+import { getIntrinsicGraphQLType } from "./intrinsic.js";
 
 /**
  * TypeMap for converting TypeSpec Models to GraphQL ObjectTypes or InputObjectTypes.
@@ -18,6 +19,12 @@ import { TypeMap, type TSPContext, type TypeKey } from "../type-maps.js";
  * The usageFlag in TSPContext determines which type to create.
  */
 export class ModelTypeMap extends TypeMap<Model, GraphQLObjectType | GraphQLInputObjectType> {
+  private program: Program;
+
+  constructor(program: Program) {
+    super();
+    this.program = program;
+  }
   /**
    * Derives the type key from the mutated model's name.
    */
@@ -71,19 +78,43 @@ export class ModelTypeMap extends TypeMap<Model, GraphQLObjectType | GraphQLInpu
 
   /**
    * Map a TypeSpec property type to a GraphQL output type.
-   * TODO: Implement full type mapping with references to other registered types.
    */
-  private mapOutputType(_type: unknown): GraphQLOutputType {
-    // Placeholder - will need to resolve references to other types
+  private mapOutputType(type: Type): GraphQLOutputType {
+    // Handle Scalar types (including intrinsics)
+    if (type.kind === "Scalar") {
+      const intrinsicType = getIntrinsicGraphQLType(this.program, type);
+      if (intrinsicType) {
+        return intrinsicType;
+      }
+
+      // If not an intrinsic, it's a custom scalar
+      // TODO: Handle custom scalars in PR #4
+      return GraphQLString; // Placeholder for custom scalars
+    }
+
+    // TODO: Handle other types (Model, Enum, Array, Union) in future PRs
     return GraphQLString;
   }
 
   /**
    * Map a TypeSpec property type to a GraphQL input type.
-   * TODO: Implement full type mapping with references to other registered types.
    */
-  private mapInputType(_type: unknown): GraphQLInputType {
-    // Placeholder - will need to resolve references to other types
+  private mapInputType(type: Type): GraphQLInputType {
+    // Handle Scalar types (including intrinsics)
+    if (type.kind === "Scalar") {
+      // Check if it's an intrinsic scalar
+      const intrinsicType = getIntrinsicGraphQLType(this.program, type);
+      if (intrinsicType) {
+        return intrinsicType;
+      }
+
+      // If not an intrinsic, it's a custom scalar
+      // TODO: Handle custom scalars in PR #4
+      return GraphQLString; // Placeholder for custom scalars
+    }
+
+    // TODO: Handle other types (Model, Enum, Array) in future PRs
+    // Note: Unions cannot be input types in GraphQL
     return GraphQLString;
   }
 }

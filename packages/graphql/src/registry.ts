@@ -1,4 +1,4 @@
-import { UsageFlags, type Enum, type Model } from "@typespec/compiler";
+import { UsageFlags, type Enum, type Model, type ModelProperty, type Program } from "@typespec/compiler";
 import {
   GraphQLBoolean,
   GraphQLEnumType,
@@ -6,6 +6,7 @@ import {
   GraphQLObjectType,
   type GraphQLNamedType,
   type GraphQLSchemaConfig,
+  type GraphQLType,
 } from "graphql";
 import { type TypeKey } from "./type-maps.js";
 import { EnumTypeMap, ModelTypeMap } from "./type-maps/index.js";
@@ -35,10 +36,14 @@ import { EnumTypeMap, ModelTypeMap } from "./type-maps/index.js";
 export class GraphQLTypeRegistry {
   // TypeMaps for each type kind
   private enumTypeMap = new EnumTypeMap();
-  private modelTypeMap = new ModelTypeMap();
+  private modelTypeMap: ModelTypeMap;
 
   // Track all registered names to detect cross-TypeMap name collisions
   private allRegisteredNames = new Set<string>();
+
+  constructor(program: Program) {
+    this.modelTypeMap = new ModelTypeMap(program);
+  }
 
   addEnum(tspEnum: Enum): void {
     const enumName = tspEnum.name;
@@ -72,6 +77,7 @@ export class GraphQLTypeRegistry {
     });
     this.allRegisteredNames.add(modelName);
   }
+
 
   materializeEnum(enumName: string): GraphQLEnumType | undefined {
     return this.enumTypeMap.get(enumName as TypeKey);
