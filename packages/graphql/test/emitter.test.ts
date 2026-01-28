@@ -2,7 +2,16 @@ import { strictEqual } from "node:assert";
 import { describe, it } from "vitest";
 import { emitSingleSchema } from "./test-host.js";
 
-const expectedGraphQLSchema = `type Book {
+// Expected output with models and enums. Note: field types are placeholders (String) until
+// type resolution is fully implemented.
+const expectedGraphQLSchema = `enum Genre {
+  _Fiction_
+  NonFiction
+  Mystery
+  Fantasy
+}
+
+type Book {
   name: String
   page_count: String
   published: String
@@ -21,8 +30,8 @@ type Query {
   _: Boolean
 }`;
 
-describe("name", () => {
-  it("Emits a schema.graphql file with placeholder text", async () => {
+describe("emitter", () => {
+  it("emits models and enums with mutations applied", async () => {
     const code = `
       @schema
       namespace TestNamespace {
@@ -35,6 +44,12 @@ describe("name", () => {
         model Author {
           name: string;
           books: Book[];
+        }
+        enum Genre {
+          $Fiction$,
+          NonFiction,
+          Mystery,
+          Fantasy,
         }
         op getBooks(): Book[];
         op getAuthors(): Author[];

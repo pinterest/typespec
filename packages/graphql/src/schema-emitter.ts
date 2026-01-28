@@ -1,5 +1,8 @@
 import {
   createDiagnosticCollector,
+  isArrayModelType,
+  isRecordModelType,
+  navigateType,
   navigateTypesInNamespace,
   UsageFlags,
   type Diagnostic,
@@ -7,10 +10,15 @@ import {
   type EmitContext,
   type Enum,
   type Model,
+  type Type,
 } from "@typespec/compiler";
 import { GraphQLSchema, validateSchema } from "graphql";
 import { type GraphQLEmitterOptions } from "./lib.js";
 import type { Schema } from "./lib/schema.js";
+import {
+  createGraphQLMutationEngine,
+  type GraphQLMutationEngine,
+} from "./mutation-engine/index.js";
 import { GraphQLTypeRegistry } from "./registry.js";
 
 class GraphQLSchemaEmitter {
@@ -19,26 +27,36 @@ class GraphQLSchemaEmitter {
   private options: GraphQLEmitterOptions;
   private diagnostics: DiagnosticCollector;
   private registry: GraphQLTypeRegistry;
+  private engine: GraphQLMutationEngine;
+
   constructor(
     tspSchema: Schema,
     context: EmitContext<GraphQLEmitterOptions>,
     options: GraphQLEmitterOptions,
   ) {
-    // Initialize any properties if needed, including the registry
     this.tspSchema = tspSchema;
     this.context = context;
     this.options = options;
     this.diagnostics = createDiagnosticCollector();
     this.registry = new GraphQLTypeRegistry();
+    this.engine = createGraphQLMutationEngine(context.program, tspSchema.type);
   }
 
   async emitSchema(): Promise<[GraphQLSchema, Readonly<Diagnostic[]>] | undefined> {
-    const schemaNamespace = this.tspSchema.type;
-    // Logic to emit the GraphQL schema
-    navigateTypesInNamespace(schemaNamespace, this.semanticNodeListener());
+    // Pass 1: Mutation - collect all mutated types
+    const mutatedTypes: Type[] = [];
+    navigateTypesInNamespace(this.tspSchema.type, this.mutationListeners(mutatedTypes));
+
+    // Pass 2: Emission - navigate mutated types to register and materialize
+    const emissionListeners = this.emissionListeners();
+    for (const type of mutatedTypes) {
+      navigateType(type, emissionListeners, {});
+    }
+
     const schemaConfig = this.registry.materializeSchemaConfig();
     const schema = new GraphQLSchema(schemaConfig);
-    // validate the schema
+
+    // Validate the schema
     const validationErrors = validateSchema(schema);
     validationErrors.forEach((error) => {
       this.diagnostics.add({
@@ -51,20 +69,49 @@ class GraphQLSchemaEmitter {
     return [schema, this.diagnostics.diagnostics];
   }
 
-  semanticNodeListener() {
-    // TODO: Add GraphQL types to registry as the TSP nodes are visited
+  /**
+   * Pass 1: Mutation listeners - mutate types and collect them
+   */
+  mutationListeners(mutatedTypes: Type[]) {
+    return {
+      enum: (node: Enum) => {
+        const mutation = this.engine.mutateEnum(node);
+        mutatedTypes.push(mutation.mutatedType);
+      },
+      model: (node: Model) => {
+        const mutation = this.engine.mutateModel(node);
+        mutatedTypes.push(mutation.mutatedType);
+      },
+    };
+  }
+
+  /**
+   * Pass 2: Emission listeners - register and materialize mutated types
+   */
+  emissionListeners() {
     return {
       enum: (node: Enum) => {
         this.registry.addEnum(node);
       },
       model: (node: Model) => {
-        // TODO: Determine usageFlag from mutation engine or usage tracking
+        if (
+          isArrayModelType(this.context.program, node) ||
+          isRecordModelType(this.context.program, node)
+        ) {
+          return;
+        }
         this.registry.addModel(node, UsageFlags.Output);
       },
       exitEnum: (node: Enum) => {
         this.registry.materializeEnum(node.name);
       },
       exitModel: (node: Model) => {
+        if (
+          isArrayModelType(this.context.program, node) ||
+          isRecordModelType(this.context.program, node)
+        ) {
+          return;
+        }
         this.registry.materializeModel(node.name);
       },
     };
@@ -76,7 +123,6 @@ export function createSchemaEmitter(
   context: EmitContext<GraphQLEmitterOptions>,
   options: GraphQLEmitterOptions,
 ): GraphQLSchemaEmitter {
-  // Placeholder for creating a GraphQL schema emitter
   return new GraphQLSchemaEmitter(schema, context, options);
 }
 
