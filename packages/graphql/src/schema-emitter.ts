@@ -34,7 +34,7 @@ class GraphQLSchemaEmitter {
     this.context = context;
     this.options = options;
     this.diagnostics = createDiagnosticCollector();
-    this.registry = new GraphQLTypeRegistry();
+    this.registry = new GraphQLTypeRegistry(context.program);
     this.engine = createGraphQLMutationEngine(context.program, tspSchema.type);
   }
 

@@ -1,0 +1,24 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Intrinsic Type Mapping > Snapshot tests > snapshot: basic intrinsic types schema 1`] = `
+"type Book {
+  id: Int
+  title: String
+  pages: Int
+  rating: Float
+  available: Boolean
+}
+
+type Author {
+  id: Int
+  name: String
+  booksWritten: Int
+}
+
+type Query {
+  """
+  A placeholder field. If you are seeing this, it means no operations were defined that could be emitted.
+  """
+  _: Boolean
+}"
+`;
