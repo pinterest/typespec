@@ -20,24 +20,12 @@ export interface GraphQLEmitterOptions {
   "output-file"?: string;
 
   /**
-   * Set the newline character for emitting files.
-   * @default lf
-   */
-  "new-line"?: "crlf" | "lf";
-
-  /**
    * Omit unreachable types.
    * By default all types declared under the schema namespace will be included. With this flag on only types references in an operation will be emitted.
    * @default false
    */
   "omit-unreachable-types"?: boolean;
 
-  /**
-   * Only emit types if a correct GraphQL translation type is found. Don't emit Any types and operations that don't have the GraphQL decorators.
-   * By default a best effort is made to emit all types.
-   * @default false
-   */
-  strict?: boolean;
 }
 
 const EmitterOptionsSchema: JSONSchemaType<GraphQLEmitterOptions> = {
@@ -62,13 +50,6 @@ const EmitterOptionsSchema: JSONSchemaType<GraphQLEmitterOptions> = {
         " - `Org1.Schema2.graphql`",
       ].join("\n"),
     },
-    "new-line": {
-      type: "string",
-      enum: ["crlf", "lf"],
-      default: "lf",
-      nullable: true,
-      description: "Set the newLine character for emitting files.",
-    },
     "omit-unreachable-types": {
       type: "boolean",
       nullable: true,
@@ -76,15 +57,6 @@ const EmitterOptionsSchema: JSONSchemaType<GraphQLEmitterOptions> = {
         "Omit unreachable types.",
         "By default all types declared under the schema namespace will be included.",
         "With this flag on only types references in an operation will be emitted.",
-      ].join("\n"),
-    },
-    strict: {
-      type: "boolean",
-      nullable: true,
-      description: [
-        "Only emit types if a correct GraphQL translation type is found.",
-        "Don't emit Any types and operations that don't have the GraphQL decorators.",
-        "By default a best effort is made to emit all types.",
       ].join("\n"),
     },
   },

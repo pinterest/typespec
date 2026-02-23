@@ -1,10 +1,16 @@
-import { emitFile, interpolatePath, type EmitContext } from "@typespec/compiler";
-import { printSchema } from "graphql";
+import { emitFile, interpolatePath, type Diagnostic, type EmitContext } from "@typespec/compiler";
+import { type GraphQLSchema, printSchema } from "graphql";
 import type { ResolvedGraphQLEmitterOptions } from "./emitter.js";
 import type { GraphQLEmitterOptions } from "./lib.js";
+import type { Schema } from "./lib/schema.js";
 import { listSchemas } from "./lib/schema.js";
 import { createSchemaEmitter } from "./schema-emitter.js";
-import type { GraphQLSchemaRecord } from "./types.js";
+
+interface GraphQLSchemaRecord {
+  readonly schema: Schema;
+  readonly graphQLSchema: GraphQLSchema;
+  readonly diagnostics: readonly Diagnostic[];
+}
 
 export function createGraphQLEmitter(
   context: EmitContext<GraphQLEmitterOptions>,
@@ -34,7 +40,6 @@ export function createGraphQLEmitter(
         await emitFile(program, {
           path: filePath,
           content: printSchema(schemaRecord.graphQLSchema),
-          newLine: options.newLine,
         });
       }
     }
@@ -47,7 +52,7 @@ export function createGraphQLEmitter(
       schemas.push({ type: program.getGlobalNamespaceType() });
     }
     for (const schema of schemas) {
-      const schemaEmitter = createSchemaEmitter(schema, context, options);
+      const schemaEmitter = createSchemaEmitter(schema, context, context.options);
       const document = await schemaEmitter.emitSchema();
       if (document === undefined) {
         continue;

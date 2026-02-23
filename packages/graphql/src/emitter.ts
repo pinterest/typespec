@@ -1,12 +1,10 @@
-import type { EmitContext, NewLine } from "@typespec/compiler";
+import type { EmitContext } from "@typespec/compiler";
 import { resolvePath } from "@typespec/compiler";
 import { createGraphQLEmitter } from "./graphql-emitter.js";
 import type { GraphQLEmitterOptions } from "./lib.js";
 
 const defaultOptions = {
-  "new-line": "lf",
   "omit-unreachable-types": false,
-  strict: false,
 } as const;
 
 export async function $onEmit(context: EmitContext<GraphQLEmitterOptions>) {
@@ -17,9 +15,7 @@ export async function $onEmit(context: EmitContext<GraphQLEmitterOptions>) {
 
 export interface ResolvedGraphQLEmitterOptions {
   outputFile: string;
-  newLine: NewLine;
   omitUnreachableTypes: boolean;
-  strict: boolean;
 }
 
 export function resolveOptions(
@@ -30,8 +26,6 @@ export function resolveOptions(
 
   return {
     outputFile: resolvePath(context.emitterOutputDir, outputFile),
-    newLine: resolvedOptions["new-line"],
     omitUnreachableTypes: resolvedOptions["omit-unreachable-types"],
-    strict: resolvedOptions["strict"],
   };
 }
