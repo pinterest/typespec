@@ -2,17 +2,37 @@ import { strictEqual } from "node:assert";
 import { describe, it } from "vitest";
 import { emitSingleSchema } from "./test-host.js";
 
-// For now, the expected output is a placeholder string.
-// In the future, this should be replaced with the actual GraphQL schema output.
-const expectedGraphQLSchema = `type Query {
+// Expected output with proper type resolution, arrays, and nullability
+const expectedGraphQLSchema = `enum Genre {
+  _Fiction_
+  NonFiction
+  Mystery
+  Fantasy
+}
+
+type Book {
+  name: String!
+  page_count: Int!
+  published: Boolean!
+  price: Float!
+}
+
+type Author {
+  name: String!
+  books: [Book!]!
+}
+
+type Query {
   """
-  A placeholder field. If you are seeing this, it means no operations were defined that could be emitted.
+  Placeholder field. No query operations were defined in the TypeSpec schema.
   """
   _: Boolean
-}`;
+}
 
-describe("name", () => {
-  it("Emits a schema.graphql file with placeholder text", async () => {
+`;
+
+describe("emitter", () => {
+  it("emits models and enums with mutations applied", async () => {
     const code = `
       @schema
       namespace TestNamespace {
@@ -25,6 +45,12 @@ describe("name", () => {
         model Author {
           name: string;
           books: Book[];
+        }
+        enum Genre {
+          $Fiction$,
+          NonFiction,
+          Mystery,
+          Fantasy,
         }
         op getBooks(): Book[];
         op getAuthors(): Author[];
