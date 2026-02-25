@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  convertNumericEnumValue,
   getSingleNameWithNamespace,
   sanitizeNameForGraphQL,
   toEnumMemberName,
@@ -40,6 +41,29 @@ describe("type-utils", () => {
 
     it("uses custom prefix for invalid starting character", () => {
       expect(sanitizeNameForGraphQL("123Name", "Num")).toBe("Num_123Name");
+    });
+
+    it("prefixes GraphQL reserved keywords", () => {
+      expect(sanitizeNameForGraphQL("true")).toBe("_true");
+      expect(sanitizeNameForGraphQL("false")).toBe("_false");
+      expect(sanitizeNameForGraphQL("null")).toBe("_null");
+    });
+
+    it("uses custom prefix for reserved keywords", () => {
+      expect(sanitizeNameForGraphQL("true", "Val")).toBe("Valtrue");
+    });
+
+    it("handles case-insensitive reserved keyword check", () => {
+      expect(sanitizeNameForGraphQL("True")).toBe("_True");
+      expect(sanitizeNameForGraphQL("FALSE")).toBe("_FALSE");
+      expect(sanitizeNameForGraphQL("Null")).toBe("_Null");
+    });
+
+    it("preserves double-underscore prefix", () => {
+      // Double-underscore names are reserved by GraphQL introspection, but sanitizeNameForGraphQL
+      // doesn't strip them since TypeSpec names won't normally start with __ and the camelCase
+      // prefixCharacters option relies on preserving leading underscores.
+      expect(sanitizeNameForGraphQL("__typename")).toBe("__typename");
     });
   });
 
@@ -124,6 +148,43 @@ describe("type-utils", () => {
 
     it("handles names without namespace", () => {
       expect(getSingleNameWithNamespace("MyType")).toBe("MyType");
+    });
+  });
+
+  describe("convertNumericEnumValue", () => {
+    it("converts zero", () => {
+      expect(convertNumericEnumValue(0)).toBe("_0");
+    });
+
+    it("converts positive integers", () => {
+      expect(convertNumericEnumValue(1)).toBe("_1");
+      expect(convertNumericEnumValue(42)).toBe("_42");
+    });
+
+    it("converts negative integers", () => {
+      expect(convertNumericEnumValue(-1)).toBe("_NEGATIVE_1");
+      expect(convertNumericEnumValue(-42)).toBe("_NEGATIVE_42");
+    });
+
+    it("converts positive decimals", () => {
+      expect(convertNumericEnumValue(0.25)).toBe("_0_25");
+      expect(convertNumericEnumValue(3.14)).toBe("_3_14");
+    });
+
+    it("converts negative decimals", () => {
+      expect(convertNumericEnumValue(-2.5)).toBe("_NEGATIVE_2_5");
+    });
+
+    it("handles NaN", () => {
+      expect(convertNumericEnumValue(NaN)).toBe("_NaN");
+    });
+
+    it("handles Infinity", () => {
+      expect(convertNumericEnumValue(Infinity)).toBe("_Infinity");
+    });
+
+    it("handles negative Infinity", () => {
+      expect(convertNumericEnumValue(-Infinity)).toBe("_NEGATIVE_Infinity");
     });
   });
 });
