@@ -24,6 +24,7 @@ import {
   GraphQLScalarMutation,
   GraphQLUnionMutation,
 } from "./mutations/index.js";
+import { GraphQLMutationOptions, GraphQLTypeContext } from "./options.js";
 
 /**
  * Registry configuration for the GraphQL mutation engine.
@@ -49,7 +50,12 @@ const graphqlMutationRegistry = {
 
 /**
  * GraphQL mutation engine that applies GraphQL-specific transformations
- * to TypeSpec types, such as name sanitization.
+ * to TypeSpec types, such as name sanitization, scalar mapping, and
+ * input/output type splitting via mutation keys.
+ *
+ * When an operation is mutated, parameters are automatically mutated with
+ * input context and return types with output context. The mutation framework's
+ * cache ensures each (type, context) pair produces a separate mutation.
  */
 export class GraphQLMutationEngine {
   /**
@@ -71,6 +77,15 @@ export class GraphQLMutationEngine {
   }
 
   /**
+   * Mutate a model with explicit input/output context.
+   * Models mutated with different contexts produce separate cached mutations,
+   * allowing the same source model to have both an input and output variant.
+   */
+  mutateModelAs(model: Model, context: GraphQLTypeContext): GraphQLModelMutation {
+    return this.engine.mutate(model, new GraphQLMutationOptions(context)) as GraphQLModelMutation;
+  }
+
+  /**
    * Mutate an enum, applying GraphQL name sanitization.
    */
   mutateEnum(enumType: Enum): GraphQLEnumMutation {
@@ -79,6 +94,8 @@ export class GraphQLMutationEngine {
 
   /**
    * Mutate an operation, applying GraphQL name sanitization.
+   * Parameters are automatically mutated with input context,
+   * return types with output context.
    */
   mutateOperation(operation: Operation): GraphQLOperationMutation {
     return this.engine.mutate(operation, new SimpleMutationOptions()) as GraphQLOperationMutation;

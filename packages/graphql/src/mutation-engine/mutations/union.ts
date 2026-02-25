@@ -140,16 +140,22 @@ export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, Mu
    * GraphQL doesn't support nested unions, so union Pet { cat: Cat, animal: Animal }
    * where Animal is itself a union becomes union Pet { Cat | Bear | Lion }
    */
-  private flattenUnionVariants(union: Union): Array<{ name: string | symbol; type: Type }> {
+  private flattenUnionVariants(
+    union: Union,
+    seen: Set<Union> = new Set(),
+  ): Array<{ name: string | symbol; type: Type }> {
+    if (seen.has(union)) {
+      return [];
+    }
+    seen.add(union);
+
     const flattened: Array<{ name: string | symbol; type: Type }> = [];
 
     for (const variant of union.variants.values()) {
       if (variant.type.kind === "Union") {
-        // Recursively flatten nested union
-        const nestedVariants = this.flattenUnionVariants(variant.type as Union);
+        const nestedVariants = this.flattenUnionVariants(variant.type as Union, seen);
         flattened.push(...nestedVariants);
       } else {
-        // Regular variant (not a union)
         flattened.push({ name: variant.name, type: variant.type });
       }
     }

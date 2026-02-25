@@ -1,4 +1,5 @@
 export { GraphQLMutationEngine, createGraphQLMutationEngine } from "./engine.js";
+export { GraphQLMutationOptions, GraphQLTypeContext } from "./options.js";
 export {
   GraphQLEnumMemberMutation,
   GraphQLEnumMutation,
