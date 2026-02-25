@@ -7,6 +7,7 @@ import {
   type SimpleMutations,
 } from "@typespec/mutator-framework";
 import { sanitizeNameForGraphQL } from "../../lib/type-utils.js";
+import { GraphQLMutationOptions, GraphQLTypeContext } from "../options.js";
 
 /**
  * GraphQL-specific Model mutation.
@@ -20,6 +21,16 @@ export class GraphQLModelMutation extends SimpleModelMutation<SimpleMutationOpti
     info: MutationInfo,
   ) {
     super(engine, sourceType, referenceTypes, options, info);
+  }
+
+  /**
+   * The input/output context this model was mutated with, if any.
+   * Undefined when the model was mutated directly (not through an operation).
+   */
+  get typeContext(): GraphQLTypeContext | undefined {
+    return this.options instanceof GraphQLMutationOptions
+      ? this.options.typeContext
+      : undefined;
   }
 
   mutate() {
