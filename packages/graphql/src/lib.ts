@@ -136,6 +136,12 @@ export const libDef = {
         default: paramMessage`Property \`${"property"}\` is incompatible with \`${"interface"}\`.`,
       },
     },
+    "unrecognized-union": {
+      severity: "error",
+      messages: {
+        default: "Unrecognized union construction. Union must be named, a return type, a model property, or an alias.",
+      },
+    },
   },
   emitter: {
     options: EmitterOptionsSchema as JSONSchemaType<GraphQLEmitterOptions>,

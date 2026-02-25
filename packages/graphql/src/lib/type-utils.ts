@@ -25,6 +25,24 @@ import {
   type UnionStatementNode,
 } from "@typespec/compiler/ast";
 import { camelCase, constantCase, pascalCase, split, splitSeparateNumbers } from "change-case";
+import { reportDiagnostic } from "../lib.js";
+
+/**
+ * Check if a union represents a nullable type (e.g., string | null).
+ * @returns The non-null variant type if this is a nullable union, otherwise undefined.
+ */
+export function getNullableUnionType(union: Union): Type | undefined {
+  if (union.variants.size !== 2) return undefined;
+
+  const variants = Array.from(union.variants.values());
+  const nullVariant = variants.find(
+    (v) => v.type.kind === "Intrinsic" && v.type.name === "null"
+  );
+
+  if (!nullVariant) return undefined;
+
+  return variants.find((v) => v !== nullVariant)?.type;
+}
 
 /** Generate a GraphQL type name for a templated model (e.g., `ListOfString`). */
 export function getTemplatedModelName(model: Model): string {
@@ -39,16 +57,15 @@ function splitWithAcronyms(
   skipStart: boolean,
   name: string,
 ): string[] {
-  const result = split(name);
+  const parts = split(name);
 
   if (name === name.toUpperCase()) {
-    return result;
+    return parts;
   }
   // Preserve strings of capital letters, e.g. "API" should be treated as three words ["A", "P", "I"] instead of one word
-  return result.flatMap((part) => {
-    const result = !skipStart && part.match(/^[A-Z]+$/) ? part.split("") : part;
-    skipStart = false;
-    return result;
+  return parts.flatMap((part, index) => {
+    const isFirst = index === 0;
+    return !(skipStart && isFirst) && part.match(/^[A-Z]+$/) ? part.split("") : part;
   });
 }
 
@@ -64,14 +81,42 @@ export function toTypeName(name: string): string {
   });
 }
 
+/**
+ * Names reserved by the GraphQL specification that cannot be used as identifiers.
+ * - `true`, `false`, `null` are keyword literals in GraphQL
+ * - Names starting with `__` are reserved for the introspection system
+ */
+const GRAPHQL_RESERVED_NAMES = new Set(["true", "false", "null"]);
+
 /** Sanitize a name to be a valid GraphQL identifier. */
 export function sanitizeNameForGraphQL(name: string, prefix: string = ""): string {
   name = name.replace("[]", "Array");
   name = name.replaceAll(/\W/g, "_");
-  if (!name.match("^[_a-zA-Z]")) {
+  if (!/^[_a-zA-Z]/.test(name)) {
     name = `${prefix}_${name}`;
   }
+  // Guard against GraphQL reserved keywords
+  if (GRAPHQL_RESERVED_NAMES.has(name.toLowerCase())) {
+    name = `${prefix || "_"}${name}`;
+  }
   return name;
+}
+
+/**
+ * Convert a numeric enum value to a valid GraphQL identifier.
+ * Examples:
+ * - 0 → _0
+ * - 0.25 → _0_25
+ * - -1 → _NEGATIVE_1
+ */
+export function convertNumericEnumValue(value: number): string {
+  if (value < 0) {
+    // Negative numbers: -1 → _NEGATIVE_1, -2.5 → _NEGATIVE_2_5
+    return `_NEGATIVE_${Math.abs(value).toString().replace(/\./g, "_")}`;
+  } else {
+    // Non-negative numbers: 0 → _0, 0.25 → _0_25
+    return `_${value.toString().replace(/\./g, "_")}`;
+  }
 }
 
 /** Convert a name to CONSTANT_CASE for GraphQL enum members. */
@@ -130,7 +175,11 @@ export function getUnionName(union: Union, program: Program): string {
       return `${aliasName}${templateString}`;
 
     default:
-      throw new Error("Unrecognized union construction.");
+      reportDiagnostic(program, {
+        code: "unrecognized-union",
+        target: union,
+      });
+      return "UnknownUnion";
   }
 }
 
@@ -256,7 +305,7 @@ function getTemplateStringInternal(
   args: string[],
   options: { conjunction: string } = { conjunction: "And" },
 ): string {
-  return args.length > 0 ? toTypeName(args.map(toTypeName).join(options.conjunction)) : "";
+  return args.length > 0 ? args.map(toTypeName).join(options.conjunction) : "";
 }
 
 /** Check if a model should be emitted as a GraphQL object type (not an array, record, or never). */
