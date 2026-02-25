@@ -1,7 +1,6 @@
 import {
   type Enum,
   type Model,
-  type Namespace,
   type Operation,
   type Program,
   type Scalar,
@@ -59,7 +58,7 @@ export class GraphQLMutationEngine {
    */
   private engine;
 
-  constructor(program: Program, _namespace: Namespace) {
+  constructor(program: Program) {
     const tk = $(program);
     this.engine = new MutationEngine(tk, graphqlMutationRegistry);
   }
@@ -101,11 +100,8 @@ export class GraphQLMutationEngine {
 }
 
 /**
- * Creates a GraphQL mutation engine for the given program and namespace.
+ * Creates a GraphQL mutation engine for the given program.
  */
-export function createGraphQLMutationEngine(
-  program: Program,
-  namespace: Namespace,
-): GraphQLMutationEngine {
-  return new GraphQLMutationEngine(program, namespace);
+export function createGraphQLMutationEngine(program: Program): GraphQLMutationEngine {
+  return new GraphQLMutationEngine(program);
 }

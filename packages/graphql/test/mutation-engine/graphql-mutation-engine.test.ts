@@ -4,13 +4,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { createGraphQLMutationEngine } from "../../src/mutation-engine/index.js";
 import { Tester } from "../test-host.js";
 
-/**
- * Helper to create the engine with the global namespace.
- * For unit tests, we use the global namespace since individual types
- * aren't placed in a custom namespace.
- */
 function createTestEngine(program: Parameters<typeof createGraphQLMutationEngine>[0]) {
-  return createGraphQLMutationEngine(program, program.getGlobalNamespaceType());
+  return createGraphQLMutationEngine(program);
 }
 
 describe("GraphQL Mutation Engine - Enums", () => {

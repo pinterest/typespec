@@ -15,7 +15,6 @@ export interface ScalarMapping {
 
 /**
  * Mapping table for TypeSpec standard library scalars to GraphQL custom scalars.
- * Based on design doc: https://github.com/microsoft/typespec/issues/4933
  */
 const SCALAR_MAPPINGS: Record<string, Record<string, ScalarMapping>> = {
   // int64 → BigInt (String)
@@ -48,7 +47,7 @@ const SCALAR_MAPPINGS: Record<string, Record<string, ScalarMapping>> = {
     },
   },
 
-  // bytes with different encodings
+  // bytes — requires @encode to determine format; without encoding, no GraphQL mapping applies
   bytes: {
     base64: {
       graphqlName: "Bytes",
@@ -62,7 +61,7 @@ const SCALAR_MAPPINGS: Record<string, Record<string, ScalarMapping>> = {
     },
   },
 
-  // utcDateTime with different encodings
+  // utcDateTime — requires @encode to determine wire format; no default mapping without encoding
   utcDateTime: {
     rfc3339: {
       graphqlName: "UTCDateTime",
@@ -80,7 +79,7 @@ const SCALAR_MAPPINGS: Record<string, Record<string, ScalarMapping>> = {
     },
   },
 
-  // offsetDateTime with different encodings
+  // offsetDateTime — requires @encode to determine wire format; no default mapping without encoding
   offsetDateTime: {
     rfc3339: {
       graphqlName: "OffsetDateTime",
@@ -106,7 +105,7 @@ const SCALAR_MAPPINGS: Record<string, Record<string, ScalarMapping>> = {
     },
   },
 
-  // duration with different encodings
+  // duration — requires @encode to determine wire format; no default mapping without encoding
   duration: {
     ISO8601: {
       graphqlName: "Duration",
