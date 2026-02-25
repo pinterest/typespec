@@ -6,4 +6,5 @@ export {
   GraphQLModelPropertyMutation,
   GraphQLOperationMutation,
   GraphQLScalarMutation,
+  GraphQLUnionMutation,
 } from "./mutations/index.js";
