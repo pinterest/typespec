@@ -1,7 +1,8 @@
+import { strictEqual } from "node:assert";
 import { expectDiagnosticEmpty, expectDiagnostics, t } from "@typespec/compiler/testing";
 import { describe, expect, it } from "vitest";
 import { getOperationFields } from "../src/lib/operation-fields.js";
-import { Tester } from "./test-host.js";
+import { emitSingleSchema, Tester } from "./test-host.js";
 
 describe("@operationFields", () => {
   it("can add an operation to the model", async () => {
@@ -156,15 +157,50 @@ describe("@operationFields", () => {
     it("allows adding operations with a different argument order", async () => {
       const diagnostics = await Tester.diagnose(`
         op testOperation(a: string, b: integer): void;
-  
+
         interface TestInterface {
           op testOperation(b: integer, a: string): void;
         }
-  
+
         @operationFields(testOperation, TestInterface.testOperation)
         model TestModel {}
       `);
       expectDiagnosticEmpty(diagnostics);
+    });
+  });
+
+  describe("SDL output", () => {
+    it("emits operation fields on types", async () => {
+      const code = `
+        @schema
+        namespace TestNamespace {
+          model Comment {
+            id: string;
+            text: string;
+          }
+
+          @operationFields(getComments)
+          model Post {
+            id: string;
+            title: string;
+          }
+
+          @query
+          op getPost(id: string): Post;
+
+          @query
+          op getComments(postId: string): Comment[];
+        }
+      `;
+
+      const result = await emitSingleSchema(code, {});
+
+      // Post should have the getComments field
+      const postTypeMatch = result.match(/type Post \{[^}]+\}/s);
+      strictEqual(postTypeMatch !== null, true);
+      if (postTypeMatch) {
+        strictEqual(postTypeMatch[0].includes("getComments(postId: String!): [Comment!]"), true);
+      }
     });
   });
 });

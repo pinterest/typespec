@@ -1,3 +1,4 @@
+import { strictEqual } from "node:assert";
 import {
   expectDiagnosticEmpty,
   expectDiagnostics,
@@ -6,7 +7,7 @@ import {
 } from "@typespec/compiler/testing";
 import { describe, expect, it } from "vitest";
 import { getComposition, isInterface } from "../src/lib/interface.js";
-import { Tester } from "./test-host.js";
+import { emitSingleSchema, Tester } from "./test-host.js";
 
 describe("@Interface", () => {
   it("Marks the model as an interface", async () => {
@@ -212,5 +213,57 @@ describe("@compose", () => {
       }
     `);
     expectDiagnosticEmpty(diagnostics);
+  });
+
+  describe("SDL output", () => {
+    it("emits interface definitions and implementations", async () => {
+      const code = `
+        @schema
+        namespace TestNamespace {
+          /** Base interface for all nodes with an ID */
+          @Interface
+          model Node {
+            id: string;
+          }
+
+          /** Base interface for timestamped entities */
+          @Interface
+          model Timestamped {
+            createdAt: string;
+            updatedAt: string;
+          }
+
+          @compose(Node, Timestamped)
+          model User {
+            ...Node;
+            ...Timestamped;
+            name: string;
+            email: string;
+          }
+
+          @compose(Node, Timestamped)
+          model Post {
+            ...Node;
+            ...Timestamped;
+            title: string;
+            content: string;
+          }
+
+          @query
+          op getUser(id: string): User;
+
+          @query
+          op getPost(id: string): Post;
+        }
+      `;
+
+      const result = await emitSingleSchema(code, {});
+
+      strictEqual(result.includes('"""Base interface for all nodes with an ID"""'), true);
+      strictEqual(result.includes("interface Node {"), true);
+      strictEqual(result.includes("interface Timestamped {"), true);
+      strictEqual(result.includes("type User implements Node & Timestamped {"), true);
+      strictEqual(result.includes("type Post implements Node & Timestamped {"), true);
+    });
   });
 });

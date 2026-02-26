@@ -256,6 +256,68 @@ describe("input/output type splitting", () => {
     }
   });
 
+  it("handles complex nested input/output splitting with correct variant references", async () => {
+    const code = `
+      @schema
+      namespace TestNamespace {
+        model Address {
+          street: string;
+          city: string;
+          country: string;
+        }
+
+        model ContactInfo {
+          email: string;
+          phone?: string;
+          address: Address;
+        }
+
+        model User {
+          id: string;
+          name: string;
+          contact: ContactInfo;
+          friends: User[];
+        }
+
+        @mutation
+        op createUser(name: string, contact: ContactInfo): User;
+
+        @query
+        op getUser(id: string): User;
+
+        @mutation
+        op updateUser(id: string, user: User): User;
+      }
+    `;
+
+    const result = await emitSingleSchema(code, {});
+
+    // All models used as both input and output should have both variants
+    strictEqual(result.includes("type User {"), true);
+    strictEqual(result.includes("input UserInput {"), true);
+    strictEqual(result.includes("type ContactInfo {"), true);
+    strictEqual(result.includes("input ContactInfoInput {"), true);
+    strictEqual(result.includes("type Address {"), true);
+    strictEqual(result.includes("input AddressInput {"), true);
+
+    // Check correct usage in operations
+    strictEqual(result.includes("createUser(name: String!, contact: ContactInfoInput!): User"), true);
+    strictEqual(result.includes("updateUser(id: String!, user: UserInput!): User"), true);
+
+    // Check nested references use correct variant
+    const userInputMatch = result.match(/input UserInput \{[^}]+\}/s);
+    strictEqual(userInputMatch !== null, true);
+    if (userInputMatch) {
+      strictEqual(userInputMatch[0].includes("contact: ContactInfoInput!"), true);
+    }
+
+    const contactInfoInputMatch = result.match(/input ContactInfoInput \{[^}]+\}/s);
+    strictEqual(contactInfoInputMatch !== null, true);
+    if (contactInfoInputMatch) {
+      strictEqual(contactInfoInputMatch[0].includes("address: AddressInput!"), true);
+    }
+  });
+
   it("handles deeply nested models with input/output splitting", async () => {
     const code = `
       @schema
