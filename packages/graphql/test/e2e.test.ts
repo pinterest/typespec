@@ -1,6 +1,6 @@
 import { strictEqual, ok } from "node:assert";
 import { describe, it } from "vitest";
-import { emitSingleSchema } from "./test-host.js";
+import { emitSingleSchema, emitSingleSchemaWithDiagnostics } from "./test-host.js";
 
 /**
  * End-to-end tests that compile complete TypeSpec schemas and verify
@@ -270,6 +270,217 @@ describe("End-to-end", () => {
     // CreateUserInput is only used as input
     ok(result.includes("input CreateUserInput {"), "CreateUserInput should be input type");
     strictEqual(result.includes("type CreateUserInput"), false, "CreateUserInput should NOT be output type");
+  });
+
+  it("emits models and enums with mutations applied", async () => {
+    const expectedGraphQLSchema = `enum Genre {
+  _Fiction_
+  NonFiction
+  Mystery
+  Fantasy
+}
+
+type Book {
+  name: String!
+  page_count: Int!
+  published: Boolean!
+  price: Float!
+}
+
+type Author {
+  name: String!
+  books: [Book!]!
+}
+
+type Query {
+  """
+  Placeholder field. No query operations were defined in the TypeSpec schema.
+  """
+  _: Boolean
+}
+
+`;
+
+    const code = `
+      @schema
+      namespace TestNamespace {
+        model Book {
+          name: string;
+          page_count: int32;
+          published: boolean;
+          price: float64;
+        }
+        model Author {
+          name: string;
+          books: Book[];
+        }
+        enum Genre {
+          $Fiction$,
+          NonFiction,
+          Mystery,
+          Fantasy,
+        }
+        op getBooks(): Book[];
+        op getAuthors(): Author[];
+      }
+    `;
+    const results = await emitSingleSchema(code, {});
+    strictEqual(results, expectedGraphQLSchema);
+  });
+
+  it("does not error on empty schema (placeholder Query is generated)", async () => {
+    const code = `
+      @schema
+      namespace EmptySchema {
+      }
+    `;
+
+    const result = await emitSingleSchemaWithDiagnostics(code, {});
+    const errors = result.diagnostics.filter((d) => d.severity === "error");
+    strictEqual(errors.length, 0, "Should have no errors for empty schema");
+  });
+
+  it("generates valid schema for basic types", async () => {
+    const code = `
+      @schema
+      namespace TestNamespace {
+        model Book {
+          id: string;
+          title: string;
+        }
+
+        @query
+        op getBook(id: string): Book;
+      }
+    `;
+
+    const result = await emitSingleSchemaWithDiagnostics(code, {});
+    const errors = result.diagnostics.filter((d) => d.severity === "error");
+    strictEqual(errors.length, 0, "Should have no errors for valid schema");
+    strictEqual(result.graphQLOutput?.includes("type Book {"), true, "Should contain Book type");
+    strictEqual(result.graphQLOutput?.includes("type Query {"), true, "Should contain Query type");
+  });
+
+  it("generates valid empty Query type when no operations defined", async () => {
+    const code = `
+      @schema
+      namespace TestNamespace {
+        model User {
+          id: string;
+          name: string;
+        }
+      }
+    `;
+
+    const result = await emitSingleSchema(code, {});
+
+    strictEqual(result.includes("type Query {"), true);
+    strictEqual(result.includes("Placeholder field"), true);
+    strictEqual(result.includes("_: Boolean"), true);
+  });
+
+  it("handles models with all GraphQL field types", async () => {
+    const code = `
+      @schema
+      namespace TestNamespace {
+        scalar DateTime;
+
+        enum Role {
+          Admin,
+          User,
+          Guest,
+        }
+
+        @Interface
+        model Node {
+          id: string;
+        }
+
+        model Tag {
+          name: string;
+        }
+
+        union Content {
+          text: string,
+          number: int32,
+        }
+
+        @compose(Node)
+        model Article {
+          ...Node;
+          title: string;
+          published: DateTime;
+          role: Role;
+          tags: Tag[];
+          categories: string[];
+          viewCount: int32;
+          rating?: float32;
+          content: Content;
+        }
+
+        @query
+        op getArticle(id: string): Article;
+      }
+    `;
+
+    const result = await emitSingleSchema(code, {});
+
+    strictEqual(result.includes("scalar DateTime"), true);
+    strictEqual(result.includes("enum Role {"), true);
+    strictEqual(result.includes("interface Node {"), true);
+    strictEqual(result.includes("union Content"), true);
+    strictEqual(result.includes("type Article implements Node {"), true);
+    strictEqual(result.includes("title: String!"), true);
+    strictEqual(result.includes("published: DateTime!"), true);
+    strictEqual(result.includes("role: Role!"), true);
+    strictEqual(result.includes("tags: [Tag!]!"), true);
+    strictEqual(result.includes("categories: [String!]!"), true);
+    strictEqual(result.includes("viewCount: Int!"), true);
+    strictEqual(result.includes("rating: Float"), true); // optional
+    strictEqual(result.includes("content: Content!"), true);
+  });
+
+  it("generates Query with placeholder when only mutations exist", async () => {
+    const code = `
+      @schema
+      namespace TestNamespace {
+        model User {
+          id: string;
+          name: string;
+        }
+
+        @mutation
+        op setUserName(id: string, name: string): User;
+      }
+    `;
+
+    const result = await emitSingleSchema(code, {});
+
+    // Should have placeholder Query
+    strictEqual(result.includes("type Query {"), true);
+    strictEqual(result.includes("_: Boolean"), true);
+
+    // Should have Mutation
+    strictEqual(result.includes("type Mutation {"), true);
+    strictEqual(result.includes("setUserName(id: String!, name: String!): User"), true);
+  });
+
+  it("emits operation parameters as arguments", async () => {
+    const code = `
+      @schema
+      namespace TestNamespace {
+        model User {
+          id: string;
+          name: string;
+        }
+
+        @query
+        op getUser(id: string, includeDeleted: boolean): User;
+      }
+    `;
+
+    const result = await emitSingleSchema(code, {});
+    strictEqual(result.includes("getUser(id: String!, includeDeleted: Boolean!): User"), true);
   });
 
   it("generates valid SDL that graphql-js can parse for complex schema", async () => {

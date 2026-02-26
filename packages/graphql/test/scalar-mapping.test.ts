@@ -412,6 +412,46 @@ describe("Scalar Mapping", () => {
     });
   });
 
+  describe("Custom scalars with descriptions", () => {
+    it("supports custom scalar types with doc comments", async () => {
+      const code = `
+        @schema
+        namespace TestNamespace {
+          /** ISO 8601 date-time string */
+          scalar DateTime;
+
+          /** Valid URL string */
+          scalar URL;
+
+          /** Arbitrary JSON value */
+          scalar JSON;
+
+          model Event {
+            id: string;
+            timestamp: DateTime;
+            website: URL;
+            metadata: JSON;
+          }
+
+          @query
+          op getEvent(id: string): Event;
+        }
+      `;
+
+      const result = await emitSingleSchema(code, {});
+
+      strictEqual(result.includes('"""ISO 8601 date-time string"""'), true);
+      strictEqual(result.includes("scalar DateTime"), true);
+      strictEqual(result.includes('"""Valid URL string"""'), true);
+      strictEqual(result.includes("scalar URL"), true);
+      strictEqual(result.includes('"""Arbitrary JSON value"""'), true);
+      strictEqual(result.includes("scalar JSON"), true);
+      strictEqual(result.includes("timestamp: DateTime!"), true);
+      strictEqual(result.includes("website: URL!"), true);
+      strictEqual(result.includes("metadata: JSON!"), true);
+    });
+  });
+
   describe("Custom user-defined scalars", () => {
     it("passes through custom scalars unchanged (sanitized)", async () => {
       const code = `

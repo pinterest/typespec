@@ -440,6 +440,174 @@ describe("Nullability vs. Optionality", () => {
     });
   });
 
+  describe("Output field nullability", () => {
+    it("marks optional fields as nullable", async () => {
+      const code = `
+        @schema
+        namespace TestNamespace {
+          model User {
+            id: string;
+            nickname?: string;
+          }
+
+          @query
+          op getUser(): User;
+        }
+      `;
+
+      const result = await emitSingleSchema(code, {});
+      strictEqual(result.includes("id: String!"), true);
+      strictEqual(result.includes("nickname: String"), true);
+      // nickname should NOT have ! (it's optional/nullable)
+      strictEqual(result.includes("nickname: String!"), false);
+    });
+
+    it("marks T | null union fields as nullable", async () => {
+      const code = `
+        @schema
+        namespace TestNamespace {
+          model User {
+            id: string;
+            bio: string | null;
+          }
+
+          @query
+          op getUser(): User;
+        }
+      `;
+
+      const result = await emitSingleSchema(code, {});
+      strictEqual(result.includes("id: String!"), true);
+      // bio should be nullable (no !)
+      strictEqual(result.includes("bio: String!"), false);
+      strictEqual(result.includes("bio: String"), true);
+    });
+
+    it("handles optional properties correctly in both output and input", async () => {
+      const code = `
+        @schema
+        namespace TestNamespace {
+          model User {
+            id: string;
+            name: string;
+            email?: string;
+            phoneNumber?: string;
+          }
+
+          @query
+          op getUser(id: string): User;
+
+          @mutation
+          op updateUser(id: string, email?: string, phoneNumber?: string): User;
+        }
+      `;
+
+      const result = await emitSingleSchema(code, {});
+
+      // Required fields should have !
+      strictEqual(result.includes("id: String!"), true);
+      strictEqual(result.includes("name: String!"), true);
+
+      // Optional fields should not have !
+      const userTypeMatch = result.match(/type User \{[^}]+\}/s);
+      strictEqual(userTypeMatch !== null, true);
+      if (userTypeMatch) {
+        strictEqual(userTypeMatch[0].includes("email: String\n"), true);
+        strictEqual(userTypeMatch[0].includes("phoneNumber: String\n"), true);
+      }
+
+      // Optional parameters in mutations — in input context, ? does NOT make nullable
+      strictEqual(result.includes("updateUser(id: String!, email: String!, phoneNumber: String!): User"), true);
+    });
+  });
+
+  describe("Comprehensive nullability combinations", () => {
+    it("handles all combinations of optional and nullable from design doc table", async () => {
+      const code = `
+        @schema
+        namespace TestNamespace {
+          model Foo {
+            a: string;
+            b?: string;
+            c: string | null;
+            d?: string | null;
+          }
+
+          @query
+          op getFoo(): Foo;
+
+          @mutation
+          op patchFoo(foo: Foo): Foo;
+        }
+      `;
+
+      const result = await emitSingleSchema(code, {});
+
+      // Output type field nullability (from design doc table)
+      const fooTypeMatch = result.match(/type Foo \{[^}]+\}/s);
+      strictEqual(fooTypeMatch !== null, true);
+      if (fooTypeMatch) {
+        const fooType = fooTypeMatch[0];
+        // a: string -> a: String!
+        strictEqual(fooType.includes("a: String!"), true);
+        // b?: string -> b: String
+        strictEqual(fooType.includes("b: String\n") || fooType.includes("b: String "), true);
+        // c: string | null -> c: String
+        strictEqual(fooType.includes("c: String\n") || fooType.includes("c: String "), true);
+        // d?: string | null -> d: String
+        strictEqual(fooType.includes("d: String\n") || fooType.includes("d: String "), true);
+      }
+
+      // Input type field nullability (design doc: ? does NOT make nullable in input)
+      const fooInputMatch = result.match(/input FooInput \{[^}]+\}/s);
+      strictEqual(fooInputMatch !== null, true);
+      if (fooInputMatch) {
+        const fooInput = fooInputMatch[0];
+        // a: string -> a: String!
+        strictEqual(fooInput.includes("a: String!"), true);
+        // b?: string -> b: String! (optional ignored in input context)
+        strictEqual(fooInput.includes("b: String!"), true);
+        // c: string | null -> c: String (| null makes nullable)
+        strictEqual(fooInput.includes("c: String!"), false);
+        // d?: string | null -> d: String (| null makes nullable)
+        strictEqual(fooInput.includes("d: String!"), false);
+      }
+    });
+
+    it("handles list nullability variations", async () => {
+      const code = `
+        @schema
+        namespace TestNamespace {
+          model Foo {
+            a: string[];
+            b: Array<string | null>;
+            c?: string[];
+            d: string[] | null;
+          }
+
+          @query
+          op getFoo(): Foo;
+        }
+      `;
+
+      const result = await emitSingleSchema(code, {});
+
+      const fooTypeMatch = result.match(/type Foo \{[^}]+\}/s);
+      strictEqual(fooTypeMatch !== null, true);
+      if (fooTypeMatch) {
+        const fooType = fooTypeMatch[0];
+        // a: string[] -> a: [String!]!
+        strictEqual(fooType.includes("a: [String!]!"), true);
+        // b: Array<string | null> -> b: [String]!
+        strictEqual(fooType.includes("b: [String]!"), true);
+        // c?: string[] -> c: [String!]
+        strictEqual(fooType.includes("c: [String!]\n") || fooType.includes("c: [String!] "), true);
+        // d: string[] | null -> d: [String!]
+        strictEqual(fooType.includes("d: [String!]\n") || fooType.includes("d: [String!] "), true);
+      }
+    });
+  });
+
   describe("Query parameter nullability", () => {
     it("optional query params are non-null (input context)", async () => {
       const code = `
