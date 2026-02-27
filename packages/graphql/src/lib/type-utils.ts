@@ -64,8 +64,9 @@ function splitWithAcronyms(
   }
   // Preserve strings of capital letters, e.g. "API" should be treated as three words ["A", "P", "I"] instead of one word
   return parts.flatMap((part, index) => {
-    const isFirst = index === 0;
-    return !(skipStart && isFirst) && part.match(/^[A-Z]+$/) ? part.split("") : part;
+    if (skipStart && index === 0) return part;
+    if (part.match(/^[A-Z]+$/)) return part.split("");
+    return part;
   });
 }
 

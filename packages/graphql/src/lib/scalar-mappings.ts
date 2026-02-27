@@ -8,7 +8,7 @@ export interface ScalarMapping {
   /** The GraphQL scalar name to emit */
   graphqlName: string;
   /** The base GraphQL type (String, Int, or Float) */
-  baseType: "String" | "Int" | "Float";
+  baseType: "String" | "Int" | "Float" | "Boolean" | "ID";
   /** Optional URL to specification for @specifiedBy directive */
   specificationUrl?: string;
 }
@@ -16,12 +16,13 @@ export interface ScalarMapping {
 /**
  * Mapping table for TypeSpec standard library scalars to GraphQL custom scalars.
  */
-const SCALAR_MAPPINGS: Record<string, Record<string, ScalarMapping>> = {
-  // int64 → BigInt (String)
+const SCALAR_MAPPINGS = {
+  // int64 → Long (String)
   int64: {
     default: {
-      graphqlName: "BigInt",
+      graphqlName: "Long",
       baseType: "String",
+      specificationUrl: "http://scalars.graphql.org/jakobmerrild/long.html",
     },
   },
 
@@ -52,7 +53,7 @@ const SCALAR_MAPPINGS: Record<string, Record<string, ScalarMapping>> = {
     base64: {
       graphqlName: "Bytes",
       baseType: "String",
-      specificationUrl: "https://datatracker.ietf.org/doc/html/rfc4648",
+      specificationUrl: "https://datatracker.ietf.org/doc/html/rfc4648#section-4",
     },
     base64url: {
       graphqlName: "BytesUrl",
@@ -89,7 +90,7 @@ const SCALAR_MAPPINGS: Record<string, Record<string, ScalarMapping>> = {
     rfc7231: {
       graphqlName: "OffsetDateTimeHuman",
       baseType: "String",
-      specificationUrl: "https://datatracker.ietf.org/doc/html/rfc7231",
+      specificationUrl: "https://datatracker.ietf.org/doc/html/rfc7231#section-7.1.1.1",
     },
     unixTimestamp: {
       graphqlName: "OffsetDateTimeUnix",
@@ -172,7 +173,7 @@ export function getScalarMapping(
   }
 
   const scalarName = scalar.name;
-  const mappingTable = SCALAR_MAPPINGS[scalarName];
+  const mappingTable = (SCALAR_MAPPINGS as Record<string, Record<string, ScalarMapping>>)[scalarName];
 
   if (!mappingTable) {
     return undefined;

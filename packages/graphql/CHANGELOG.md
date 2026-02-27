@@ -1,1 +1,0 @@
-# Change Log - @typespec/graphql

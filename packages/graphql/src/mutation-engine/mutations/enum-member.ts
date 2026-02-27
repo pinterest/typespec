@@ -47,7 +47,6 @@ export class GraphQLEnumMemberMutation extends EnumMemberMutation<
       // use that value to generate the name. Check node.value to see if it was explicit.
       if (
         this.sourceType.node?.value &&
-        this.sourceType.value !== undefined &&
         typeof this.sourceType.value === "number"
       ) {
         member.name = convertNumericEnumValue(this.sourceType.value);
