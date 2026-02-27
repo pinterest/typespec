@@ -13,8 +13,8 @@ import { getNullableUnionType, toTypeName } from "../../lib/type-utils.js";
 
 /**
  * GraphQL-specific Union mutation.
- * Creates synthetic wrapper models for scalar union variants since
- * GraphQL unions can only contain object types.
+ * Flattens nested unions and creates synthetic wrapper models for scalar
+ * union variants since GraphQL unions can only contain object types.
  */
 export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, MutationEngine<any>> {
   #mutationNode: UnionMutationNode;
@@ -45,7 +45,8 @@ export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, Mu
   }
 
   /**
-   * Get the wrapper models that were created for scalar variants
+   * Synthetic wrapper models created for scalar union variants.
+   * These are collected by the emitter and emitted as separate GraphQL object types.
    */
   get wrapperModels() {
     return this.#wrapperModels;
@@ -110,7 +111,7 @@ export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, Mu
       if (isScalar) {
         // Create a synthetic wrapper model for this scalar variant
         // Include union name to prevent collisions between different unions with same variant names
-        const variantName = typeof variant.name === "string" ? variant.name : String(variant.name);
+        const variantName = typeof variant.name === "string" ? variant.name : (variant.name.description ?? "");
         const unionName = this.sourceType.name ?? "";
         const wrapperName = toTypeName(unionName) + toTypeName(variantName) + "UnionVariant";
 
