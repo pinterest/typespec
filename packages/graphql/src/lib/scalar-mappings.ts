@@ -57,7 +57,7 @@ const SCALAR_MAPPINGS: Record<string, Record<string, ScalarMapping>> = {
     base64url: {
       graphqlName: "BytesUrl",
       baseType: "String",
-      specificationUrl: "https://datatracker.ietf.org/doc/html/rfc4648",
+      specificationUrl: "https://datatracker.ietf.org/doc/html/rfc4648#section-5",
     },
   },
 
