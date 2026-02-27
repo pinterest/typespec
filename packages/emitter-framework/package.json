@@ -34,6 +34,9 @@
     "./python": {
       "import": "./dist/src/python/index.js"
     },
+    "./graphql": {
+      "import": "./dist/src/graphql/index.js"
+    },
     "./testing": {
       "import": "./dist/src/testing/index.js"
     }
@@ -55,6 +58,10 @@
     "#python/*": {
       "development": "./src/python/*",
       "default": "./dist/src/python/*"
+    },
+    "#graphql/*": {
+      "development": "./src/graphql/*",
+      "default": "./dist/src/graphql/*"
     }
   },
   "keywords": [],
@@ -64,6 +71,7 @@
   "peerDependencies": {
     "@alloy-js/core": "^0.22.0",
     "@alloy-js/csharp": "^0.22.0",
+    "@alloy-js/graphql": "^0.1.0",
     "@alloy-js/python": "^0.3.0",
     "@alloy-js/typescript": "^0.22.0",
     "@typespec/compiler": "workspace:^"
@@ -71,6 +79,7 @@
   "devDependencies": {
     "@alloy-js/cli": "^0.22.0",
     "@alloy-js/core": "^0.22.0",
+    "@alloy-js/graphql": "^0.1.0",
     "@alloy-js/python": "^0.3.0",
     "@alloy-js/rollup-plugin": "^0.1.0",
     "@alloy-js/typescript": "^0.22.0",
