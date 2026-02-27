@@ -22,7 +22,6 @@ import {
   type ModelStatementNode,
   type Node,
   SyntaxKind,
-  type UnionStatementNode,
 } from "@typespec/compiler/ast";
 import { camelCase, constantCase, pascalCase, split, splitSeparateNumbers } from "change-case";
 import { reportDiagnostic } from "../lib.js";
@@ -53,16 +52,18 @@ export function getTemplatedModelName(model: Model): string {
 }
 
 function splitWithAcronyms(
-  split: (name: string) => string[],
+  splitFn: (name: string) => string[],
   skipStart: boolean,
   name: string,
 ): string[] {
-  const parts = split(name);
+  const parts = splitFn(name);
 
   if (name === name.toUpperCase()) {
     return parts;
   }
-  // Preserve strings of capital letters, e.g. "API" should be treated as three words ["A", "P", "I"] instead of one word
+  // Split consecutive capital letters into individual characters for proper casing,
+  // e.g. "API" becomes ["A", "P", "I"] so PascalCase produces "Api" → but we preserve
+  // all-caps names at the toTypeName level, so this only affects mixed-case like "APIResponse".
   return parts.flatMap((part, index) => {
     const isFirst = index === 0;
     return !(skipStart && isFirst) && part.match(/^[A-Z]+$/) ? part.split("") : part;
@@ -83,8 +84,11 @@ export function toTypeName(name: string): string {
 
 /**
  * Names reserved by the GraphQL specification that cannot be used as identifiers.
- * - `true`, `false`, `null` are keyword literals in GraphQL
- * - Names starting with `__` are reserved for the introspection system
+ * `true`, `false`, `null` are keyword literals in GraphQL.
+ *
+ * Note: Names starting with `__` are reserved by GraphQL for introspection,
+ * but we don't strip them here — TypeSpec names won't normally start with `__`
+ * and the camelCase/PascalCase `prefixCharacters` option needs leading underscores preserved.
  */
 const GRAPHQL_RESERVED_NAMES = new Set(["true", "false", "null"]);
 
@@ -142,45 +146,43 @@ function getNameWithoutNamespace(name: string): string {
 
 /** Generate a GraphQL type name for a union, including anonymous unions. */
 export function getUnionName(union: Union, program: Program): string {
-  // SyntaxKind.UnionExpression: Foo | Bar
-  // SyntaxKind.UnionStatement: union FooBarUnion { Foo, Bar }
-  // SyntaxKind.TypeReference: FooBarUnion
+  const ts = getTemplateString(union);
+  const templateString = ts ? "Of" + ts : "";
 
-  const templateString = getTemplateString(union) ? "Of" + getTemplateString(union) : "";
-
-  switch (true) {
-    case !!union.name:
-      // The union is not anonymous, use its name
-      return union.name;
-
-    case isReturnType(union):
-      // The union is a return type, use the name of the operation
-      // e.g. op getBaz(): Foo | Bar => GetBazUnion
-      return `${getUnionNameForOperation(program, union)}${templateString}Union`;
-
-    case isModelProperty(union):
-      // The union is a model property, name it based on the model + property
-      // e.g. model Foo { bar: Bar | Baz } => FooBarUnion
-      const modelProperty = getModelProperty(union);
-      const propName = toTypeName(getNameForNode(modelProperty!));
-      const unionModel = union.node?.parent?.parent as ModelStatementNode;
-      const modelName = unionModel ? getNameForNode(unionModel) : "";
-      return `${modelName}${propName}${templateString}Union`;
-
-    case isAliased(union):
-      // The union is an alias, name it based on the alias name
-      // e.g. alias Baz = Foo<string> | Bar => Baz
-      const alias = getAlias(union);
-      const aliasName = getNameForNode(alias!);
-      return `${aliasName}${templateString}`;
-
-    default:
-      reportDiagnostic(program, {
-        code: "unrecognized-union",
-        target: union,
-      });
-      return "UnknownUnion";
+  // Named union — use its name directly
+  if (union.name) {
+    return union.name;
   }
+
+  // Anonymous return type — name after the operation
+  // e.g. op getBaz(): Foo | Bar => GetBazUnion
+  if (isReturnType(union)) {
+    return `${getUnionNameForOperation(program, union)}${templateString}Union`;
+  }
+
+  // Anonymous model property — name after model + property
+  // e.g. model Foo { bar: Bar | Baz } => FooBarUnion
+  const modelProperty = getModelProperty(union);
+  if (modelProperty) {
+    const propName = toTypeName(getNameForNode(modelProperty));
+    const unionModel = union.node?.parent?.parent as ModelStatementNode;
+    const modelName = unionModel ? getNameForNode(unionModel) : "";
+    return `${modelName}${propName}${templateString}Union`;
+  }
+
+  // Alias — name after the alias
+  // e.g. alias Baz = Foo<string> | Bar => Baz
+  const alias = getAlias(union);
+  if (alias) {
+    const aliasName = getNameForNode(alias);
+    return `${aliasName}${templateString}`;
+  }
+
+  reportDiagnostic(program, {
+    code: "unrecognized-union",
+    target: union,
+  });
+  return "UnknownUnion";
 }
 
 function isNamedType(type: Type | Value | IndeterminateEntity): type is { name: string } & Type {
@@ -218,8 +220,9 @@ function getNameForNode(node: NamedNode): string {
 }
 
 function getUnionNameForOperation(program: Program, union: Union): string {
-  const operationNode = (union.node as UnionStatementNode).parent?.parent;
-  const operation = program.checker.getTypeForNode(operationNode!);
+  const operationNode = union.node?.parent?.parent;
+  if (!operationNode) return "Unknown";
+  const operation = program.checker.getTypeForNode(operationNode);
 
   return toTypeName(getTypeName(operation));
 }
@@ -305,26 +308,19 @@ function getTemplateStringInternal(
   args: string[],
   options: { conjunction: string } = { conjunction: "And" },
 ): string {
+  // Apply toTypeName to convert raw compiler names (e.g., "string") to GraphQL PascalCase ("String")
   return args.length > 0 ? args.map(toTypeName).join(options.conjunction) : "";
 }
 
 /** Check if a model should be emitted as a GraphQL object type (not an array, record, or never). */
 export function isTrueModel(model: Model): boolean {
-  /* eslint-disable no-fallthrough */
-  switch (true) {
-    // A scalar array is represented as a model with an indexer
-    // and a scalar type. We don't want to emit this as a model.
-    case isScalarOrEnumArray(model):
-    // A union array is represented as a model with an indexer
-    // and a union type. We don't want to emit this as a model.
-    case isUnionArray(model):
-    case isNeverType(model):
-    // If the model is purely a record, we don't want to emit it as a model.
-    // Instead, we will need to create a scalar
-    case isRecordType(model) && [...walkPropertiesInherited(model)].length === 0:
-      return false;
-    default:
-      return true;
-  }
-  /* eslint-enable no-fallthrough */
+  return !(
+    // Array of scalars/enums — represented as a list type, not an object type
+    isScalarOrEnumArray(model) ||
+    // Array of unions — represented as a list type, not an object type
+    isUnionArray(model) ||
+    isNeverType(model) ||
+    // Pure record with no properties — emitted as a custom scalar, not an object type
+    (isRecordType(model) && [...walkPropertiesInherited(model)].length === 0)
+  );
 }
