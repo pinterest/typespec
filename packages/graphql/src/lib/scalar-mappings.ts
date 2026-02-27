@@ -150,7 +150,7 @@ const SCALAR_MAPPINGS: Record<string, Record<string, ScalarMapping>> = {
       baseType: "String",
     },
   },
-};
+} as const;
 
 /**
  * Get the GraphQL scalar mapping for a TypeSpec scalar.
