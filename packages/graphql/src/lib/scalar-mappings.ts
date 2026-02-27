@@ -66,7 +66,7 @@ const SCALAR_MAPPINGS: Record<string, Record<string, ScalarMapping>> = {
     rfc3339: {
       graphqlName: "UTCDateTime",
       baseType: "String",
-      specificationUrl: "https://datatracker.ietf.org/doc/html/rfc3339",
+      specificationUrl: "https://scalars.graphql.org/chillicream/date-time.html",
     },
     rfc7231: {
       graphqlName: "UTCDateTimeHuman",
