@@ -1,4 +1,4 @@
-import type { MemberType, Model, Type, Union } from "@typespec/compiler";
+import { type MemberType, type Model, type Type, type Union, getTypeName } from "@typespec/compiler";
 import {
   MutationEngine,
   MutationHalfEdge,
@@ -9,6 +9,7 @@ import {
   UnionMutationNode,
   UnionVariantMutationNode,
 } from "@typespec/mutator-framework";
+import { reportDiagnostic } from "../../lib.js";
 import { getNullableUnionType, toTypeName } from "../../lib/type-utils.js";
 
 /**
@@ -78,7 +79,9 @@ export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, Mu
     }
 
     // Flatten nested unions: collect all variants recursively
-    const flattenedVariants = this.flattenUnionVariants(this.sourceType);
+    const flattenedVariants = this.deduplicateVariants(
+      this.flattenUnionVariants(this.sourceType),
+    );
 
     // Check if we need to flatten (contains nested unions)
     const needsFlattening = flattenedVariants.length !== this.sourceType.variants.size;
@@ -162,5 +165,31 @@ export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, Mu
     }
 
     return flattened;
+  }
+
+  /**
+   * Remove duplicate variants by type identity. If two variants reference the
+   * same type, the first occurrence wins and a diagnostic is emitted.
+   */
+  private deduplicateVariants(
+    variants: Array<{ name: string | symbol; type: Type }>,
+  ): Array<{ name: string | symbol; type: Type }> {
+    const seen = new Map<Type, { name: string | symbol; type: Type }>();
+    const result: Array<{ name: string | symbol; type: Type }> = [];
+
+    for (const variant of variants) {
+      if (seen.has(variant.type)) {
+        reportDiagnostic(this.engine.$.program, {
+          code: "duplicate-union-variant",
+          format: { type: getTypeName(variant.type) },
+          target: this.sourceType,
+        });
+      } else {
+        seen.set(variant.type, variant);
+        result.push(variant);
+      }
+    }
+
+    return result;
   }
 }

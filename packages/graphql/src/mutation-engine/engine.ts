@@ -58,10 +58,9 @@ const graphqlMutationRegistry = {
  * cache ensures each (type, context) pair produces a separate mutation.
  */
 export class GraphQLMutationEngine {
-  /**
-   * The underlying mutation engine configured with GraphQL-specific mutation classes.
-   * Type is inferred from MutationEngine constructor to avoid complex generic constraints.
-   */
+  // Type is inferred from the MutationEngine constructor. Explicitly typing as
+  // MutationEngine<typeof graphqlMutationRegistry> doesn't work because the
+  // generic expects instance types, not constructor types.
   private engine;
 
   constructor(program: Program) {
@@ -70,7 +69,8 @@ export class GraphQLMutationEngine {
   }
 
   /**
-   * Mutate a model, applying GraphQL name sanitization.
+   * Mutate a model without input/output context, applying GraphQL name sanitization.
+   * Use `mutateModelAs` when the model needs to be split into input/output variants.
    */
   mutateModel(model: Model): GraphQLModelMutation {
     return this.engine.mutate(model, new SimpleMutationOptions()) as GraphQLModelMutation;
