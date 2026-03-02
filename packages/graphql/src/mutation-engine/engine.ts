@@ -69,19 +69,11 @@ export class GraphQLMutationEngine {
   }
 
   /**
-   * Mutate a model without input/output context, applying GraphQL name sanitization.
-   * Use `mutateModelAs` when the model needs to be split into input/output variants.
-   */
-  mutateModel(model: Model): GraphQLModelMutation {
-    return this.engine.mutate(model, new SimpleMutationOptions()) as GraphQLModelMutation;
-  }
-
-  /**
    * Mutate a model with explicit input/output context.
    * Models mutated with different contexts produce separate cached mutations,
    * allowing the same source model to have both an input and output variant.
    */
-  mutateModelAs(model: Model, context: GraphQLTypeContext): GraphQLModelMutation {
+  mutateModel(model: Model, context: GraphQLTypeContext): GraphQLModelMutation {
     return this.engine.mutate(model, new GraphQLMutationOptions(context)) as GraphQLModelMutation;
   }
 
