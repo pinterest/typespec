@@ -107,7 +107,7 @@ describe("GraphQL Mutation Engine - Models", () => {
     const { ValidModel } = await tester.compile(t.code`model ${t.model("ValidModel")} { }`);
 
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateModel(ValidModel);
+    const mutation = engine.mutateModel(ValidModel, GraphQLTypeContext.Output);
 
     expect(mutation.mutatedType.name).toBe("ValidModel");
   });
@@ -117,7 +117,7 @@ describe("GraphQL Mutation Engine - Models", () => {
 
     const InvalidModel = tester.program.getGlobalNamespaceType().models.get("$Invalid$")!;
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateModel(InvalidModel);
+    const mutation = engine.mutateModel(InvalidModel, GraphQLTypeContext.Output);
 
     expect(mutation.mutatedType.name).toBe("_Invalid_");
   });
@@ -128,7 +128,7 @@ describe("GraphQL Mutation Engine - Models", () => {
     );
 
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateModel(TestModel);
+    const mutation = engine.mutateModel(TestModel, GraphQLTypeContext.Output);
 
     expect(mutation.mutatedType.name).toBe("TestModel");
     expect(mutation.mutatedType.properties.has("validProp")).toBe(true);
@@ -147,7 +147,7 @@ describe("GraphQL Mutation Engine - Model Properties", () => {
     );
 
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateModel(M);
+    const mutation = engine.mutateModel(M, GraphQLTypeContext.Output);
     const prop = mutation.mutatedType.properties.get("prop");
 
     expect(prop?.name).toBe("prop");
@@ -157,7 +157,7 @@ describe("GraphQL Mutation Engine - Model Properties", () => {
     const { M } = await tester.compile(t.code`model ${t.model("M")} { \`$prop$\`: string }`);
 
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateModel(M);
+    const mutation = engine.mutateModel(M, GraphQLTypeContext.Output);
 
     // Check that the property was renamed in the mutated model
     expect(mutation.mutatedType.properties.has("_prop_")).toBe(true);
@@ -271,7 +271,7 @@ describe("GraphQL Mutation Engine - Edge Cases", () => {
     );
 
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateModel(M);
+    const mutation = engine.mutateModel(M, GraphQLTypeContext.Output);
     const mutated = mutation.mutatedType;
 
     expect(mutated.properties.has("_prop1_")).toBe(true);
@@ -303,7 +303,7 @@ describe("GraphQL Mutation Engine - Edge Cases", () => {
     const { _ValidName } = await tester.compile(t.code`model ${t.model("_ValidName")} { }`);
 
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateModel(_ValidName);
+    const mutation = engine.mutateModel(_ValidName, GraphQLTypeContext.Output);
 
     expect(mutation.mutatedType.name).toBe("_ValidName");
   });
@@ -312,7 +312,7 @@ describe("GraphQL Mutation Engine - Edge Cases", () => {
     const { Model123 } = await tester.compile(t.code`model ${t.model("Model123")} { }`);
 
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateModel(Model123);
+    const mutation = engine.mutateModel(Model123, GraphQLTypeContext.Output);
 
     expect(mutation.mutatedType.name).toBe("Model123");
   });
@@ -321,7 +321,7 @@ describe("GraphQL Mutation Engine - Edge Cases", () => {
     const { M } = await tester.compile(t.code`model ${t.model("M")} { \`123prop\`: string; }`);
 
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateModel(M);
+    const mutation = engine.mutateModel(M, GraphQLTypeContext.Output);
     const mutated = mutation.mutatedType;
 
     expect(mutated.properties.has("_123prop")).toBe(true);
@@ -446,8 +446,8 @@ describe("GraphQL Mutation Engine - Input/Output Context", () => {
     );
 
     const engine = createTestEngine(tester.program);
-    const inputMutation = engine.mutateModelAs(Book, GraphQLTypeContext.Input);
-    const outputMutation = engine.mutateModelAs(Book, GraphQLTypeContext.Output);
+    const inputMutation = engine.mutateModel(Book, GraphQLTypeContext.Input);
+    const outputMutation = engine.mutateModel(Book, GraphQLTypeContext.Output);
 
     // Different mutation objects (different cache entries)
     expect(inputMutation).not.toBe(outputMutation);
@@ -462,8 +462,8 @@ describe("GraphQL Mutation Engine - Input/Output Context", () => {
     );
 
     const engine = createTestEngine(tester.program);
-    const first = engine.mutateModelAs(Book, GraphQLTypeContext.Input);
-    const second = engine.mutateModelAs(Book, GraphQLTypeContext.Input);
+    const first = engine.mutateModel(Book, GraphQLTypeContext.Input);
+    const second = engine.mutateModel(Book, GraphQLTypeContext.Input);
 
     expect(first).toBe(second);
   });
@@ -474,23 +474,13 @@ describe("GraphQL Mutation Engine - Input/Output Context", () => {
     );
 
     const engine = createTestEngine(tester.program);
-    const inputMutation = engine.mutateModelAs(Book, GraphQLTypeContext.Input);
-    const outputMutation = engine.mutateModelAs(Book, GraphQLTypeContext.Output);
+    const inputMutation = engine.mutateModel(Book, GraphQLTypeContext.Input);
+    const outputMutation = engine.mutateModel(Book, GraphQLTypeContext.Output);
 
     expect(inputMutation.typeContext).toBe(GraphQLTypeContext.Input);
     expect(outputMutation.typeContext).toBe(GraphQLTypeContext.Output);
   });
 
-  it("has no typeContext when mutated without explicit context", async () => {
-    const { Book } = await tester.compile(
-      t.code`model ${t.model("Book")} { title: string; }`,
-    );
-
-    const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateModel(Book);
-
-    expect(mutation.typeContext).toBeUndefined();
-  });
 });
 
 describe("GraphQL Mutation Engine - Operation Context Propagation", () => {
@@ -511,7 +501,7 @@ describe("GraphQL Mutation Engine - Operation Context Propagation", () => {
     engine.mutateOperation(createBook);
 
     // The model should now be cached under the input key
-    const inputMutation = engine.mutateModelAs(Book, GraphQLTypeContext.Input);
+    const inputMutation = engine.mutateModel(Book, GraphQLTypeContext.Input);
     expect(inputMutation.typeContext).toBe(GraphQLTypeContext.Input);
   });
 
@@ -527,7 +517,7 @@ describe("GraphQL Mutation Engine - Operation Context Propagation", () => {
     engine.mutateOperation(getBook);
 
     // The model should now be cached under the output key
-    const outputMutation = engine.mutateModelAs(Book, GraphQLTypeContext.Output);
+    const outputMutation = engine.mutateModel(Book, GraphQLTypeContext.Output);
     expect(outputMutation.typeContext).toBe(GraphQLTypeContext.Output);
   });
 
@@ -542,8 +532,8 @@ describe("GraphQL Mutation Engine - Operation Context Propagation", () => {
     const engine = createTestEngine(tester.program);
     engine.mutateOperation(createBook);
 
-    const inputMutation = engine.mutateModelAs(Book, GraphQLTypeContext.Input);
-    const outputMutation = engine.mutateModelAs(Book, GraphQLTypeContext.Output);
+    const inputMutation = engine.mutateModel(Book, GraphQLTypeContext.Input);
+    const outputMutation = engine.mutateModel(Book, GraphQLTypeContext.Output);
 
     expect(inputMutation).not.toBe(outputMutation);
     expect(inputMutation.typeContext).toBe(GraphQLTypeContext.Input);
@@ -563,7 +553,7 @@ describe("GraphQL Mutation Engine - Operation Context Propagation", () => {
     engine.mutateOperation(createBook);
 
     // Author should also be cached under input context via Book's property
-    const authorInput = engine.mutateModelAs(Author, GraphQLTypeContext.Input);
+    const authorInput = engine.mutateModel(Author, GraphQLTypeContext.Input);
     expect(authorInput.typeContext).toBe(GraphQLTypeContext.Input);
   });
 
@@ -579,7 +569,7 @@ describe("GraphQL Mutation Engine - Operation Context Propagation", () => {
     const engine = createTestEngine(tester.program);
     engine.mutateOperation(getBook);
 
-    const authorOutput = engine.mutateModelAs(Author, GraphQLTypeContext.Output);
+    const authorOutput = engine.mutateModel(Author, GraphQLTypeContext.Output);
     expect(authorOutput.typeContext).toBe(GraphQLTypeContext.Output);
   });
 });
