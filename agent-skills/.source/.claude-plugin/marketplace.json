@@ -1,0 +1,20 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "pinterest-skills",
+  "description": "Shared coding agent skills for use across projects",
+  "owner": { "name": "pinternal-dev" },
+  "plugins": [
+    {
+      "name": "emitter-framework",
+      "description": "Guide for building TypeSpec emitters using @typespec/emitter-framework",
+      "source": "./emitter-framework",
+      "category": "development"
+    },
+    {
+      "name": "skill-creator",
+      "description": "Guide for creating effective skills that extend agent capabilities",
+      "source": "./skill-creator",
+      "category": "development"
+    }
+  ]
+}
