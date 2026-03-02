@@ -6,13 +6,12 @@ import {
   type SimpleMutationOptions,
   type SimpleMutations,
 } from "@typespec/mutator-framework";
-import { sanitizeNameForGraphQL } from "../../lib/type-utils.js";
 import { getScalarMapping } from "../../lib/scalar-mappings.js";
+import { getSpecifiedBy, setSpecifiedByUrl } from "../../lib/specified-by.js";
+import { sanitizeNameForGraphQL } from "../../lib/type-utils.js";
 
 /** GraphQL-specific Scalar mutation */
 export class GraphQLScalarMutation extends SimpleScalarMutation<SimpleMutationOptions> {
-  #specificationUrl?: string;
-
   constructor(
     engine: SimpleMutationEngine<SimpleMutations<SimpleMutationOptions>>,
     sourceType: Scalar,
@@ -23,28 +22,31 @@ export class GraphQLScalarMutation extends SimpleScalarMutation<SimpleMutationOp
     super(engine, sourceType, referenceTypes, options, info);
   }
 
-  /**
-   * Get the specification URL for @specifiedBy directive (if any)
-   */
-  get specificationUrl(): string | undefined {
-    return this.#specificationUrl;
-  }
-
   mutate() {
-    // Check if this is a TypeSpec standard library scalar that maps to a GraphQL custom scalar
-    const mapping = getScalarMapping(this.engine.$.program, this.sourceType);
+    const program = this.engine.$.program;
+    const mapping = getScalarMapping(program, this.sourceType);
 
-    // Apply name transformation and store specification URL
-    this.mutationNode.mutate((scalar) => {
-      if (mapping) {
-        // Use the mapped GraphQL scalar name
+    if (mapping) {
+      // Standard library scalar that maps to a custom GraphQL scalar (e.g. int64 → Long)
+      this.mutationNode.mutate((scalar) => {
         scalar.name = mapping.graphqlName;
-        this.#specificationUrl = mapping.specificationUrl;
-      } else {
-        // Custom scalar - just sanitize the name
+      });
+    } else if (!program.checker.isStdType(this.sourceType)) {
+      // User-defined custom scalar — sanitize the name
+      this.mutationNode.mutate((scalar) => {
         scalar.name = sanitizeNameForGraphQL(scalar.name);
-      }
-    });
+      });
+    }
+    // Built-in std scalars (string, boolean, int32, etc.) are left untouched —
+    // they map to GraphQL built-in types and are resolved at emit time.
+
+    // Apply @specifiedBy to the mutated scalar: explicit decorator on source wins, then mapping table
+    const specUrl =
+      getSpecifiedBy(program, this.sourceType) ?? mapping?.specificationUrl;
+    if (specUrl) {
+      setSpecifiedByUrl(program, this.mutatedType, specUrl);
+    }
+
     super.mutate();
   }
 }

@@ -6,7 +6,7 @@ import {
   type MutationInfo,
   type MutationOptions,
 } from "@typespec/mutator-framework";
-import { convertNumericEnumValue, sanitizeNameForGraphQL } from "../../lib/type-utils.js";
+import { sanitizeNameForGraphQL } from "../../lib/type-utils.js";
 
 /**
  * GraphQL-specific EnumMember mutation.
@@ -41,18 +41,8 @@ export class GraphQLEnumMemberMutation extends EnumMemberMutation<
   }
 
   mutate() {
-    // Trigger mutation with a callback to set the name
     this.#mutationNode.mutate((member) => {
-      // If the source enum member has an EXPLICIT numeric value (not auto-generated),
-      // use that value to generate the name. Check node.value to see if it was explicit.
-      if (
-        this.sourceType.node?.value &&
-        typeof this.sourceType.value === "number"
-      ) {
-        member.name = convertNumericEnumValue(this.sourceType.value);
-      } else {
-        member.name = sanitizeNameForGraphQL(member.name);
-      }
+      member.name = sanitizeNameForGraphQL(member.name);
     });
     super.mutate();
   }

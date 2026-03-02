@@ -1,6 +1,7 @@
 import type { EnumMember } from "@typespec/compiler";
 import { t } from "@typespec/compiler/testing";
 import { beforeEach, describe, expect, it } from "vitest";
+import { getSpecifiedBy } from "../../src/lib/specified-by.js";
 import {
   createGraphQLMutationEngine,
   GraphQLTypeContext,
@@ -226,6 +227,32 @@ describe("GraphQL Mutation Engine - Scalars", () => {
 
     expect(mutation.mutatedType.name).toBe("_Invalid_");
   });
+
+  it("has no @specifiedBy when decorator is not applied", async () => {
+    const { MyScalar } = await tester.compile(
+      t.code`scalar ${t.scalar("MyScalar")} extends string;`,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateScalar(MyScalar);
+
+    expect(getSpecifiedBy(tester.program, mutation.mutatedType)).toBeUndefined();
+  });
+
+  it("applies @specifiedBy from decorator to mutated scalar", async () => {
+    const { MyScalar } = await tester.compile(
+      t.code`
+        @specifiedBy("https://example.com/my-scalar-spec")
+        scalar ${t.scalar("MyScalar")} extends string;
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateScalar(MyScalar);
+
+    expect(getSpecifiedBy(tester.program, mutation.mutatedType)).toBe("https://example.com/my-scalar-spec");
+  });
+
 });
 
 describe("GraphQL Mutation Engine - Edge Cases", () => {

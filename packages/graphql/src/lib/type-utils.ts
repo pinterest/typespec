@@ -83,42 +83,18 @@ export function toTypeName(name: string): string {
 }
 
 /**
- * Names reserved by the GraphQL specification that cannot be used as identifiers.
- * - `true`, `false`, `null` are keyword literals in GraphQL
- * - Names starting with `__` are reserved for the introspection system
+ * Sanitize a name to conform to GraphQL identifier format.
+ * Handles character-level formatting only (special chars, leading digits, array syntax).
  */
-const GRAPHQL_RESERVED_NAMES = new Set(["true", "false", "null"]);
-
-/** Sanitize a name to be a valid GraphQL identifier. */
 export function sanitizeNameForGraphQL(name: string, prefix: string = ""): string {
   name = name.replace("[]", "Array");
   name = name.replaceAll(/\W/g, "_");
   if (!/^[_a-zA-Z]/.test(name)) {
     name = `${prefix}_${name}`;
   }
-  // Guard against GraphQL reserved keywords
-  if (GRAPHQL_RESERVED_NAMES.has(name.toLowerCase())) {
-    name = `${prefix || "_"}${name}`;
-  }
   return name;
 }
 
-/**
- * Convert a numeric enum value to a valid GraphQL identifier.
- * Examples:
- * - 0 → _0
- * - 0.25 → _0_25
- * - -1 → _NEGATIVE_1
- */
-export function convertNumericEnumValue(value: number): string {
-  if (value < 0) {
-    // Negative numbers: -1 → _NEGATIVE_1, -2.5 → _NEGATIVE_2_5
-    return `_NEGATIVE_${Math.abs(value).toString().replace(/\./g, "_")}`;
-  } else {
-    // Non-negative numbers: 0 → _0, 0.25 → _0_25
-    return `_${value.toString().replace(/\./g, "_")}`;
-  }
-}
 
 /** Convert a name to CONSTANT_CASE for GraphQL enum members. */
 export function toEnumMemberName(enumName: string, name: string) {

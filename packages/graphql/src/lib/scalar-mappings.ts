@@ -2,7 +2,7 @@ import { type Program, type Scalar } from "@typespec/compiler";
 import { getEncode } from "@typespec/compiler";
 
 /**
- * Represents a mapping from TypeSpec scalar to GraphQL custom scalar
+ * Represents a mapping from a TypeSpec standard library scalar to a GraphQL custom scalar.
  */
 export interface ScalarMapping {
   /** The GraphQL scalar name to emit */
@@ -15,6 +15,10 @@ export interface ScalarMapping {
 
 /**
  * Mapping table for TypeSpec standard library scalars to GraphQL custom scalars.
+ *
+ * Built-in scalars (string, boolean, int32, float64, etc.) are NOT included here —
+ * they map directly to GraphQL built-in types and are resolved at emit time.
+ * This table only covers scalars that need to become custom GraphQL scalar types.
  */
 const SCALAR_MAPPINGS = {
   // int64 → Long (String)
@@ -154,8 +158,9 @@ const SCALAR_MAPPINGS = {
 } as const;
 
 /**
- * Get the GraphQL scalar mapping for a TypeSpec scalar.
- * Returns undefined if the scalar should be emitted as-is (custom scalar).
+ * Get the GraphQL custom scalar mapping for a TypeSpec standard library scalar.
+ * Returns undefined if the scalar is a built-in type (string, boolean, etc.)
+ * or a user-defined custom scalar — neither of which are in the mapping table.
  *
  * @param program The TypeSpec program
  * @param scalar The scalar type to map
