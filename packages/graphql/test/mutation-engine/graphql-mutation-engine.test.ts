@@ -253,6 +253,53 @@ describe("GraphQL Mutation Engine - Scalars", () => {
     expect(getSpecifiedBy(tester.program, mutation.mutatedType)).toBe("https://example.com/my-scalar-spec");
   });
 
+  it("inherits @specifiedBy from mapped ancestor via extends chain", async () => {
+    const { MyDate } = await tester.compile(
+      t.code`
+        @encode("rfc3339")
+        scalar ${t.scalar("MyDate")} extends utcDateTime;
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateScalar(MyDate);
+
+    // User-defined name is preserved (sanitized), not replaced with mapping's graphqlName
+    expect(mutation.mutatedType.name).toBe("MyDate");
+    // @specifiedBy inherited from utcDateTime's rfc3339 mapping
+    expect(getSpecifiedBy(tester.program, mutation.mutatedType)).toBe(
+      "https://scalars.graphql.org/chillicream/date-time.html",
+    );
+  });
+
+  it("strips baseScalar from user-defined scalars", async () => {
+    const { MyScalar } = await tester.compile(
+      t.code`scalar ${t.scalar("MyScalar")} extends string;`,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateScalar(MyScalar);
+
+    expect(mutation.mutatedType.baseScalar).toBeUndefined();
+  });
+
+  it("explicit @specifiedBy wins over inherited mapping", async () => {
+    const { MyDate } = await tester.compile(
+      t.code`
+        @encode("rfc3339")
+        @specifiedBy("https://example.com/custom-spec")
+        scalar ${t.scalar("MyDate")} extends utcDateTime;
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateScalar(MyDate);
+
+    expect(getSpecifiedBy(tester.program, mutation.mutatedType)).toBe(
+      "https://example.com/custom-spec",
+    );
+  });
+
 });
 
 describe("GraphQL Mutation Engine - Edge Cases", () => {
