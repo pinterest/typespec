@@ -1,5 +1,5 @@
 import { type Program, type Scalar } from "@typespec/compiler";
-import { getEncode } from "@typespec/compiler";
+import { $, type Typekit } from "@typespec/compiler/typekit";
 
 /**
  * Represents a mapping from a TypeSpec standard library scalar to a GraphQL custom scalar.
@@ -102,14 +102,6 @@ const SCALAR_MAPPINGS = {
     },
   },
 
-  // unixTimestamp32 → OffsetDateTimeUnix (Int)
-  unixTimestamp32: {
-    default: {
-      graphqlName: "OffsetDateTimeUnix",
-      baseType: "Int",
-    },
-  },
-
   // duration — requires @encode to determine wire format; no default mapping without encoding
   duration: {
     ISO8601: {
@@ -148,14 +140,25 @@ const SCALAR_MAPPINGS = {
     },
   },
 
-  // unknown → Unknown (String)
-  unknown: {
-    default: {
-      graphqlName: "Unknown",
-      baseType: "String",
-    },
-  },
 } as const;
+
+type MappedScalarName = keyof typeof SCALAR_MAPPINGS;
+
+/**
+ * Check if a scalar name is a key in the SCALAR_MAPPINGS table.
+ */
+function isMappedScalarName(name: string): name is MappedScalarName {
+  return name in SCALAR_MAPPINGS;
+}
+
+/**
+ * Check whether a scalar IS a standard library scalar (not just extends one).
+ * A std scalar's std base is itself. A user-defined scalar's std base is
+ * its ancestor (or null if it has no std ancestor).
+ */
+export function isStdScalar(tk: Typekit, scalar: Scalar): boolean {
+  return tk.scalar.getStdBase(scalar) === scalar;
+}
 
 /**
  * Get the GraphQL custom scalar mapping for a TypeSpec standard library scalar.
@@ -170,27 +173,32 @@ const SCALAR_MAPPINGS = {
 export function getScalarMapping(
   program: Program,
   scalar: Scalar,
-  encoding?: string
+  encoding?: string,
 ): ScalarMapping | undefined {
-  // Only map standard library scalars, not user-defined ones
-  if (!program.checker.isStdType(scalar)) {
+  const tk = $(program);
+
+  if (!isStdScalar(tk, scalar)) {
     return undefined;
   }
 
-  const scalarName = scalar.name;
-  const mappingTable = (SCALAR_MAPPINGS as Record<string, Record<string, ScalarMapping>>)[scalarName];
-
-  if (!mappingTable) {
+  if (!isMappedScalarName(scalar.name)) {
     return undefined;
   }
+
+  const mappingTable = SCALAR_MAPPINGS[scalar.name];
 
   // Use provided encoding, or check for @encode decorator on the scalar
-  const actualEncoding = encoding ?? getEncode(program, scalar)?.encoding;
+  const actualEncoding = encoding ?? tk.scalar.getEncoding(scalar)?.encoding;
 
-  if (actualEncoding && mappingTable[actualEncoding]) {
-    return mappingTable[actualEncoding];
+  if (actualEncoding) {
+    const encodingMapping = (mappingTable as Record<string, ScalarMapping>)[actualEncoding];
+    if (encodingMapping) {
+      return encodingMapping;
+    }
   }
 
-  // Fall back to default mapping
-  return mappingTable.default;
+  // Fall back to default mapping (not all mapping tables have a default)
+  return "default" in mappingTable
+    ? (mappingTable as Record<string, ScalarMapping>).default
+    : undefined;
 }
