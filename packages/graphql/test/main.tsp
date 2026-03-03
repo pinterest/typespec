@@ -18,13 +18,13 @@ namespace TestSchema {
   // ===================================================================
   // 2. Built-in Scalar Mappings
   //    TypeSpec std-lib scalars map to GraphQL custom scalars automatically:
-  //      int64 → BigInt, numeric → Numeric, decimal/decimal128 → BigDecimal,
+  //      int64 → Long, numeric → Numeric, decimal/decimal128 → BigDecimal,
   //      url → URL (with @specifiedBy), plainDate → PlainDate,
   //      plainTime → PlainTime
   // ===================================================================
 
   model ScalarShowcase {
-    /** Maps to GraphQL BigInt custom scalar */
+    /** Maps to GraphQL Long custom scalar */
     bigNumber: int64;
     /** Maps to GraphQL Numeric custom scalar */
     preciseValue: numeric;

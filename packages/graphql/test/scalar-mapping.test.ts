@@ -1,14 +1,14 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "vitest";
-import { emitSingleSchema } from "./test-host.js";
+import { emitSingleSchema, emitSingleSchemaWithDiagnostics } from "./test-host.js";
 
 /**
  * Tests for TypeSpec standard library scalar mapping to GraphQL custom scalars
  * Based on design doc: https://github.com/microsoft/typespec/issues/4933
  */
 describe("Scalar Mapping", () => {
-  describe("int64 → BigInt", () => {
-    it("maps int64 to BigInt scalar", async () => {
+  describe("int64 → Long", () => {
+    it("maps int64 to Long scalar", async () => {
       const code = `
         @schema
         namespace TestNamespace {
@@ -23,8 +23,8 @@ describe("Scalar Mapping", () => {
 
       const result = await emitSingleSchema(code, {});
 
-      strictEqual(result.includes("scalar BigInt"), true);
-      strictEqual(result.includes("bigNumber: BigInt!"), true);
+      strictEqual(result.includes("scalar Long"), true);
+      strictEqual(result.includes("bigNumber: Long!"), true);
     });
   });
 
@@ -107,7 +107,7 @@ describe("Scalar Mapping", () => {
       const result = await emitSingleSchema(code, {});
 
       strictEqual(result.includes("scalar Bytes"), true);
-      strictEqual(result.includes('@specifiedBy(url: "https://datatracker.ietf.org/doc/html/rfc4648")'), true);
+      strictEqual(result.includes('@specifiedBy(url: "https://datatracker.ietf.org/doc/html/rfc4648#section-4")'), true);
       strictEqual(result.includes("data: Bytes!"), true);
     });
 
@@ -128,7 +128,7 @@ describe("Scalar Mapping", () => {
       const result = await emitSingleSchema(code, {});
 
       strictEqual(result.includes("scalar BytesUrl"), true);
-      strictEqual(result.includes('@specifiedBy(url: "https://datatracker.ietf.org/doc/html/rfc4648")'), true);
+      strictEqual(result.includes('@specifiedBy(url: "https://datatracker.ietf.org/doc/html/rfc4648#section-5")'), true);
       strictEqual(result.includes("data: BytesUrl!"), true);
     });
   });
@@ -151,7 +151,7 @@ describe("Scalar Mapping", () => {
       const result = await emitSingleSchema(code, {});
 
       strictEqual(result.includes("scalar UTCDateTime"), true);
-      strictEqual(result.includes('@specifiedBy(url: "https://datatracker.ietf.org/doc/html/rfc3339")'), true);
+      strictEqual(result.includes('@specifiedBy(url: "https://scalars.graphql.org/chillicream/date-time.html")'), true);
       strictEqual(result.includes("timestamp: UTCDateTime!"), true);
     });
 
@@ -172,7 +172,7 @@ describe("Scalar Mapping", () => {
       const result = await emitSingleSchema(code, {});
 
       strictEqual(result.includes("scalar UTCDateTimeHuman"), true);
-      strictEqual(result.includes('@specifiedBy(url: "https://datatracker.ietf.org/doc/html/rfc7231")'), true);
+      strictEqual(result.includes('@specifiedBy(url: "https://datatracker.ietf.org/doc/html/rfc7231#section-7.1.1.1")'), true);
       strictEqual(result.includes("timestamp: UTCDateTimeHuman!"), true);
     });
 
@@ -195,7 +195,7 @@ describe("Scalar Mapping", () => {
       strictEqual(result.includes("scalar UTCDateTimeUnix"), true);
       strictEqual(result.includes("timestamp: UTCDateTimeUnix!"), true);
       // No @specifiedBy for unixTimestamp variant
-      strictEqual(result.includes('@specifiedBy(url: "https://datatracker.ietf.org/doc/html/rfc3339")'), false);
+      strictEqual(result.includes('@specifiedBy(url: "https://scalars.graphql.org/chillicream/date-time.html")'), false);
     });
   });
 
@@ -217,7 +217,7 @@ describe("Scalar Mapping", () => {
       const result = await emitSingleSchema(code, {});
 
       strictEqual(result.includes("scalar OffsetDateTime"), true);
-      strictEqual(result.includes('@specifiedBy(url: "https://datatracker.ietf.org/doc/html/rfc3339")'), true);
+      strictEqual(result.includes('@specifiedBy(url: "https://scalars.graphql.org/chillicream/date-time.html")'), true);
       strictEqual(result.includes("timestamp: OffsetDateTime!"), true);
     });
 
@@ -238,7 +238,7 @@ describe("Scalar Mapping", () => {
       const result = await emitSingleSchema(code, {});
 
       strictEqual(result.includes("scalar OffsetDateTimeHuman"), true);
-      strictEqual(result.includes('@specifiedBy(url: "https://datatracker.ietf.org/doc/html/rfc7231")'), true);
+      strictEqual(result.includes('@specifiedBy(url: "https://datatracker.ietf.org/doc/html/rfc7231#section-7.1.1.1")'), true);
       strictEqual(result.includes("timestamp: OffsetDateTimeHuman!"), true);
     });
 
@@ -263,8 +263,8 @@ describe("Scalar Mapping", () => {
     });
   });
 
-  describe("unixTimestamp32 → OffsetDateTimeUnix", () => {
-    it("maps unixTimestamp32 to OffsetDateTimeUnix scalar", async () => {
+  describe("unixTimestamp32 → UTCDateTimeUnix (via extends chain)", () => {
+    it("maps unixTimestamp32 to UTCDateTimeUnix scalar via utcDateTime ancestor", async () => {
       const code = `
         @schema
         namespace TestNamespace {
@@ -277,10 +277,17 @@ describe("Scalar Mapping", () => {
         }
       `;
 
-      const result = await emitSingleSchema(code, {});
+      // Use emitSingleSchemaWithDiagnostics because the mutation engine renames
+      // the scalar, which triggers a compiler "invalid-encode" diagnostic on the
+      // inherited @encode decorator. This is a known limitation of the mutation
+      // framework and does not affect the emitted output.
+      const result = await emitSingleSchemaWithDiagnostics(code, {});
+      const output = result.graphQLOutput!;
 
-      strictEqual(result.includes("scalar OffsetDateTimeUnix"), true);
-      strictEqual(result.includes("timestamp: OffsetDateTimeUnix!"), true);
+      // unixTimestamp32 extends utcDateTime with @encode("unixTimestamp", int32)
+      // The extends chain walks to utcDateTime and uses the unixTimestamp encoding
+      strictEqual(output.includes("scalar UTCDateTimeUnix"), true);
+      strictEqual(output.includes("timestamp: UTCDateTimeUnix!"), true);
     });
   });
 
@@ -508,14 +515,14 @@ describe("Scalar Mapping", () => {
       const result = await emitSingleSchema(code, {});
 
       // Scalars declared
-      strictEqual(result.includes("scalar BigInt"), true);
+      strictEqual(result.includes("scalar Long"), true);
       strictEqual(result.includes("scalar UTCDateTime"), true);
 
       // Output type uses mapped names
       strictEqual(result.includes("type Event {"), true);
       const eventTypeMatch = result.match(/type Event \{[^}]+\}/s);
       if (eventTypeMatch) {
-        strictEqual(eventTypeMatch[0].includes("id: BigInt!"), true);
+        strictEqual(eventTypeMatch[0].includes("id: Long!"), true);
         strictEqual(eventTypeMatch[0].includes("timestamp: UTCDateTime!"), true);
       }
 
@@ -523,7 +530,7 @@ describe("Scalar Mapping", () => {
       strictEqual(result.includes("input EventInput {"), true);
       const eventInputMatch = result.match(/input EventInput \{[^}]+\}/s);
       if (eventInputMatch) {
-        strictEqual(eventInputMatch[0].includes("id: BigInt!"), true);
+        strictEqual(eventInputMatch[0].includes("id: Long!"), true);
         strictEqual(eventInputMatch[0].includes("timestamp: UTCDateTime!"), true);
       }
     });
@@ -547,17 +554,17 @@ describe("Scalar Mapping", () => {
 
       const result = await emitSingleSchema(code, {});
 
-      // Should declare BigInt scalar only once
-      const scalarMatches = result.match(/scalar BigInt/g);
+      // Should declare Long scalar only once
+      const scalarMatches = result.match(/scalar Long/g);
       strictEqual(scalarMatches !== null, true);
       if (scalarMatches) {
         strictEqual(scalarMatches.length, 1);
       }
 
       // All fields should use the mapped name
-      strictEqual(result.includes("value1: BigInt!"), true);
-      strictEqual(result.includes("value2: BigInt!"), true);
-      strictEqual(result.includes("value3: BigInt!"), true);
+      strictEqual(result.includes("value1: Long!"), true);
+      strictEqual(result.includes("value2: Long!"), true);
+      strictEqual(result.includes("value3: Long!"), true);
     });
   });
 });

@@ -42,7 +42,7 @@ describe("enums", () => {
   });
 
   describe("numeric values", () => {
-    it("converts floating point enum values to GraphQL enum names", async () => {
+    it("uses member names (not values) for enum members with numeric values", async () => {
       const code = `
         @schema
         namespace TestNamespace {
@@ -66,13 +66,14 @@ describe("enums", () => {
       const result = await emitSingleSchema(code, {});
 
       strictEqual(result.includes("enum Hour {"), true);
-      strictEqual(result.includes("_0"), true);
-      strictEqual(result.includes("_0_25"), true);
-      strictEqual(result.includes("_0_5"), true);
-      strictEqual(result.includes("_0_75"), true);
+      // Enum members use their names, not their numeric values
+      strictEqual(result.includes("Nothing"), true);
+      strictEqual(result.includes("HalfofHalf"), true);
+      strictEqual(result.includes("SweetSpot"), true);
+      strictEqual(result.includes("AlmostFull"), true);
     });
 
-    it("converts negative enum values to GraphQL enum names", async () => {
+    it("uses member names (not values) for enum members with negative values", async () => {
       const code = `
         @schema
         namespace TestNamespace {
@@ -94,9 +95,10 @@ describe("enums", () => {
       const result = await emitSingleSchema(code, {});
 
       strictEqual(result.includes("enum Boundary {"), true);
-      strictEqual(result.includes("_0"), true);
-      strictEqual(result.includes("_NEGATIVE_1"), true);
-      strictEqual(result.includes("_1"), true);
+      // Enum members use their names, not their numeric values
+      strictEqual(result.includes("zero"), true);
+      strictEqual(result.includes("negOne"), true);
+      strictEqual(result.includes("one"), true);
     });
   });
 });

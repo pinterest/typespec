@@ -147,7 +147,7 @@ type MappedScalarName = keyof typeof SCALAR_MAPPINGS;
 /**
  * Check if a scalar name is a key in the SCALAR_MAPPINGS table.
  */
-function isMappedScalarName(name: string): name is MappedScalarName {
+export function isMappedScalarName(name: string): name is MappedScalarName {
   return name in SCALAR_MAPPINGS;
 }
 
@@ -158,6 +158,35 @@ function isMappedScalarName(name: string): name is MappedScalarName {
  */
 export function isStdScalar(tk: Typekit, scalar: Scalar): boolean {
   return tk.scalar.getStdBase(scalar) === scalar;
+}
+
+/**
+ * The set of TypeSpec std scalar names that map directly to GraphQL built-in scalar types
+ * (String, Boolean, Int, Float), plus intermediate abstract scalars in the TypeSpec
+ * hierarchy that should never be renamed or emitted as custom scalar declarations.
+ *
+ * Intermediate scalars like `integer` and `float` are included because they appear as
+ * array indexer keys and other internal contexts, and would otherwise inherit a mapping
+ * from their ancestor (e.g. integer → numeric → "Numeric").
+ */
+const GRAPHQL_BUILTIN_SCALAR_NAMES = new Set([
+  // Direct GraphQL builtins
+  "string", "boolean", "int32", "float32", "float64",
+  // Intermediate/abstract std scalars — not normally used as field types,
+  // but appear in internal contexts like array indexer keys.
+  // These inherit a mapping from `numeric` but should not be renamed.
+  "integer", "float",
+]);
+
+/**
+ * Check whether a scalar is a GraphQL built-in or intermediate abstract scalar
+ * that should never be renamed by the mutation engine or emitted as a custom
+ * scalar declaration. This includes:
+ * - Direct builtins: string, boolean, int32, float32, float64
+ * - Abstract intermediates: integer, float
+ */
+export function isGraphQLBuiltinScalar(scalar: Scalar): boolean {
+  return GRAPHQL_BUILTIN_SCALAR_NAMES.has(scalar.name);
 }
 
 /**

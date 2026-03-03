@@ -1,7 +1,7 @@
 import { type Type, type Program, type Union, type Scalar, type ModelProperty, isArrayModelType, getEncode, isUnknownType } from "@typespec/compiler";
 import { type ModelVariants } from "../../context/index.js";
 import { getUnionName, getNullableUnionType } from "../../lib/type-utils.js";
-import { getScalarMapping } from "../../lib/scalar-mappings.js";
+import { getScalarMapping, isGraphQLBuiltinScalar } from "../../lib/scalar-mappings.js";
 
 /**
  * Information about a GraphQL type after analysis
@@ -115,9 +115,19 @@ function resolveBaseTypeName(
 
   // Handle scalars (intrinsics)
   if (type.kind === "Scalar") {
-    // Check for scalar mappings FIRST (before builtin checks)
-    // This handles types like bytes → Bytes, utcDateTime → UTCDateTime, etc.
-    if (program.checker.isStdType(type)) {
+    // Check for direct GraphQL builtins FIRST — these always map to built-in GraphQL types
+    // regardless of any ancestor mappings in the scalar hierarchy.
+    if (program.checker.isStdType(type, "string")) return "String";
+    if (program.checker.isStdType(type, "int32")) return "Int";
+    if (program.checker.isStdType(type, "float32")) return "Float";
+    if (program.checker.isStdType(type, "float64")) return "Float";
+    if (program.checker.isStdType(type, "boolean")) return "Boolean";
+
+    // Check for scalar mappings — for any std scalar that isn't a GraphQL builtin.
+    // This handles types like int64 → Long, utcDateTime → UTCDateTime, etc.
+    // Also handles scalars that get their mapping via the extends chain
+    // (e.g. unixTimestamp32 → utcDateTime → "UTCDateTimeUnix").
+    if (program.checker.isStdType(type) && !isGraphQLBuiltinScalar(type as Scalar)) {
       // Check for encoding-specific mapping
       if (targetType && (targetType.kind === "Scalar" || targetType.kind === "ModelProperty")) {
         const encodeData = getEncode(program, targetType as Scalar | ModelProperty);
@@ -128,19 +138,12 @@ function resolveBaseTypeName(
         }
       }
 
-      // Check for default mapping (without encoding)
+      // Check for default mapping (not all mapping tables have a default)
       const mapping = getScalarMapping(program, type);
       if (mapping) {
         return mapping.graphqlName;
       }
     }
-
-    // Then check for direct GraphQL builtins
-    if (program.checker.isStdType(type, "string")) return "String";
-    if (program.checker.isStdType(type, "int32")) return "Int";
-    if (program.checker.isStdType(type, "float32")) return "Float";
-    if (program.checker.isStdType(type, "float64")) return "Float";
-    if (program.checker.isStdType(type, "boolean")) return "Boolean";
 
     // Custom scalar - use the name
     return type.name;

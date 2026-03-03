@@ -6,7 +6,7 @@ import {
   type SimpleMutationOptions,
   type SimpleMutations,
 } from "@typespec/mutator-framework";
-import { getScalarMapping, isStdScalar } from "../../lib/scalar-mappings.js";
+import { getScalarMapping, isGraphQLBuiltinScalar, isStdScalar } from "../../lib/scalar-mappings.js";
 import { getSpecifiedBy, setSpecifiedByUrl } from "../../lib/specified-by.js";
 import { sanitizeNameForGraphQL } from "../../lib/type-utils.js";
 
@@ -28,7 +28,13 @@ export class GraphQLScalarMutation extends SimpleScalarMutation<SimpleMutationOp
     const mapping = getScalarMapping(program, this.sourceType);
     const isDirectStd = isStdScalar(tk, this.sourceType);
 
-    if (mapping && isDirectStd) {
+    // Skip GraphQL builtins (string, boolean, int32, float32, float64) entirely.
+    // These map to built-in GraphQL types and must never be renamed, even though
+    // they may inherit a mapping from an ancestor via the extends chain
+    // (e.g. float32 → float → numeric → "Numeric").
+    const isBuiltin = isGraphQLBuiltinScalar(this.sourceType);
+
+    if (mapping && isDirectStd && !isBuiltin) {
       // Std library scalar that maps to a custom GraphQL scalar (e.g. int64 → Long)
       this.mutationNode.mutate((scalar) => {
         scalar.name = mapping.graphqlName;

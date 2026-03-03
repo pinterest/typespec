@@ -23,7 +23,7 @@ import { getOperationKind } from "./lib/operation-kind.js";
 import { type GraphQLEmitterOptions, reportDiagnostic } from "./lib.js";
 import { resolveTypeUsage, GraphQLTypeUsage, type TypeUsageResolver } from "./type-usage.js";
 import { listSchemas } from "./lib/schema.js";
-import { createGraphQLMutationEngine } from "./mutation-engine/index.js";
+import { createGraphQLMutationEngine, GraphQLTypeContext } from "./mutation-engine/index.js";
 import { GraphQLSchema } from "./components/graphql-schema.js";
 import {
   ScalarVariantTypes,
@@ -36,7 +36,8 @@ import {
 import { QueryType, MutationType, SubscriptionType } from "./components/operations/index.js";
 import type { ClassifiedTypes, ModelVariants, ScalarVariant } from "./context/index.js";
 import { getNullableUnionType } from "./lib/type-utils.js";
-import { getScalarMapping } from "./lib/scalar-mappings.js";
+import { getScalarMapping, isGraphQLBuiltinScalar } from "./lib/scalar-mappings.js";
+import { getSpecifiedBy } from "./lib/specified-by.js";
 
 /**
  * Main emitter entry point for GraphQL SDL generation (component-based)
@@ -175,9 +176,10 @@ function mutateTypes(context: EmitContext<GraphQLEmitterOptions>, schema: { type
       processedScalars.add(graphqlName);
       mutatedScalars.push(mutation.mutatedType);
 
-      // Store specification URL if available
-      if (mutation.specificationUrl) {
-        scalarSpecifications.set(graphqlName, mutation.specificationUrl);
+      // Store specification URL if available (set by the scalar mutation via state map)
+      const specUrl = getSpecifiedBy(context.program, mutation.mutatedType);
+      if (specUrl) {
+        scalarSpecifications.set(graphqlName, specUrl);
       }
     }
   };
@@ -195,7 +197,7 @@ function mutateTypes(context: EmitContext<GraphQLEmitterOptions>, schema: { type
       }
       return;
     }
-    if (target.type.kind === "Scalar" && context.program.checker.isStdType(target.type)) {
+    if (target.type.kind === "Scalar" && context.program.checker.isStdType(target.type) && !isGraphQLBuiltinScalar(target.type)) {
       const encodeData = getEncode(context.program, target);
       const encoding = encodeData?.encoding;
       const mapping = getScalarMapping(context.program, target.type, encoding);
@@ -212,7 +214,9 @@ function mutateTypes(context: EmitContext<GraphQLEmitterOptions>, schema: { type
 
   navigateTypesInNamespace(schema.type, {
     model: (node: Model) => {
-      const mutation = engine.mutateModel(node);
+      // Skip array models — they're represented as GraphQL list types, not object types
+      if (isArrayModelType(context.program, node)) return;
+      const mutation = engine.mutateModel(node, GraphQLTypeContext.Output);
       mutatedModels.push(mutation.mutatedType);
       originalToMutated.set(node, mutation.mutatedType);
     },
