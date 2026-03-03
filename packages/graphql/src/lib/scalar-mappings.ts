@@ -161,9 +161,17 @@ export function isStdScalar(tk: Typekit, scalar: Scalar): boolean {
 }
 
 /**
- * Get the GraphQL custom scalar mapping for a TypeSpec standard library scalar.
- * Returns undefined if the scalar is a built-in type (string, boolean, etc.)
- * or a user-defined custom scalar — neither of which are in the mapping table.
+ * Get the GraphQL custom scalar mapping for a scalar by walking its extends chain.
+ *
+ * For std scalars (e.g. `int64`), returns the direct mapping.
+ * For user-defined scalars that extend a mapped std scalar
+ * (e.g. `scalar MyInt extends int64`), returns the ancestor's mapping.
+ * Returns undefined for built-in scalars (string, boolean, etc.)
+ * and scalars with no mapped ancestor.
+ *
+ * The caller (scalar mutation) uses `isStdScalar` to decide whether to
+ * rename with `mapping.graphqlName` or keep the user's name. The mapping
+ * is always useful for metadata like `@specifiedBy`.
  *
  * @param program The TypeSpec program
  * @param scalar The scalar type to map
@@ -177,28 +185,29 @@ export function getScalarMapping(
 ): ScalarMapping | undefined {
   const tk = $(program);
 
-  if (!isStdScalar(tk, scalar)) {
-    return undefined;
-  }
-
-  if (!isMappedScalarName(scalar.name)) {
-    return undefined;
-  }
-
-  const mappingTable = SCALAR_MAPPINGS[scalar.name];
-
-  // Use provided encoding, or check for @encode decorator on the scalar
+  // Walk the extends chain to find a mapped std scalar ancestor.
+  // Encoding is checked on the original scalar, not the ancestor.
   const actualEncoding = encoding ?? tk.scalar.getEncoding(scalar)?.encoding;
 
-  if (actualEncoding) {
-    const encodingMapping = (mappingTable as Record<string, ScalarMapping>)[actualEncoding];
-    if (encodingMapping) {
-      return encodingMapping;
+  let current: Scalar | undefined = scalar;
+  while (current) {
+    if (isStdScalar(tk, current) && isMappedScalarName(current.name)) {
+      const mappingTable = SCALAR_MAPPINGS[current.name];
+
+      if (actualEncoding) {
+        const encodingMapping = (mappingTable as Record<string, ScalarMapping>)[actualEncoding];
+        if (encodingMapping) {
+          return encodingMapping;
+        }
+      }
+
+      // Fall back to default mapping (not all mapping tables have a default)
+      return "default" in mappingTable
+        ? (mappingTable as Record<string, ScalarMapping>).default
+        : undefined;
     }
+    current = current.baseScalar;
   }
 
-  // Fall back to default mapping (not all mapping tables have a default)
-  return "default" in mappingTable
-    ? (mappingTable as Record<string, ScalarMapping>).default
-    : undefined;
+  return undefined;
 }
