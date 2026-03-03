@@ -34,15 +34,16 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "@alloy-js/core": "^0.11.0",
-    "@alloy-js/typescript": "^0.11.0",
+    "@alloy-js/core": "^0.22.0",
+    "@alloy-js/graphql": "^0.1.0",
+    "@alloy-js/typescript": "^0.22.0",
     "change-case": "^5.4.4",
-    "graphql": "^16.9.0"
+    "graphql": "^17.0.0-alpha.9"
   },
   "scripts": {
     "clean": "rimraf ./dist ./temp",
-    "build": "tsc -p .",
-    "watch": "tsc --watch",
+    "build": "alloy build",
+    "watch": "alloy build --watch",
     "test": "vitest run",
     "test:watch": "vitest -w",
     "lint": "eslint . --max-warnings=0",
@@ -60,14 +61,16 @@
     "@typespec/mutator-framework": "workspace:~"
   },
   "devDependencies": {
-    "@types/node": "~22.13.13",
+    "@alloy-js/cli": "^0.22.0",
+    "@alloy-js/rollup-plugin": "^0.1.0",
+    "@types/node": "~24.10.1",
     "@typespec/compiler": "workspace:~",
     "@typespec/emitter-framework": "workspace:~",
     "@typespec/http": "workspace:~",
     "@typespec/mutator-framework": "workspace:~",
-    "rimraf": "~6.0.1",
+    "rimraf": "~6.1.2",
     "source-map-support": "~0.5.21",
-    "typescript": "~5.8.2",
-    "vitest": "^3.0.9"
+    "typescript": "~5.9.2",
+    "vitest": "^4.0.4"
   }
 }
