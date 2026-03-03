@@ -6,7 +6,7 @@ import {
   type SimpleMutationOptions,
   type SimpleMutations,
 } from "@typespec/mutator-framework";
-import { getScalarMapping } from "../../lib/scalar-mappings.js";
+import { getScalarMapping, isStdScalar } from "../../lib/scalar-mappings.js";
 import { getSpecifiedBy, setSpecifiedByUrl } from "../../lib/specified-by.js";
 import { sanitizeNameForGraphQL } from "../../lib/type-utils.js";
 
@@ -23,7 +23,8 @@ export class GraphQLScalarMutation extends SimpleScalarMutation<SimpleMutationOp
   }
 
   mutate() {
-    const program = this.engine.$.program;
+    const tk = this.engine.$;
+    const program = tk.program;
     const mapping = getScalarMapping(program, this.sourceType);
 
     if (mapping) {
@@ -31,7 +32,7 @@ export class GraphQLScalarMutation extends SimpleScalarMutation<SimpleMutationOp
       this.mutationNode.mutate((scalar) => {
         scalar.name = mapping.graphqlName;
       });
-    } else if (!program.checker.isStdType(this.sourceType)) {
+    } else if (!isStdScalar(tk, this.sourceType)) {
       // User-defined custom scalar — sanitize the name
       this.mutationNode.mutate((scalar) => {
         scalar.name = sanitizeNameForGraphQL(scalar.name);
