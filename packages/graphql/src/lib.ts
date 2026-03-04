@@ -136,6 +136,18 @@ export const libDef = {
         default: paramMessage`Property \`${"property"}\` is incompatible with \`${"interface"}\`.`,
       },
     },
+    "unrecognized-union": {
+      severity: "error",
+      messages: {
+        default: "Unrecognized union construction. Union must be named, a return type, a model property, or an alias.",
+      },
+    },
+    "duplicate-union-variant": {
+      severity: "warning",
+      messages: {
+        default: paramMessage`Union variant type "${"type"}" appears multiple times after flattening nested unions. Duplicate removed.`,
+      },
+    },
   },
   emitter: {
     options: EmitterOptionsSchema as JSONSchemaType<GraphQLEmitterOptions>,
@@ -149,6 +161,8 @@ export const libDef = {
     compose: { description: "State for the @compose decorator." },
     interface: { description: "State for the @Interface decorator." },
     schema: { description: "State for the @schema decorator." },
+    specifiedBy: { description: "State for the @specifiedBy decorator." },
+    oneOf: { description: "State for tracking @oneOf input objects created from input unions." },
   },
 } as const;
 

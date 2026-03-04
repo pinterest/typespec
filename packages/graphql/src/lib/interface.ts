@@ -11,6 +11,7 @@ import {
 import { useStateMap, useStateSet } from "@typespec/compiler/utils";
 import { GraphQLKeys, NAMESPACE, reportDiagnostic } from "../lib.js";
 import type { Tagged } from "../types.d.ts";
+import { propertiesEqual } from "./utils.js";
 
 // This will set the namespace for decorators implemented in this file
 export const namespace = NAMESPACE;
@@ -73,13 +74,6 @@ function validateNoCircularImplementation(
     });
   }
   return valid;
-}
-
-function propertiesEqual(prop1: ModelProperty, prop2: ModelProperty): boolean {
-  // TODO is there some canonical way to do this?
-  return (
-    prop1.name === prop2.name && prop1.type === prop2.type && prop1.optional === prop2.optional
-  );
 }
 
 function validateImplementsInterfaceProperties(

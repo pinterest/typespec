@@ -7,9 +7,6 @@ import {
   type Operation,
   type Program,
 } from "@typespec/compiler";
-
-// import { createTypeRelationChecker } from "../../../compiler/dist/src/core/type-relation-checker.js";
-
 import { useStateMap } from "@typespec/compiler/utils";
 import { GraphQLKeys, NAMESPACE, reportDiagnostic } from "../lib.js";
 import { operationsEqual } from "./utils.js";
