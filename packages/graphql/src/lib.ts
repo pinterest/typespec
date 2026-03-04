@@ -162,6 +162,7 @@ export const libDef = {
     interface: { description: "State for the @Interface decorator." },
     schema: { description: "State for the @schema decorator." },
     specifiedBy: { description: "State for the @specifiedBy decorator." },
+    oneOf: { description: "State for tracking @oneOf input objects created from input unions." },
   },
 } as const;
 
