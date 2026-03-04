@@ -1,6 +1,7 @@
-import type { EnumMember } from "@typespec/compiler";
+import type { EnumMember, Model } from "@typespec/compiler";
 import { t } from "@typespec/compiler/testing";
 import { beforeEach, describe, expect, it } from "vitest";
+import { isOneOf } from "../../src/lib/one-of.js";
 import { getSpecifiedBy } from "../../src/lib/specified-by.js";
 import {
   createGraphQLMutationEngine,
@@ -398,7 +399,7 @@ describe("GraphQL Mutation Engine - Unions", () => {
     );
 
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateUnion(NullableString);
+    const mutation = engine.mutateUnion(NullableString, GraphQLTypeContext.Output);
 
     expect(mutation.wrapperModels).toHaveLength(0);
   });
@@ -412,7 +413,7 @@ describe("GraphQL Mutation Engine - Unions", () => {
     );
 
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateUnion(Mixed);
+    const mutation = engine.mutateUnion(Mixed, GraphQLTypeContext.Output);
 
     // Only the scalar variant (string) should get a wrapper
     expect(mutation.wrapperModels).toHaveLength(1);
@@ -429,7 +430,7 @@ describe("GraphQL Mutation Engine - Unions", () => {
     );
 
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateUnion(Pet);
+    const mutation = engine.mutateUnion(Pet, GraphQLTypeContext.Output);
 
     expect(mutation.wrapperModels).toHaveLength(0);
   });
@@ -440,7 +441,7 @@ describe("GraphQL Mutation Engine - Unions", () => {
     );
 
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateUnion(Data);
+    const mutation = engine.mutateUnion(Data, GraphQLTypeContext.Output);
 
     expect(mutation.wrapperModels).toHaveLength(1);
     const wrapper = mutation.wrapperModels[0];
@@ -458,7 +459,7 @@ describe("GraphQL Mutation Engine - Unions", () => {
     );
 
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateUnion(Mixed);
+    const mutation = engine.mutateUnion(Mixed, GraphQLTypeContext.Output);
 
     expect(mutation.wrapperModels).toHaveLength(2);
     const names = mutation.wrapperModels.map((m) => m.name).sort();
@@ -475,7 +476,7 @@ describe("GraphQL Mutation Engine - Unions", () => {
     );
 
     const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateUnion(ValidUnion);
+    const mutation = engine.mutateUnion(ValidUnion, GraphQLTypeContext.Output);
 
     expect(mutation.mutatedType.name).toBe("ValidUnion");
   });
@@ -618,5 +619,176 @@ describe("GraphQL Mutation Engine - Operation Context Propagation", () => {
 
     const authorOutput = engine.mutateModel(Author, GraphQLTypeContext.Output);
     expect(authorOutput.typeContext).toBe(GraphQLTypeContext.Output);
+  });
+
+  it("replaces union parameter with oneOf model via operation mutation", async () => {
+    const { Pet, createPet } = await tester.compile(
+      t.code`
+        model ${t.model("Cat")} { name: string; }
+        model ${t.model("Dog")} { breed: string; }
+        union ${t.union("Pet")} { cat: Cat; dog: Dog; }
+        op ${t.op("createPet")}(input: Pet): void;
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    engine.mutateOperation(createPet);
+
+    // The union should be cached under input context and replaced with a oneOf model
+    const unionMutation = engine.mutateUnion(Pet, GraphQLTypeContext.Input);
+    expect(unionMutation.mutatedType.kind).toBe("Model");
+    expect(unionMutation.mutatedType.name).toBe("PetInput");
+    expect(isOneOf(tester.program, unionMutation.mutatedType as Model)).toBe(true);
+  });
+
+  it("keeps union return type as union via operation mutation", async () => {
+    const { Pet, getPet } = await tester.compile(
+      t.code`
+        model ${t.model("Cat")} { name: string; }
+        model ${t.model("Dog")} { breed: string; }
+        union ${t.union("Pet")} { cat: Cat; dog: Dog; }
+        op ${t.op("getPet")}(): Pet;
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    engine.mutateOperation(getPet);
+
+    // The union in output context stays a union (not replaced)
+    const unionMutation = engine.mutateUnion(Pet, GraphQLTypeContext.Output);
+    expect(unionMutation.mutatedType.kind).toBe("Union");
+  });
+});
+
+describe("GraphQL Mutation Engine - oneOf Input Objects", () => {
+  let tester: Awaited<ReturnType<typeof Tester.createInstance>>;
+  beforeEach(async () => {
+    tester = await Tester.createInstance();
+  });
+
+  it("replaces union with oneOf model in input context", async () => {
+    const { Pet } = await tester.compile(
+      t.code`
+        model ${t.model("Cat")} { name: string; }
+        model ${t.model("Dog")} { breed: string; }
+        union ${t.union("Pet")} { cat: Cat; dog: Dog; }
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateUnion(Pet, GraphQLTypeContext.Input);
+
+    // Union is replaced with a Model in the type graph
+    expect(mutation.mutatedType.kind).toBe("Model");
+    expect(mutation.mutatedType.name).toBe("PetInput");
+    expect(isOneOf(tester.program, mutation.mutatedType as Model)).toBe(true);
+  });
+
+  it("oneOf model has one field per variant, all optional", async () => {
+    const { Pet } = await tester.compile(
+      t.code`
+        model ${t.model("Cat")} { name: string; }
+        model ${t.model("Dog")} { breed: string; }
+        union ${t.union("Pet")} { cat: Cat; dog: Dog; }
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateUnion(Pet, GraphQLTypeContext.Input);
+    const model = mutation.mutatedType as Model;
+
+    expect(model.properties.size).toBe(2);
+    expect(model.properties.has("cat")).toBe(true);
+    expect(model.properties.has("dog")).toBe(true);
+    // All fields are optional (oneOf semantics)
+    expect(model.properties.get("cat")!.optional).toBe(true);
+    expect(model.properties.get("dog")!.optional).toBe(true);
+  });
+
+  it("keeps union in output context (no replacement)", async () => {
+    const { Pet } = await tester.compile(
+      t.code`
+        model ${t.model("Cat")} { name: string; }
+        model ${t.model("Dog")} { breed: string; }
+        union ${t.union("Pet")} { cat: Cat; dog: Dog; }
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateUnion(Pet, GraphQLTypeContext.Output);
+
+    expect(mutation.mutatedType.kind).toBe("Union");
+  });
+
+  it("oneOf model handles scalar variants", async () => {
+    const { Data } = await tester.compile(
+      t.code`
+        model ${t.model("Foo")} { x: int32; }
+        union ${t.union("Data")} { text: string; num: int32; foo: Foo; }
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateUnion(Data, GraphQLTypeContext.Input);
+    const model = mutation.mutatedType as Model;
+
+    // All variants become fields — no wrapper models needed for oneOf
+    expect(model.properties.size).toBe(3);
+    expect(model.properties.has("text")).toBe(true);
+    expect(model.properties.has("num")).toBe(true);
+    expect(model.properties.has("foo")).toBe(true);
+    // No wrapper models created in input context
+    expect(mutation.wrapperModels).toHaveLength(0);
+  });
+
+  it("oneOf model flattens and deduplicates nested unions", async () => {
+    const { Outer } = await tester.compile(
+      t.code`
+        model ${t.model("Cat")} { name: string; }
+        model ${t.model("Dog")} { breed: string; }
+        model ${t.model("Bird")} { wingspan: int32; }
+        union ${t.union("Inner")} { cat: Cat; dog: Dog; }
+        union ${t.union("Outer")} { inner: Inner; bird: Bird; dog2: Dog; }
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateUnion(Outer, GraphQLTypeContext.Input);
+    const model = mutation.mutatedType as Model;
+
+    // Inner is flattened: Cat + Dog from Inner, Bird from Outer
+    // Dog appears twice (from Inner and as dog2) — deduplicated to one
+    expect(model.properties.size).toBe(3);
+    expect(model.properties.has("cat")).toBe(true);
+    expect(model.properties.has("dog")).toBe(true);
+    expect(model.properties.has("bird")).toBe(true);
+  });
+
+  it("nullable union in input context is not replaced", async () => {
+    const { MaybeString } = await tester.compile(
+      t.code`union ${t.union("MaybeString")} { string, null }`,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateUnion(MaybeString, GraphQLTypeContext.Input);
+
+    // Nullable unions are not real unions — union is kept, not replaced
+    expect(mutation.mutatedType.kind).toBe("Union");
+  });
+
+  it("exposes typeContext on union mutation", async () => {
+    const { Pet } = await tester.compile(
+      t.code`
+        model ${t.model("Cat")} { name: string; }
+        union ${t.union("Pet")} { cat: Cat; }
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const inputMutation = engine.mutateUnion(Pet, GraphQLTypeContext.Input);
+    const outputMutation = engine.mutateUnion(Pet, GraphQLTypeContext.Output);
+
+    expect(inputMutation.typeContext).toBe(GraphQLTypeContext.Input);
+    expect(outputMutation.typeContext).toBe(GraphQLTypeContext.Output);
   });
 });

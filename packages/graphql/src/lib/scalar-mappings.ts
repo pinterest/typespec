@@ -145,13 +145,6 @@ const SCALAR_MAPPINGS = {
 type MappedScalarName = keyof typeof SCALAR_MAPPINGS;
 
 /**
- * Check if a scalar name is a key in the SCALAR_MAPPINGS table.
- */
-function isMappedScalarName(name: string): name is MappedScalarName {
-  return name in SCALAR_MAPPINGS;
-}
-
-/**
  * Check whether a scalar IS a standard library scalar (not just extends one).
  * A std scalar's std base is itself. A user-defined scalar's std base is
  * its ancestor (or null if it has no std ancestor).
@@ -161,11 +154,10 @@ export function isStdScalar(tk: Typekit, scalar: Scalar): boolean {
 }
 
 /**
- * Get the GraphQL custom scalar mapping for a scalar by walking its extends chain.
+ * Get the GraphQL custom scalar mapping for a scalar via its standard library ancestor.
  *
- * For std scalars (e.g. `int64`), returns the direct mapping.
- * For user-defined scalars that extend a mapped std scalar
- * (e.g. `scalar MyInt extends int64`), returns the ancestor's mapping.
+ * Uses `tk.scalar.getStdBase()` to find the std ancestor (e.g. `int64` for
+ * `scalar MyInt extends int64`), then looks up the mapping table by name.
  * Returns undefined for built-in scalars (string, boolean, etc.)
  * and scalars with no mapped ancestor.
  *
@@ -185,29 +177,26 @@ export function getScalarMapping(
 ): ScalarMapping | undefined {
   const tk = $(program);
 
-  // Walk the extends chain to find a mapped std scalar ancestor.
-  // Encoding is checked on the original scalar, not the ancestor.
-  const actualEncoding = encoding ?? tk.scalar.getEncoding(scalar)?.encoding;
-
-  let current: Scalar | undefined = scalar;
-  while (current) {
-    if (isStdScalar(tk, current) && isMappedScalarName(current.name)) {
-      const mappingTable = SCALAR_MAPPINGS[current.name];
-
-      if (actualEncoding) {
-        const encodingMapping = (mappingTable as Record<string, ScalarMapping>)[actualEncoding];
-        if (encodingMapping) {
-          return encodingMapping;
-        }
-      }
-
-      // Fall back to default mapping (not all mapping tables have a default)
-      return "default" in mappingTable
-        ? (mappingTable as Record<string, ScalarMapping>).default
-        : undefined;
-    }
-    current = current.baseScalar;
+  // getStdBase walks the baseScalar chain and returns the first ancestor
+  // in the TypeSpec namespace (identity-safe, not name-based).
+  const stdBase = tk.scalar.getStdBase(scalar);
+  if (!stdBase || !(stdBase.name in SCALAR_MAPPINGS)) {
+    return undefined;
   }
 
-  return undefined;
+  const mappingTable = SCALAR_MAPPINGS[stdBase.name as MappedScalarName];
+
+  // Encoding is checked on the original scalar, not the ancestor.
+  const actualEncoding = encoding ?? tk.scalar.getEncoding(scalar)?.encoding;
+  if (actualEncoding) {
+    const encodingMapping = (mappingTable as Record<string, ScalarMapping>)[actualEncoding];
+    if (encodingMapping) {
+      return encodingMapping;
+    }
+  }
+
+  // Fall back to default mapping (not all mapping tables have a default)
+  return "default" in mappingTable
+    ? (mappingTable as Record<string, ScalarMapping>).default
+    : undefined;
 }

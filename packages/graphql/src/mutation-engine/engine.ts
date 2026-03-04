@@ -101,10 +101,13 @@ export class GraphQLMutationEngine {
   }
 
   /**
-   * Mutate a union, creating wrapper types for scalar variants.
+   * Mutate a union with explicit input/output context.
+   * In output context: creates wrapper types for scalar variants. mutatedType is a Union.
+   * In input context: replaces the union with a @oneOf input Model in the type graph,
+   *   since GraphQL unions are output-only. mutatedType is a Model.
    */
-  mutateUnion(union: Union): GraphQLUnionMutation {
-    return this.engine.mutate(union, new SimpleMutationOptions()) as GraphQLUnionMutation;
+  mutateUnion(union: Union, context: GraphQLTypeContext): GraphQLUnionMutation {
+    return this.engine.mutate(union, new GraphQLMutationOptions(context)) as GraphQLUnionMutation;
   }
 }
 
