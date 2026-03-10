@@ -6,9 +6,36 @@ import {
   type SimpleMutationOptions,
   type SimpleMutations,
 } from "@typespec/mutator-framework";
+import { reportDiagnostic } from "../../lib.js";
 import { getScalarMapping, isStdScalar } from "../../lib/scalar-mappings.js";
 import { getSpecifiedBy, setSpecifiedByUrl } from "../../lib/specified-by.js";
 import { sanitizeNameForGraphQL } from "../../lib/type-utils.js";
+
+/**
+ * GraphQL built-in scalar type names.
+ * @see https://spec.graphql.org/September2025/#sec-Scalars.Built-in-Scalars
+ */
+const GRAPHQL_BUILTIN_SCALARS = new Set(["String", "Int", "Float", "Boolean", "ID"]);
+
+/**
+ * Check whether a scalar is the GraphQL library's `ID` scalar, or extends it.
+ * Walks the baseScalar chain looking for a scalar named "ID" in the
+ * TypeSpec.GraphQL namespace.
+ */
+function isGraphQLIdScalar(scalar: Scalar): boolean {
+  let current: Scalar | undefined = scalar;
+  while (current) {
+    if (
+      current.name === "ID" &&
+      current.namespace?.name === "GraphQL" &&
+      current.namespace?.namespace?.name === "TypeSpec"
+    ) {
+      return true;
+    }
+    current = current.baseScalar;
+  }
+  return false;
+}
 
 /** GraphQL-specific Scalar mutation */
 export class GraphQLScalarMutation extends SimpleScalarMutation<SimpleMutationOptions> {
@@ -28,7 +55,13 @@ export class GraphQLScalarMutation extends SimpleScalarMutation<SimpleMutationOp
     const mapping = getScalarMapping(program, this.sourceType);
     const isDirectStd = isStdScalar(tk, this.sourceType);
 
-    if (mapping && isDirectStd) {
+    if (isGraphQLIdScalar(this.sourceType)) {
+      // GraphQL library scalar ID (or extends it) → built-in GraphQL ID type
+      this.mutationNode.mutate((scalar) => {
+        scalar.name = "ID";
+        scalar.baseScalar = undefined;
+      });
+    } else if (mapping && isDirectStd) {
       // Std library scalar that maps to a custom GraphQL scalar (e.g. int64 → Long)
       this.mutationNode.mutate((scalar) => {
         scalar.name = mapping.graphqlName;
@@ -38,8 +71,16 @@ export class GraphQLScalarMutation extends SimpleScalarMutation<SimpleMutationOp
       // User-defined custom scalar — sanitize name, strip extends.
       // May still have a mapping via extends chain (e.g. scalar MyInt extends int64),
       // which is used for @specifiedBy below but not for renaming.
+      const sanitizedName = sanitizeNameForGraphQL(this.sourceType.name);
+      if (GRAPHQL_BUILTIN_SCALARS.has(sanitizedName)) {
+        reportDiagnostic(program, {
+          code: "graphql-builtin-scalar-collision",
+          target: this.sourceType,
+          format: { name: this.sourceType.name, builtinName: sanitizedName },
+        });
+      }
       this.mutationNode.mutate((scalar) => {
-        scalar.name = sanitizeNameForGraphQL(scalar.name);
+        scalar.name = sanitizedName;
         scalar.baseScalar = undefined;
       });
     }

@@ -301,6 +301,46 @@ describe("GraphQL Mutation Engine - Scalars", () => {
     );
   });
 
+  it("maps scalar extending GraphQL.ID to built-in ID type", async () => {
+    const { MyId } = await tester.compile(
+      t.code`scalar ${t.scalar("MyId")} extends GraphQL.ID;`,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateScalar(MyId);
+
+    expect(mutation.mutatedType.name).toBe("ID");
+  });
+
+  it("maps multi-hop extends chain through GraphQL.ID to built-in ID type", async () => {
+    const { SubId } = await tester.compile(
+      t.code`
+        scalar MyId extends GraphQL.ID;
+        scalar ${t.scalar("SubId")} extends MyId;
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateScalar(SubId);
+
+    expect(mutation.mutatedType.name).toBe("ID");
+  });
+
+  it("warns when user-defined scalar collides with GraphQL built-in name", async () => {
+    const { Float } = await tester.compile(
+      t.code`scalar ${t.scalar("Float")} extends string;`,
+    );
+
+    const engine = createTestEngine(tester.program);
+    engine.mutateScalar(Float);
+
+    const warnings = tester.program.diagnostics.filter(
+      (d) => d.code === "@typespec/graphql/graphql-builtin-scalar-collision",
+    );
+    expect(warnings.length).toBe(1);
+    expect(warnings[0].message).toContain("Float");
+  });
+
 });
 
 describe("GraphQL Mutation Engine - Edge Cases", () => {
