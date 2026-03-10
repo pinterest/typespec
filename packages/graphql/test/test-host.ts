@@ -1,29 +1,20 @@
-import { type Diagnostic, type Program, resolvePath, type Type } from "@typespec/compiler";
-import {
-  createTester,
-  createTestHost,
-  createTestWrapper,
-  expectDiagnosticEmpty,
-  resolveVirtualPath,
-} from "@typespec/compiler/testing";
+import { type Diagnostic, resolvePath } from "@typespec/compiler";
+import { createTester, expectDiagnosticEmpty } from "@typespec/compiler/testing";
 import { ok } from "assert";
 import type { GraphQLSchema } from "graphql";
 import { buildSchema } from "graphql";
 import { expect } from "vitest";
 import type { GraphQLEmitterOptions } from "../src/lib.js";
-import { GraphQLTestLibrary } from "../src/testing/index.js";
+
+const outputFileName = "schema.graphql";
 
 export const Tester = createTester(resolvePath(import.meta.dirname, ".."), {
-  libraries: [GraphQLTestLibrary.name],
+  libraries: ["@typespec/graphql"],
 })
   .importLibraries()
   .using("TypeSpec.GraphQL");
 
-export async function createGraphQLTestHost() {
-  return createTestHost({
-    libraries: [GraphQLTestLibrary],
-  });
-}
+export const EmitterTester = Tester.emit("@typespec/graphql");
 
 export interface GraphQLTestResult {
   readonly graphQLSchema?: GraphQLSchema;
@@ -31,55 +22,20 @@ export interface GraphQLTestResult {
   readonly diagnostics: readonly Diagnostic[];
 }
 
-export async function createGraphQLTestRunner() {
-  const host = await createGraphQLTestHost();
-
-  return createTestWrapper(host, {
-    autoUsings: ["TypeSpec.GraphQL"],
-    compilerOptions: {
-      noEmit: false,
-      emit: ["@typespec/graphql"],
-    },
-  });
-}
-
-export async function diagnose(code: string): Promise<readonly Diagnostic[]> {
-  const runner = await createGraphQLTestRunner();
-  return runner.diagnose(code);
-}
-
-export async function compileAndDiagnose<T extends Record<string, Type>>(
-  code: string,
-): Promise<[Program, T, readonly Diagnostic[]]> {
-  const runner = await createGraphQLTestRunner();
-  const [testTypes, diagnostics] = await runner.compileAndDiagnose(code);
-  return [runner.program, testTypes as T, diagnostics];
-}
-
 export async function emitWithDiagnostics(
   code: string,
   options: GraphQLEmitterOptions = {},
 ): Promise<readonly GraphQLTestResult[]> {
-  const runner = await createGraphQLTestRunner();
-  const outputFile = resolveVirtualPath("schema.graphql");
-  const compilerOptions = { ...options, "output-file": outputFile };
-  const diagnostics = await runner.diagnose(code, {
-    noEmit: false,
-    emit: ["@typespec/graphql"],
-    options: {
-      "@typespec/graphql": compilerOptions,
+  const outputFile = `{emitter-output-dir}/${outputFileName}`;
+  const [result, diagnostics] = await EmitterTester.compileAndDiagnose(code, {
+    compilerOptions: {
+      options: {
+        "@typespec/graphql": { ...options, "output-file": outputFile },
+      },
     },
   });
 
-  /**
-   * There doesn't appear to be a good way to hook into the emit process and get the GraphQLSchema
-   * that's produced by the emitter. So we're going to read the file that was emitted and parse it.
-   *
-   * This is the same way it's done in @typespec/openapi3:
-   * https://github.com/microsoft/typespec/blame/1cf8601d0f65f707926d58d56566fb0cb4d4f4ff/packages/openapi3/test/test-host.ts#L105
-   */
-
-  const content = runner.fs.get(outputFile);
+  const content = result.outputs[outputFileName];
   const schema = content
     ? buildSchema(content, {
         assumeValidSDL: true,
