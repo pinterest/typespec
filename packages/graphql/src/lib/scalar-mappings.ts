@@ -158,6 +158,25 @@ export function isStdScalar(tk: Typekit, scalar: Scalar): boolean {
 }
 
 /**
+ * TypeSpec std scalar names that map directly to GraphQL built-in scalar types:
+ * string → String, boolean → Boolean, int32 → Int, float32/float64 → Float.
+ *
+ * @see https://spec.graphql.org/September2025/#sec-Scalars.Built-in-Scalars
+ */
+const GRAPHQL_BUILTIN_SCALAR_NAMES = new Set([
+  "string", "boolean", "int32", "float32", "float64",
+]);
+
+/**
+ * Check whether a scalar IS a GraphQL built-in type (String, Boolean, Int, Float).
+ * Uses identity-based check via typekit to avoid false positives from user-defined
+ * scalars that happen to share the same name in a different namespace.
+ */
+export function isGraphQLBuiltinScalar(tk: Typekit, scalar: Scalar): boolean {
+  return isStdScalar(tk, scalar) && GRAPHQL_BUILTIN_SCALAR_NAMES.has(scalar.name);
+}
+
+/**
  * Get the GraphQL custom scalar mapping for a scalar via its standard library ancestor.
  *
  * Uses `tk.scalar.getStdBase()` to find the std ancestor (e.g. `int64` for
