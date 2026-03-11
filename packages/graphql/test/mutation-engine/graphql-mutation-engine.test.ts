@@ -326,6 +326,60 @@ describe("GraphQL Mutation Engine - Scalars", () => {
     expect(mutation.mutatedType.name).toBe("ID");
   });
 
+  it("does not rename builtin std scalars even when they inherit a mapping", async () => {
+    // float32 inherits a mapping via float → numeric → "Numeric", but it's a
+    // GraphQL builtin (maps to Float) and must never be renamed.
+    const { M } = await tester.compile(
+      t.code`model ${t.model("M")} { value: float32; }`,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const float32Scalar = M.properties.get("value")!.type;
+    expect(float32Scalar.kind).toBe("Scalar");
+    const mutation = engine.mutateScalar(float32Scalar as any);
+
+    expect(mutation.mutatedType.name).toBe("float32");
+  });
+
+  it("does not rename float64 builtin scalar", async () => {
+    const { M } = await tester.compile(
+      t.code`model ${t.model("M")} { value: float64; }`,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const float64Scalar = M.properties.get("value")!.type;
+    expect(float64Scalar.kind).toBe("Scalar");
+    const mutation = engine.mutateScalar(float64Scalar as any);
+
+    expect(mutation.mutatedType.name).toBe("float64");
+  });
+
+  it("does not rename int32 builtin scalar", async () => {
+    const { M } = await tester.compile(
+      t.code`model ${t.model("M")} { count: int32; }`,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const int32Scalar = M.properties.get("count")!.type;
+    expect(int32Scalar.kind).toBe("Scalar");
+    const mutation = engine.mutateScalar(int32Scalar as any);
+
+    expect(mutation.mutatedType.name).toBe("int32");
+  });
+
+  it("still renames mapped non-builtin std scalars like int64", async () => {
+    const { M } = await tester.compile(
+      t.code`model ${t.model("M")} { big: int64; }`,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const int64Scalar = M.properties.get("big")!.type;
+    expect(int64Scalar.kind).toBe("Scalar");
+    const mutation = engine.mutateScalar(int64Scalar as any);
+
+    expect(mutation.mutatedType.name).toBe("Long");
+  });
+
   it("warns when user-defined scalar collides with GraphQL built-in name", async () => {
     const { Float } = await tester.compile(
       t.code`scalar ${t.scalar("Float")} extends string;`,
