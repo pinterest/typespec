@@ -43,12 +43,14 @@ const SCALAR_MAPPINGS = {
     default: {
       graphqlName: "BigDecimal",
       baseType: "String",
+      specificationUrl: "https://scalars.graphql.org/chillicream/decimal.html",
     },
   },
   decimal128: {
     default: {
       graphqlName: "BigDecimal",
       baseType: "String",
+      specificationUrl: "https://scalars.graphql.org/chillicream/decimal.html",
     },
   },
 
@@ -120,6 +122,7 @@ const SCALAR_MAPPINGS = {
     default: {
       graphqlName: "PlainDate",
       baseType: "String",
+      specificationUrl: "https://scalars.graphql.org/andimarek/local-date.html",
     },
   },
 
@@ -128,6 +131,7 @@ const SCALAR_MAPPINGS = {
     default: {
       graphqlName: "PlainTime",
       baseType: "String",
+      specificationUrl: "https://scalars.graphql.org/apollographql/localtime-v0.1.html",
     },
   },
 
