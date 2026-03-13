@@ -148,6 +148,12 @@ export const libDef = {
         default: paramMessage`Union variant type "${"type"}" appears multiple times after flattening nested unions. Duplicate removed.`,
       },
     },
+    "graphql-builtin-scalar-collision": {
+      severity: "warning",
+      messages: {
+        default: paramMessage`Scalar "${"name"}" collides with GraphQL built-in type "${"builtinName"}". This may cause unexpected behavior. Consider renaming the scalar.`,
+      },
+    },
   },
   emitter: {
     options: EmitterOptionsSchema as JSONSchemaType<GraphQLEmitterOptions>,
