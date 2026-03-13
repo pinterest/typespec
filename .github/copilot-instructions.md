@@ -4,6 +4,9 @@
 
 TypeSpec is a language for defining cloud service APIs and shapes. This monorepo contains the TypeSpec compiler, standard library packages, tools, documentation, and various language client emitters.
 
+> [!IMPORTANT]
+> **These instructions do NOT apply to the language emitter packages** (`http-client-csharp`, `http-client-java`, `http-client-python`). Those packages are excluded from the pnpm workspace and do not require using pnpm.
+
 ## Essential Setup and Build Commands
 
 ### Prerequisites and Installation
@@ -115,9 +118,19 @@ TypeSpec is a language for defining cloud service APIs and shapes. This monorepo
 - If TypeScript compilation fails, check that compiler built first: `pnpm -r --filter "@typespec/compiler" build`
 - For VS Code extension development, ensure you have the workspace open at the repository root
 
+## Commit instructions
+
+- Always run the linting and the formatting commands before any commit.
+- Follow conventional commits.
+
+## Pull Request instructions
+
+- When the work is done, run `pnpm chronus add` to add a changelog entry. Select the correct type of change (fix, feat, docs, etc.) and provide a clear description based on the initial issue description. Only add an area tag when the package has multiple areas and the change targets a secondary area; use bracket format like `[converter]` or `[formatter]` (for example, a secondary openapi3 converter change should start with `[converter]`). Avoid generic area prefixes like `core -` and do not add any area tag for single-area packages. For new features, include a short code block in the changelog entry that showcases the new functionality; skip code blocks for simple bug fixes.
+- Always start by defining additional unit tests/updating existing unit tests to fulfill the requirements first. Then make changes to the code accordingly. If you are following the TDD (Test Driven Development) approach, make sure to run the tests and see them fail before implementing the code changes.
+
 ## Available Task Instructions
 
 - [Testserver Generation](./prompts/testserver-generation.md): Instructions for generating TypeSpec HTTP spec test servers
 - [http-client-csharp Development](./instructions/http-client-csharp.instructions.md): Instructions for developing the C# HTTP client
-- [http-client-java Development](./prompts/http-client-java-development.md): Instructions for developing the TypeSpec library for Java client.
+- [http-client-java Development](./instructions/http-client-java.instructions.md): Instructions for developing the TypeSpec library for Java client.
 - [TCGC Upgrade](./prompts/upgrade-tcgc.instructions.md): Instructions for TCGC version on emitters. Activate with: `tcgc upgrade <emitter-name> <new-version>`

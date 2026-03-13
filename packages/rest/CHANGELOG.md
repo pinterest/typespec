@@ -1,5 +1,26 @@
 # Change Log - @typespec/rest
 
+## 0.80.0
+
+### Bump dependencies
+
+- [#9838](https://github.com/microsoft/typespec/pull/9838) Upgrade dependencies
+
+
+## 0.79.0
+
+### Bug Fixes
+
+- [#8609](https://github.com/microsoft/typespec/pull/8609) Fix `@actionSeparator` decorator to only accept Operation, Interface, and Namespace targets
+
+
+## 0.78.0
+
+### Bump dependencies
+
+- [#9223](https://github.com/microsoft/typespec/pull/9223) Upgrade dependencies
+
+
 ## 0.77.0
 
 ### Bump dependencies

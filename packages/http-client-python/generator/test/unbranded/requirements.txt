@@ -1,9 +1,10 @@
 -r ../dev_requirements.txt
 -e ../../
 
-# common test case
+# === common test dependencies across repos ===
 -e ./generated/authentication-api-key
 -e ./generated/authentication-http-custom
+-e ./generated/authentication-noauth-union
 -e ./generated/authentication-oauth2
 -e ./generated/authentication-union
 -e ./generated/setuppy-authentication-union
@@ -14,6 +15,7 @@
 -e ./generated/parameters-basic
 -e ./generated/parameters-collection-format
 -e ./generated/parameters-path
+-e ./generated/parameters-query
 -e ./generated/parameters-spread
 -e ./generated/serialization-encoded-name-json
 -e ./generated/server-endpoint-not-defined
@@ -27,6 +29,7 @@
 -e ./generated/typetest-dictionary
 -e ./generated/typetest-enum-extensible
 -e ./generated/typetest-enum-fixed
+# -e ./generated/typetest-file
 -e ./generated/typetest-model-enumdiscriminator
 -e ./generated/typetest-model-nesteddiscriminator
 -e ./generated/typetest-model-notdiscriminated
@@ -40,6 +43,7 @@
 -e ./generated/typetest-property-additionalproperties
 -e ./generated/typetest-scalar
 -e ./generated/typetest-union
+-e ./generated/typetest-discriminatedunion
 -e ./generated/typetest-model-empty
 -e ./generated/headasbooleantrue
 -e ./generated/headasbooleanfalse
@@ -62,3 +66,4 @@
 -e ./generated/versioning-renamedfrom
 -e ./generated/versioning-returntypechangedfrom
 -e ./generated/versioning-typechangedfrom
+# === end common test dependencies across repos ===
