@@ -7,7 +7,7 @@ import {
   type SimpleMutations,
 } from "@typespec/mutator-framework";
 import { reportDiagnostic } from "../../lib.js";
-import { getScalarMapping, isStdScalar } from "../../lib/scalar-mappings.js";
+import { getScalarMapping, isGraphQLBuiltinScalar, isStdScalar } from "../../lib/scalar-mappings.js";
 import { getSpecifiedBy, setSpecifiedByUrl } from "../../lib/specified-by.js";
 import { sanitizeNameForGraphQL } from "../../lib/type-utils.js";
 
@@ -61,7 +61,7 @@ export class GraphQLScalarMutation extends SimpleScalarMutation<SimpleMutationOp
         scalar.name = "ID";
         scalar.baseScalar = undefined;
       });
-    } else if (mapping && isDirectStd) {
+    } else if (mapping && isDirectStd && !isGraphQLBuiltinScalar(tk, this.sourceType)) {
       // Std library scalar that maps to a custom GraphQL scalar (e.g. int64 → Long)
       this.mutationNode.mutate((scalar) => {
         scalar.name = mapping.graphqlName;
