@@ -11,17 +11,17 @@ import type { GraphQLSchema } from "graphql";
 import { buildSchema } from "graphql";
 import { expect } from "vitest";
 import type { GraphQLEmitterOptions } from "../src/lib.js";
-import { GraphqlTestLibrary } from "../src/testing/index.js";
+import { GraphQLTestLibrary } from "../src/testing/index.js";
 
 export const Tester = createTester(resolvePath(import.meta.dirname, ".."), {
-  libraries: [GraphqlTestLibrary.name],
+  libraries: [GraphQLTestLibrary.name],
 })
   .importLibraries()
   .using("TypeSpec.GraphQL");
 
-export async function createGraphqlTestHost() {
+export async function createGraphQLTestHost() {
   return createTestHost({
-    libraries: [GraphqlTestLibrary],
+    libraries: [GraphQLTestLibrary],
   });
 }
 
@@ -31,8 +31,8 @@ export interface GraphQLTestResult {
   readonly diagnostics: readonly Diagnostic[];
 }
 
-export async function createGraphqlTestRunner() {
-  const host = await createGraphqlTestHost();
+export async function createGraphQLTestRunner() {
+  const host = await createGraphQLTestHost();
 
   return createTestWrapper(host, {
     autoUsings: ["TypeSpec.GraphQL"],
@@ -44,14 +44,14 @@ export async function createGraphqlTestRunner() {
 }
 
 export async function diagnose(code: string): Promise<readonly Diagnostic[]> {
-  const runner = await createGraphqlTestRunner();
+  const runner = await createGraphQLTestRunner();
   return runner.diagnose(code);
 }
 
 export async function compileAndDiagnose<T extends Record<string, Type>>(
   code: string,
 ): Promise<[Program, T, readonly Diagnostic[]]> {
-  const runner = await createGraphqlTestRunner();
+  const runner = await createGraphQLTestRunner();
   const [testTypes, diagnostics] = await runner.compileAndDiagnose(code);
   return [runner.program, testTypes as T, diagnostics];
 }
@@ -60,7 +60,7 @@ export async function emitWithDiagnostics(
   code: string,
   options: GraphQLEmitterOptions = {},
 ): Promise<readonly GraphQLTestResult[]> {
-  const runner = await createGraphqlTestRunner();
+  const runner = await createGraphQLTestRunner();
   const outputFile = resolveVirtualPath("schema.graphql");
   const compilerOptions = { ...options, "output-file": outputFile };
   const diagnostics = await runner.diagnose(code, {
