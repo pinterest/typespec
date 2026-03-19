@@ -16,4 +16,4 @@ namespace TypeSpec.GraphQL;
  * scalar Long extends int64;
  * ```
  */
-extern dec specifiedBy(target: Scalar, url: valueof string);
+extern dec specifiedBy(target: Scalar, url: valueof url);
