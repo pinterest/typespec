@@ -106,8 +106,10 @@ export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, Mu
 
   mutate() {
     // A nullable wrapper (e.g. `string | null`) is not a real union —
-    // it's just TypeSpec's way of spelling "nullable T". Skip union processing.
+    // it's just TypeSpec's way of spelling "nullable T". Skip union processing,
+    // but mark as nullable so the emitter knows not to emit `!`.
     if (isNullableWrapper(this.sourceType)) {
+      setNullable(this.engine.$.program, this.sourceType);
       this.#mutationNode.mutate();
       super.mutate();
       return;

@@ -403,6 +403,7 @@ describe("GraphQL Mutation Engine - Unions", () => {
     const mutation = engine.mutateUnion(NullableString, GraphQLTypeContext.Output);
 
     expect(mutation.wrapperModels).toHaveLength(0);
+    expect(isNullable(tester.program, NullableString)).toBe(true);
   });
 
   it("skips union processing for nullable model wrapper", async () => {
@@ -420,6 +421,7 @@ describe("GraphQL Mutation Engine - Unions", () => {
     // it should pass through without union processing
     expect(mutation.mutatedType.kind).toBe("Union");
     expect(mutation.wrapperModels).toHaveLength(0);
+    expect(isNullable(tester.program, MaybeDog)).toBe(true);
   });
 
   it("creates wrapper models for scalar variants", async () => {
