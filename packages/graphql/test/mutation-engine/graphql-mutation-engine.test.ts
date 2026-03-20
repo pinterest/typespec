@@ -1,6 +1,7 @@
-import type { EnumMember, Model } from "@typespec/compiler";
+import type { EnumMember, Model, Union } from "@typespec/compiler";
 import { t } from "@typespec/compiler/testing";
 import { beforeEach, describe, expect, it } from "vitest";
+import { isNullable } from "../../src/lib/nullable.js";
 import { isOneOf } from "../../src/lib/one-of.js";
 import { getSpecifiedBy } from "../../src/lib/specified-by.js";
 import {
@@ -404,6 +405,23 @@ describe("GraphQL Mutation Engine - Unions", () => {
     expect(mutation.wrapperModels).toHaveLength(0);
   });
 
+  it("skips union processing for nullable model wrapper", async () => {
+    const { MaybeDog } = await tester.compile(
+      t.code`
+        model ${t.model("Dog")} { breed: string; }
+        union ${t.union("MaybeDog")} { Dog, null }
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateUnion(MaybeDog, GraphQLTypeContext.Output);
+
+    // This is a nullable wrapper (Dog | null), not a real union —
+    // it should pass through without union processing
+    expect(mutation.mutatedType.kind).toBe("Union");
+    expect(mutation.wrapperModels).toHaveLength(0);
+  });
+
   it("creates wrapper models for scalar variants", async () => {
     const { Mixed } = await tester.compile(
       t.code`
@@ -774,6 +792,66 @@ describe("GraphQL Mutation Engine - oneOf Input Objects", () => {
 
     // Nullable unions are not real unions — union is kept, not replaced
     expect(mutation.mutatedType.kind).toBe("Union");
+  });
+
+  it("strips null from multi-variant union in output context", async () => {
+    const { Pet } = await tester.compile(
+      t.code`
+        model ${t.model("Cat")} { name: string; }
+        model ${t.model("Dog")} { breed: string; }
+        union ${t.union("Pet")} { cat: Cat; dog: Dog; null; }
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateUnion(Pet, GraphQLTypeContext.Output);
+
+    // Null should be stripped — only Cat and Dog remain
+    const mutatedUnion = mutation.mutatedType as Union;
+    expect(mutatedUnion.kind).toBe("Union");
+    expect(mutatedUnion.variants.size).toBe(2);
+
+    // The result should be marked as nullable
+    expect(isNullable(tester.program, mutatedUnion)).toBe(true);
+  });
+
+  it("strips null from multi-variant union in input context", async () => {
+    const { Pet } = await tester.compile(
+      t.code`
+        model ${t.model("Cat")} { name: string; }
+        model ${t.model("Dog")} { breed: string; }
+        union ${t.union("Pet")} { cat: Cat; dog: Dog; null; }
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateUnion(Pet, GraphQLTypeContext.Input);
+
+    // Should become a @oneOf model with 2 fields (null stripped)
+    const model = mutation.mutatedType as Model;
+    expect(model.kind).toBe("Model");
+    expect(model.properties.size).toBe(2);
+    expect(model.properties.has("cat")).toBe(true);
+    expect(model.properties.has("dog")).toBe(true);
+
+    // Should be marked as both @oneOf and nullable
+    expect(isOneOf(tester.program, model)).toBe(true);
+    expect(isNullable(tester.program, model)).toBe(true);
+  });
+
+  it("non-nullable union is not marked as nullable", async () => {
+    const { Pet } = await tester.compile(
+      t.code`
+        model ${t.model("Cat")} { name: string; }
+        model ${t.model("Dog")} { breed: string; }
+        union ${t.union("Pet")} { cat: Cat; dog: Dog; }
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateUnion(Pet, GraphQLTypeContext.Output);
+
+    expect(isNullable(tester.program, mutation.mutatedType)).toBe(false);
   });
 
   it("exposes typeContext on union mutation", async () => {

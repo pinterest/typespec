@@ -5,6 +5,7 @@ import {
   getTypeName,
   type IndeterminateEntity,
   isNeverType,
+  isNullType,
   isTemplateInstance,
   type Model,
   type Program,
@@ -12,6 +13,7 @@ import {
   type Scalar,
   type Type,
   type Union,
+  type UnionVariant,
   type Value,
   walkPropertiesInherited,
 } from "@typespec/compiler";
@@ -28,20 +30,39 @@ import { camelCase, constantCase, pascalCase, split, splitSeparateNumbers } from
 import { reportDiagnostic } from "../lib.js";
 
 /**
- * Check if a union represents a nullable type (e.g., string | null).
- * @returns The non-null variant type if this is a nullable union, otherwise undefined.
+ * Check if a union exists solely to express nullability of a single type.
+ * Matches only the `T | null` pattern (exactly 2 variants, one of which is null).
+ *
+ * These unions are not "real" unions in GraphQL terms — they're just TypeSpec's
+ * way of spelling "nullable T". The mutation engine skips further union processing for these.
+ *
+ * For multi-variant unions that contain null (e.g. `Cat | Dog | null`),
+ * use {@link stripNullVariants} instead.
  */
-export function getNullableUnionType(union: Union): Type | undefined {
-  if (union.variants.size !== 2) return undefined;
-
+export function isNullableWrapper(union: Union): boolean {
+  if (union.variants.size !== 2) return false;
   const variants = Array.from(union.variants.values());
-  const nullVariant = variants.find(
-    (v) => v.type.kind === "Intrinsic" && v.type.name === "null"
-  );
+  return variants.some((v) => isNullType(v.type));
+}
 
-  if (!nullVariant) return undefined;
-
-  return variants.find((v) => v !== nullVariant)?.type;
+/**
+ * Strip null variants from a union, returning the remaining variants
+ * and whether the union contained null.
+ *
+ * Used by the mutation engine to handle unions like `Cat | Dog | null`:
+ * the null is removed, the remaining variants are processed as a real union,
+ * and the nullability is tracked separately via the nullable state map.
+ */
+export function stripNullVariants(union: Union): {
+  variants: UnionVariant[];
+  isNullable: boolean;
+} {
+  const allVariants = Array.from(union.variants.values());
+  const nonNullVariants = allVariants.filter((v) => !isNullType(v.type));
+  return {
+    variants: nonNullVariants,
+    isNullable: nonNullVariants.length < allVariants.length,
+  };
 }
 
 /** Generate a GraphQL type name for a templated model (e.g., `ListOfString`). */

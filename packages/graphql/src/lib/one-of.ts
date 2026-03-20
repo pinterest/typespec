@@ -1,8 +1,8 @@
 import type { Model, Program } from "@typespec/compiler";
-import { useStateMap } from "@typespec/compiler/utils";
+import { useStateSet } from "@typespec/compiler/utils";
 import { GraphQLKeys } from "../lib.js";
 
-const [getOneOfState, setOneOfState] = useStateMap<Model, boolean>(GraphQLKeys.oneOf);
+const [getOneOfState, setOneOfState] = useStateSet<Model>(GraphQLKeys.oneOf);
 
 /**
  * Check if a model has been marked as a @oneOf input object.
@@ -11,12 +11,12 @@ const [getOneOfState, setOneOfState] = useStateMap<Model, boolean>(GraphQLKeys.o
  * unions become @oneOf input objects.
  */
 export function isOneOf(program: Program, model: Model): boolean {
-  return getOneOfState(program, model) === true;
+  return getOneOfState(program, model);
 }
 
 /**
  * Mark a model as a @oneOf input object.
  */
 export function setOneOf(program: Program, model: Model): void {
-  setOneOfState(program, model, true);
+  setOneOfState(program, model);
 }

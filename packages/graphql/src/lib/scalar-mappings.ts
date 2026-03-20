@@ -189,6 +189,9 @@ export function getScalarMapping(
   }
 
   const mappingTable = SCALAR_MAPPINGS[stdBase.name as MappedScalarName];
+  if (!mappingTable) {
+    return undefined;
+  }
 
   // Encoding is checked on the original scalar, not the ancestor.
   const actualEncoding = encoding ?? tk.scalar.getEncoding(scalar)?.encoding;

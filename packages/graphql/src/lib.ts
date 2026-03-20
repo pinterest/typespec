@@ -148,6 +148,12 @@ export const libDef = {
         default: paramMessage`Union variant type "${"type"}" appears multiple times after flattening nested unions. Duplicate removed.`,
       },
     },
+    "empty-union": {
+      severity: "error",
+      messages: {
+        default: "Union has no non-null variants. A GraphQL union must contain at least one member type.",
+      },
+    },
   },
   emitter: {
     options: EmitterOptionsSchema as JSONSchemaType<GraphQLEmitterOptions>,
@@ -163,6 +169,10 @@ export const libDef = {
     schema: { description: "State for the @schema decorator." },
     specifiedBy: { description: "State for the @specifiedBy decorator." },
     oneOf: { description: "State for tracking @oneOf input objects created from input unions." },
+    nullable: {
+      description:
+        "State for tracking types that were determined to be nullable from null-variant stripping.",
+    },
   },
 } as const;
 
