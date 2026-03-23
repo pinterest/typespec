@@ -1,0 +1,43 @@
+import type { MemberType, Model } from "@typespec/compiler";
+import {
+  SimpleModelMutation,
+  type MutationInfo,
+  type SimpleMutationEngine,
+  type SimpleMutationOptions,
+  type SimpleMutations,
+} from "@typespec/mutator-framework";
+import { sanitizeNameForGraphQL } from "../../lib/type-utils.js";
+import { GraphQLMutationOptions, GraphQLTypeContext } from "../options.js";
+
+/**
+ * GraphQL-specific Model mutation.
+ */
+export class GraphQLModelMutation extends SimpleModelMutation<SimpleMutationOptions> {
+  constructor(
+    engine: SimpleMutationEngine<SimpleMutations<SimpleMutationOptions>>,
+    sourceType: Model,
+    referenceTypes: MemberType[],
+    options: SimpleMutationOptions,
+    info: MutationInfo,
+  ) {
+    super(engine, sourceType, referenceTypes, options, info);
+  }
+
+  /**
+   * The input/output context this model was mutated with, if any.
+   * Undefined when the model was mutated directly (not through an operation).
+   */
+  get typeContext(): GraphQLTypeContext | undefined {
+    return this.options instanceof GraphQLMutationOptions
+      ? this.options.typeContext
+      : undefined;
+  }
+
+  mutate() {
+    // Apply GraphQL name sanitization
+    this.mutationNode.mutate((model) => {
+      model.name = sanitizeNameForGraphQL(model.name);
+    });
+    super.mutate();
+  }
+}
