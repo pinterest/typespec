@@ -154,6 +154,12 @@ export const libDef = {
         default: "Union has no non-null variants. A GraphQL union must contain at least one member type.",
       },
     },
+    "graphql-builtin-scalar-collision": {
+      severity: "warning",
+      messages: {
+        default: paramMessage`Scalar "${"name"}" collides with GraphQL built-in type "${"builtinName"}". This may cause unexpected behavior. Consider renaming the scalar.`,
+      },
+    },
   },
   emitter: {
     options: EmitterOptionsSchema as JSONSchemaType<GraphQLEmitterOptions>,
