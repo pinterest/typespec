@@ -39,9 +39,19 @@ import { reportDiagnostic } from "../lib.js";
  * use {@link stripNullVariants} instead.
  */
 export function isNullableWrapper(union: Union): boolean {
-  if (union.variants.size !== 2) return false;
+  return getNullableUnionType(union) !== undefined;
+}
+
+/**
+ * Check if a union represents a nullable type (e.g., `string | null`).
+ * @returns The non-null variant type if this is a nullable union, otherwise undefined.
+ */
+export function getNullableUnionType(union: Union): Type | undefined {
+  if (union.variants.size !== 2) return undefined;
   const variants = Array.from(union.variants.values());
-  return variants.some((v) => isNullType(v.type));
+  const nullVariant = variants.find((v) => isNullType(v.type));
+  if (!nullVariant) return undefined;
+  return variants.find((v) => v !== nullVariant)?.type;
 }
 
 /**

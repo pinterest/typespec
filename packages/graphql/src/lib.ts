@@ -136,6 +136,12 @@ export const libDef = {
         default: paramMessage`Property \`${"property"}\` is incompatible with \`${"interface"}\`.`,
       },
     },
+    "empty-schema": {
+      severity: "warning",
+      messages: {
+        default: "Empty SDL generated for schema.",
+      },
+    },
     "unrecognized-union": {
       severity: "error",
       messages: {
