@@ -158,16 +158,28 @@ export function isStdScalar(tk: Typekit, scalar: Scalar): boolean {
 }
 
 /**
- * Get the GraphQL custom scalar mapping for a scalar via its standard library ancestor.
+ * TypeSpec std scalar names that map directly to GraphQL built-in scalar types:
+ * string → String, boolean → Boolean, int32 → Int, float32/float64 → Float.
+ *
+ * These must NOT be renamed by the scalar mutation — they're resolved to
+ * GraphQL builtins at emit time.
+ *
+ * @see https://spec.graphql.org/September2025/#sec-Scalars.Built-in-Scalars
+ */
+const TSP_SCALARS_TO_GQL_BUILTINS = new Set([
+  "string", "boolean", "int32", "float32", "float64",
+]);
+
+/**
+ * Get the GraphQL scalar mapping for a scalar via its standard library ancestor.
  *
  * Uses `tk.scalar.getStdBase()` to find the std ancestor (e.g. `int64` for
  * `scalar MyInt extends int64`), then looks up the mapping table by name.
- * Returns undefined for built-in scalars (string, boolean, etc.)
- * and scalars with no mapped ancestor.
+ * Returns undefined for scalars with no mapped ancestor.
  *
- * The caller (scalar mutation) uses `isStdScalar` to decide whether to
- * rename with `mapping.graphqlName` or keep the user's name. The mapping
- * is always useful for metadata like `@specifiedBy`.
+ * Note: this returns a mapping even for GraphQL builtins like `float32`
+ * (which inherits a mapping from `numeric`). Use {@link getCustomScalarMapping}
+ * when you need a mapping that should trigger renaming — it filters out builtins.
  *
  * @param program The TypeSpec program
  * @param scalar The scalar type to map
@@ -179,8 +191,39 @@ export function getScalarMapping(
   scalar: Scalar,
   encoding?: string,
 ): ScalarMapping | undefined {
-  const tk = $(program);
+  return getScalarMappingInternal($(program), scalar, encoding);
+}
 
+/**
+ * Get the GraphQL custom scalar mapping for a standard library scalar —
+ * i.e., a mapping that should trigger renaming.
+ *
+ * Returns undefined for:
+ * - Scalars with no mapped ancestor
+ * - GraphQL builtins (string, boolean, int32, float32, float64) that should
+ *   NOT be renamed even though they inherit a mapping via the extends chain
+ *   (e.g. float32 → float → numeric → "Numeric")
+ * - Non-std scalars (user-defined scalars keep their own name)
+ *
+ * @param program The TypeSpec program
+ * @param scalar The scalar type to map (must be a std scalar)
+ * @returns The scalar mapping or undefined if the scalar shouldn't be renamed
+ */
+export function getCustomScalarMapping(
+  program: Program,
+  scalar: Scalar,
+): ScalarMapping | undefined {
+  const tk = $(program);
+  if (!isStdScalar(tk, scalar)) return undefined;
+  if (TSP_SCALARS_TO_GQL_BUILTINS.has(scalar.name)) return undefined;
+  return getScalarMappingInternal(tk, scalar);
+}
+
+function getScalarMappingInternal(
+  tk: Typekit,
+  scalar: Scalar,
+  encoding?: string,
+): ScalarMapping | undefined {
   // getStdBase walks the baseScalar chain and returns the first ancestor
   // in the TypeSpec namespace (identity-safe, not name-based).
   const stdBase = tk.scalar.getStdBase(scalar);
