@@ -7,7 +7,11 @@ import {
   type SimpleMutations,
 } from "@typespec/mutator-framework";
 import { reportDiagnostic } from "../../lib.js";
-import { getScalarMapping, isGraphQLBuiltinScalar, isStdScalar } from "../../lib/scalar-mappings.js";
+import {
+  getCustomScalarMapping,
+  getScalarMapping,
+  isStdScalar,
+} from "../../lib/scalar-mappings.js";
 import { getSpecifiedBy, setSpecifiedByUrl } from "../../lib/specified-by.js";
 import { sanitizeNameForGraphQL } from "../../lib/type-utils.js";
 
@@ -53,7 +57,6 @@ export class GraphQLScalarMutation extends SimpleScalarMutation<SimpleMutationOp
     const tk = this.engine.$;
     const program = tk.program;
     const mapping = getScalarMapping(program, this.sourceType);
-    const isDirectStd = isStdScalar(tk, this.sourceType);
 
     if (isGraphQLIdScalar(this.sourceType)) {
       // GraphQL library scalar ID (or extends it) → built-in GraphQL ID type
@@ -61,31 +64,34 @@ export class GraphQLScalarMutation extends SimpleScalarMutation<SimpleMutationOp
         scalar.name = "ID";
         scalar.baseScalar = undefined;
       });
-    } else if (mapping && isDirectStd && !isGraphQLBuiltinScalar(tk, this.sourceType)) {
-      // Std library scalar that maps to a custom GraphQL scalar (e.g. int64 → Long)
-      this.mutationNode.mutate((scalar) => {
-        scalar.name = mapping.graphqlName;
-        scalar.baseScalar = undefined;
-      });
-    } else if (!isDirectStd) {
-      // User-defined custom scalar — sanitize name, strip extends.
-      // May still have a mapping via extends chain (e.g. scalar MyInt extends int64),
-      // which is used for @specifiedBy below but not for renaming.
-      const sanitizedName = sanitizeNameForGraphQL(this.sourceType.name);
-      if (GRAPHQL_BUILTIN_SCALARS.has(sanitizedName)) {
-        reportDiagnostic(program, {
-          code: "graphql-builtin-scalar-collision",
-          target: this.sourceType,
-          format: { name: this.sourceType.name, builtinName: sanitizedName },
+    } else {
+      const customMapping = getCustomScalarMapping(program, this.sourceType);
+      if (customMapping) {
+        // Std library scalar that maps to a custom GraphQL scalar (e.g. int64 → Long)
+        this.mutationNode.mutate((scalar) => {
+          scalar.name = customMapping.graphqlName;
+          scalar.baseScalar = undefined;
+        });
+      } else if (!isStdScalar(tk, this.sourceType)) {
+        // User-defined custom scalar — sanitize name, strip extends.
+        // May still have a mapping via extends chain (e.g. scalar MyInt extends int64),
+        // which is used for @specifiedBy below but not for renaming.
+        const sanitizedName = sanitizeNameForGraphQL(this.sourceType.name);
+        if (GRAPHQL_BUILTIN_SCALARS.has(sanitizedName)) {
+          reportDiagnostic(program, {
+            code: "graphql-builtin-scalar-collision",
+            target: this.sourceType,
+            format: { name: this.sourceType.name, builtinName: sanitizedName },
+          });
+        }
+        this.mutationNode.mutate((scalar) => {
+          scalar.name = sanitizedName;
+          scalar.baseScalar = undefined;
         });
       }
-      this.mutationNode.mutate((scalar) => {
-        scalar.name = sanitizedName;
-        scalar.baseScalar = undefined;
-      });
+      // else: Built-in std scalars (string, boolean, int32, etc.) are left untouched —
+      // they map to GraphQL built-in types and are resolved at emit time.
     }
-    // Built-in std scalars (string, boolean, int32, etc.) are left untouched —
-    // they map to GraphQL built-in types and are resolved at emit time.
 
     // Apply @specifiedBy: explicit decorator on source wins, then mapping table
     // (mapping may come from an ancestor via the extends chain)
