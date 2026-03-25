@@ -9,8 +9,9 @@ import {
   isUnknownType,
 } from "@typespec/compiler";
 import { type ModelVariants } from "../../context/index.js";
-import { getUnionName, getNullableUnionType } from "../../lib/type-utils.js";
-import { getScalarMapping } from "../../lib/scalar-mappings.js";
+import { isNullable } from "../../lib/nullable.js";
+import { getUnionName } from "../../lib/type-utils.js";
+import { getGraphQLBuiltinName, getScalarMapping } from "../../lib/scalar-mappings.js";
 
 /**
  * Information about a GraphQL type after analysis
@@ -50,28 +51,16 @@ export function analyzeType(
   modelVariants: ModelVariants,
   targetType?: Type
 ): TypeInfo {
-  // Handle nullable unions first (e.g., string | null)
-  if (type.kind === "Union") {
-    const nullableType = getNullableUnionType(type as Union);
-    if (nullableType) {
-      // Unwrap the null union and analyze the inner type
-      // Mark as nullable since it's a T | null union
-      const inner = analyzeType(nullableType, true, mode, program, modelVariants, targetType);
-      return { ...inner, isNonNull: false };
-    }
-  }
+  // Check nullability from the mutation engine's state map.
+  // The engine strips T | null unions (replacing with the inner type) and marks
+  // the result via setNullable(). For multi-variant unions (Cat | Dog | null),
+  // null is stripped and the resulting union is marked.
+  const nullable = isNullable(program, type);
 
   // Handle arrays
   if (type.kind === "Model" && isArrayModelType(program, type)) {
     if (type.indexer?.value) {
       const elementType = type.indexer.value;
-
-      // Check if the element type is nullable
-      let elementIsNullable = false;
-
-      if (elementType.kind === "Union") {
-        elementIsNullable = getNullableUnionType(elementType as Union) !== undefined;
-      }
 
       // Recursively analyze the element type to get its base name
       const elementInfo = analyzeType(elementType, false, mode, program, modelVariants, targetType);
@@ -79,11 +68,11 @@ export function analyzeType(
       return {
         typeName: elementInfo.typeName,
         isList: true,
-        // In output context: array field is non-null unless optional
+        // In output context: array field is non-null unless optional or nullable
         // In input context: array field is always non-null (? doesn't affect nullability)
-        isNonNull: mode === "input" ? true : !isOptional,
+        isNonNull: nullable ? false : mode === "input" ? true : !isOptional,
         // Elements are non-null unless the element type is nullable
-        itemNonNull: !elementIsNullable,
+        itemNonNull: !isNullable(program, elementType),
       };
     }
   }
@@ -94,9 +83,9 @@ export function analyzeType(
   return {
     typeName,
     isList: false,
-    // In output context: non-null unless optional (? means nullable)
-    // In input context: always non-null (? doesn't affect nullability, only | null does)
-    isNonNull: mode === "input" ? true : !isOptional,
+    // In output context: non-null unless optional or nullable (? or | null means nullable)
+    // In input context: non-null unless nullable (? doesn't affect nullability, only | null does)
+    isNonNull: nullable ? false : mode === "input" ? true : !isOptional,
     itemNonNull: false, // Not meaningful for non-list types
   };
 }
@@ -124,17 +113,11 @@ function resolveBaseTypeName(
 
   // Handle scalars
   if (type.kind === "Scalar") {
-    // Check for direct GraphQL builtins FIRST — these always map to built-in GraphQL types
-    // regardless of any ancestor mappings in the scalar hierarchy.
-    if (program.checker.isStdType(type, "string")) return "String";
-    if (program.checker.isStdType(type, "int32")) return "Int";
-    if (program.checker.isStdType(type, "float32")) return "Float";
-    if (program.checker.isStdType(type, "float64")) return "Float";
-    if (program.checker.isStdType(type, "boolean")) return "Boolean";
+    // Check for GraphQL builtins first (string → String, int32 → Int, etc.)
+    const builtinName = getGraphQLBuiltinName(program, type);
+    if (builtinName) return builtinName;
 
-    // Check for scalar mappings — for any std scalar that isn't a GraphQL builtin.
-    // This handles types like int64 → Long, utcDateTime → UTCDateTime, etc.
-    // Also handles scalars that get their mapping via the extends chain.
+    // Check for scalar mappings (int64 → Long, utcDateTime → UTCDateTime, etc.)
     if (program.checker.isStdType(type)) {
       // Check for encoding-specific mapping via the target (property/parameter)
       if (targetType && (targetType.kind === "Scalar" || targetType.kind === "ModelProperty")) {

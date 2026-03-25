@@ -488,7 +488,7 @@ describe("GraphQL Mutation Engine - Unions", () => {
     tester = await Tester.createInstance();
   });
 
-  it("skips wrapper creation for nullable unions", async () => {
+  it("replaces nullable scalar union with inner type", async () => {
     const { NullableString } = await tester.compile(
       t.code`union ${t.union("NullableString")} { string, null }`,
     );
@@ -496,11 +496,13 @@ describe("GraphQL Mutation Engine - Unions", () => {
     const engine = createTestEngine(tester.program);
     const mutation = engine.mutateUnion(NullableString, GraphQLTypeContext.Output);
 
+    // T | null is replaced with the inner type (string scalar)
+    expect(mutation.mutatedType.kind).toBe("Scalar");
     expect(mutation.wrapperModels).toHaveLength(0);
-    expect(isNullable(tester.program, NullableString)).toBe(true);
+    expect(isNullable(tester.program, mutation.mutatedType)).toBe(true);
   });
 
-  it("skips union processing for nullable model wrapper", async () => {
+  it("replaces nullable model union with inner type", async () => {
     const { MaybeDog } = await tester.compile(
       t.code`
         model ${t.model("Dog")} { breed: string; }
@@ -511,11 +513,10 @@ describe("GraphQL Mutation Engine - Unions", () => {
     const engine = createTestEngine(tester.program);
     const mutation = engine.mutateUnion(MaybeDog, GraphQLTypeContext.Output);
 
-    // This is a nullable wrapper (Dog | null), not a real union —
-    // it should pass through without union processing
-    expect(mutation.mutatedType.kind).toBe("Union");
+    // Dog | null is replaced with the inner type (Dog model)
+    expect(mutation.mutatedType.kind).toBe("Model");
     expect(mutation.wrapperModels).toHaveLength(0);
-    expect(isNullable(tester.program, MaybeDog)).toBe(true);
+    expect(isNullable(tester.program, mutation.mutatedType)).toBe(true);
   });
 
   it("creates wrapper models for scalar variants", async () => {
@@ -878,7 +879,7 @@ describe("GraphQL Mutation Engine - oneOf Input Objects", () => {
     expect(model.properties.has("bird")).toBe(true);
   });
 
-  it("nullable union in input context is not replaced", async () => {
+  it("replaces nullable union with inner type in input context too", async () => {
     const { MaybeString } = await tester.compile(
       t.code`union ${t.union("MaybeString")} { string, null }`,
     );
@@ -886,8 +887,9 @@ describe("GraphQL Mutation Engine - oneOf Input Objects", () => {
     const engine = createTestEngine(tester.program);
     const mutation = engine.mutateUnion(MaybeString, GraphQLTypeContext.Input);
 
-    // Nullable unions are not real unions — union is kept, not replaced
-    expect(mutation.mutatedType.kind).toBe("Union");
+    // Nullable wrappers are replaced with the inner type regardless of context
+    expect(mutation.mutatedType.kind).toBe("Scalar");
+    expect(isNullable(tester.program, mutation.mutatedType)).toBe(true);
   });
 
   it("strips null from multi-variant union in output context", async () => {
@@ -948,6 +950,23 @@ describe("GraphQL Mutation Engine - oneOf Input Objects", () => {
     const mutation = engine.mutateUnion(Pet, GraphQLTypeContext.Output);
 
     expect(isNullable(tester.program, mutation.mutatedType)).toBe(false);
+  });
+
+  it("strips T | null on model property to inner type and marks nullable", async () => {
+    const { Foo } = await tester.compile(
+      t.code`model ${t.model("Foo")} { name: string | null; }`,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateModel(Foo, GraphQLTypeContext.Output);
+
+    // The property's type should be the inner type (string scalar), not the union
+    const nameProp = mutation.mutatedType.properties.get("name");
+    expect(nameProp).toBeDefined();
+    expect(nameProp!.type.kind).toBe("Scalar");
+
+    // The inner type should be marked as nullable
+    expect(isNullable(tester.program, nameProp!.type)).toBe(true);
   });
 
   it("exposes typeContext on union mutation", async () => {
