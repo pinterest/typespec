@@ -1,4 +1,4 @@
-import { type Program, type Scalar } from "@typespec/compiler";
+import { type IntrinsicScalarName, type Program, type Scalar } from "@typespec/compiler";
 import { $, type Typekit } from "@typespec/compiler/typekit";
 
 /**
@@ -166,9 +166,9 @@ export function isStdScalar(tk: Typekit, scalar: Scalar): boolean {
  *
  * @see https://spec.graphql.org/September2025/#sec-Scalars.Built-in-Scalars
  */
-const TSP_SCALARS_TO_GQL_BUILTINS = new Set([
+const TSP_SCALARS_TO_GQL_BUILTINS: IntrinsicScalarName[] = [
   "string", "boolean", "int32", "float32", "float64",
-]);
+];
 
 /**
  * Get the GraphQL scalar mapping for a scalar via its standard library ancestor.
@@ -215,7 +215,8 @@ export function getCustomScalarMapping(
 ): ScalarMapping | undefined {
   const tk = $(program);
   if (!isStdScalar(tk, scalar)) return undefined;
-  if (TSP_SCALARS_TO_GQL_BUILTINS.has(scalar.name)) return undefined;
+  if (TSP_SCALARS_TO_GQL_BUILTINS.some((name) => program.checker.isStdType(scalar, name)))
+    return undefined;
   return getScalarMappingInternal(tk, scalar);
 }
 
