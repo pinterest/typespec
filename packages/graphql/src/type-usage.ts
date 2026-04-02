@@ -134,6 +134,9 @@ function navigateReferencedTypes(
           navigateReferencedTypes(type.indexer.value, usage, reachableTypes, usages, visited);
         }
       } else {
+        // Note: Record<K, V> models land here but their indexer value type
+        // is not navigated. That's intentional — we don't support Record
+        // types in GraphQL.
         trackUsage(reachableTypes, usages, type, usage);
         for (const prop of type.properties.values()) {
           navigateReferencedTypes(prop.type, usage, reachableTypes, usages, visited);
