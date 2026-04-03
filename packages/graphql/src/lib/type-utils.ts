@@ -29,19 +29,23 @@ import { camelCase, constantCase, pascalCase, split, splitSeparateNumbers } from
 import { reportDiagnostic } from "../lib.js";
 
 /**
- * Check if a union exists solely to express nullability of a single type.
+ * Extract the inner type from a nullable wrapper union (e.g., `string | null` → `string`).
  * Matches only the `T | null` pattern (exactly 2 variants, one of which is null).
  *
  * These unions are not "real" unions in GraphQL terms — they're just TypeSpec's
- * way of spelling "nullable T". The mutation engine skips further union processing for these.
+ * way of spelling "nullable T". The mutation engine replaces them with the inner type.
  *
  * For multi-variant unions that contain null (e.g. `Cat | Dog | null`),
  * use {@link stripNullVariants} instead.
+ *
+ * @returns The non-null variant type if this is a nullable wrapper, otherwise undefined.
  */
-export function isNullableWrapper(union: Union): boolean {
-  if (union.variants.size !== 2) return false;
+export function getNullableUnionType(union: Union): Type | undefined {
+  if (union.variants.size !== 2) return undefined;
   const variants = Array.from(union.variants.values());
-  return variants.some((v) => isNullType(v.type));
+  const nullVariant = variants.find((v) => isNullType(v.type));
+  if (!nullVariant) return undefined;
+  return variants.find((v) => v !== nullVariant)?.type;
 }
 
 /**
