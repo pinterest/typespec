@@ -13,8 +13,8 @@ import { reportDiagnostic } from "../../lib.js";
 import { setNullable } from "../../lib/nullable.js";
 import { setOneOf } from "../../lib/one-of.js";
 import {
+  unwrapNullableUnion,
   getUnionName,
-  isNullableWrapper,
   sanitizeNameForGraphQL,
   stripNullVariants,
   toTypeName,
@@ -106,12 +106,15 @@ export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, Mu
 
   mutate() {
     // A nullable wrapper (e.g. `string | null`) is not a real union —
-    // it's just TypeSpec's way of spelling "nullable T". Skip union processing,
-    // but mark as nullable so the emitter knows not to emit `!`.
-    if (isNullableWrapper(this.sourceType)) {
-      setNullable(this.engine.$.program, this.sourceType);
-      this.#mutationNode.mutate();
-      super.mutate();
+    // it's just TypeSpec's way of spelling "nullable T". Replace the union
+    // with the inner type so downstream code sees the unwrapped type.
+    // Nullability is tracked via the state map.
+    const innerType = unwrapNullableUnion(this.sourceType);
+    if (innerType) {
+      this.#mutationNode.replace(innerType);
+      setNullable(this.engine.$.program, this.mutatedType);
+      // Don't call super.mutate() — replace() swaps the union out of the
+      // graph, so there are no variants to iterate.
       return;
     }
 
