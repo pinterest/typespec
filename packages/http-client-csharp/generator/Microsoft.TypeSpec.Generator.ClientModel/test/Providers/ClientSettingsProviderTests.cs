@@ -2,12 +2,15 @@
 // Licensed under the MIT License.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.TypeSpec.Generator.ClientModel.Providers;
 using Microsoft.TypeSpec.Generator.Input;
 using Microsoft.TypeSpec.Generator.Primitives;
 using Microsoft.TypeSpec.Generator.Providers;
+using Microsoft.TypeSpec.Generator.Statements;
 using Microsoft.TypeSpec.Generator.Tests.Common;
 using NUnit.Framework;
 
@@ -907,6 +910,95 @@ namespace Microsoft.TypeSpec.Generator.ClientModel.Tests.Providers
             var writer = new TypeProviderWriter(clientProvider);
             var file = writer.Write();
             Assert.AreEqual(Helpers.GetExpectedFromFile(), file.Content);
+        }
+
+        [Test]
+        public async Task TestBindCoreMethod_WithCustomStructParam()
+        {
+            // A custom struct with a string constructor should use string binding
+            var singletonField = typeof(ClientOptionsProvider).GetField("_singletonInstance",
+                BindingFlags.Static | BindingFlags.NonPublic);
+            singletonField?.SetValue(null, null);
+
+            await MockHelpers.LoadMockGeneratorAsync(
+                compilation: async () => await Helpers.GetCompilationFromDirectoryAsync());
+
+            var typeProvider = CodeModelGenerator.Instance.SourceInputModel
+                .FindForTypeInCustomization("SampleNamespace", "CustomAudience");
+            Assert.IsNotNull(typeProvider, "CustomAudience should be found in custom code");
+
+            var body = new List<MethodBodyStatement>();
+            var sectionParam = new ParameterProvider(
+                "section",
+                $"The configuration section.",
+                ClientSettingsProvider.IConfigurationSectionType);
+
+            ClientSettingsProvider.AppendBindingForProperty(body, sectionParam, "Audience", "audience", typeProvider!.Type);
+
+            var bodyString = string.Join("\n", body.Select(s => s.ToDisplayString()));
+            Assert.IsTrue(bodyString.Contains("is string"),
+                "Should use 'is string' pattern for custom struct with string constructor");
+            Assert.IsFalse(bodyString.Contains("GetSection"),
+                "Should NOT use GetSection for custom struct with string constructor");
+        }
+
+        [Test]
+        public async Task TestBindCoreMethod_WithCustomIntStructParam()
+        {
+            // A custom struct with an int constructor should use int.TryParse binding
+            var singletonField = typeof(ClientOptionsProvider).GetField("_singletonInstance",
+                BindingFlags.Static | BindingFlags.NonPublic);
+            singletonField?.SetValue(null, null);
+
+            await MockHelpers.LoadMockGeneratorAsync(
+                compilation: async () => await Helpers.GetCompilationFromDirectoryAsync());
+
+            var typeProvider = CodeModelGenerator.Instance.SourceInputModel
+                .FindForTypeInCustomization("SampleNamespace", "CustomPriority");
+            Assert.IsNotNull(typeProvider, "CustomPriority should be found in custom code");
+
+            var body = new List<MethodBodyStatement>();
+            var sectionParam = new ParameterProvider(
+                "section",
+                $"The configuration section.",
+                ClientSettingsProvider.IConfigurationSectionType);
+
+            ClientSettingsProvider.AppendBindingForProperty(body, sectionParam, "Priority", "priority", typeProvider!.Type);
+
+            var bodyString = string.Join("\n", body.Select(s => s.ToDisplayString()));
+            Assert.IsTrue(bodyString.Contains("int.TryParse"),
+                "Should use int.TryParse for custom struct with int constructor");
+            Assert.IsFalse(bodyString.Contains("GetSection"),
+                "Should NOT use GetSection for custom struct with int constructor");
+        }
+
+        [Test]
+        public async Task TestBindCoreMethod_WithCustomStructParam_FallsBackToComplexObject()
+        {
+            // A custom struct with no single-parameter framework-type constructor
+            // should fall back to complex object binding
+            var singletonField = typeof(ClientOptionsProvider).GetField("_singletonInstance",
+                BindingFlags.Static | BindingFlags.NonPublic);
+            singletonField?.SetValue(null, null);
+
+            await MockHelpers.LoadMockGeneratorAsync(
+                compilation: async () => await Helpers.GetCompilationFromDirectoryAsync());
+
+            var typeProvider = CodeModelGenerator.Instance.SourceInputModel
+                .FindForTypeInCustomization("SampleNamespace", "CustomComplex");
+            Assert.IsNotNull(typeProvider, "CustomComplex should be found in custom code");
+
+            var body = new List<MethodBodyStatement>();
+            var sectionParam = new ParameterProvider(
+                "section",
+                $"The configuration section.",
+                ClientSettingsProvider.IConfigurationSectionType);
+
+            ClientSettingsProvider.AppendBindingForProperty(body, sectionParam, "Complex", "complex", typeProvider!.Type);
+
+            var bodyString = string.Join("\n", body.Select(s => s.ToDisplayString()));
+            Assert.IsTrue(bodyString.Contains("GetSection"),
+                "Should fall back to GetSection for struct with no single-parameter framework-type constructor");
         }
 
         private static bool IsSettingsConstructor(ConstructorProvider c) =>
