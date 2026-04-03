@@ -555,7 +555,7 @@ namespace Microsoft.TypeSpec.Generator.ClientModel.Providers
         /// </summary>
         internal bool HasSettingsParameter(ConstructorProvider ctor)
         {
-            return ctor.Signature.Parameters.Any(p => p.Type.Equals(Type));
+            return ctor.Signature.Parameters.Any(p => p.Type.Name == Type.Name);
         }
     }
 }
