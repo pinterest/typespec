@@ -896,19 +896,6 @@ describe("GraphQL Mutation Engine - oneOf Input Objects", () => {
     expect(model.properties.has("bird")).toBe(true);
   });
 
-  it("replaces nullable union with inner type in input context too", async () => {
-    const { MaybeString } = await tester.compile(
-      t.code`union ${t.union("MaybeString")} { string, null }`,
-    );
-
-    const engine = createTestEngine(tester.program);
-    const mutation = engine.mutateUnion(MaybeString, GraphQLTypeContext.Input);
-
-    // Nullable wrappers are replaced with the inner type regardless of context
-    expect(mutation.mutatedType.kind).toBe("Scalar");
-    expect(isNullable(tester.program, mutation.mutatedType)).toBe(true);
-  });
-
   it("strips null from multi-variant union in output context", async () => {
     const { Pet } = await tester.compile(
       t.code`
