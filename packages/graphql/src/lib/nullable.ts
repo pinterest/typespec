@@ -19,18 +19,22 @@
  *
  * **Field nullability** (`isNullable`): The field/property itself is nullable.
  *
- *   Marked on two different targets depending on the source:
+ *   Marked on different targets depending on the source:
  *   - *Property-level*: For inline `T | null` (e.g., `bio: string | null`),
  *     the union is replaced with the shared scalar singleton. Marking the
  *     singleton would poison every use of that scalar, so we mark the
  *     **ModelProperty** instead. Set by `GraphQLModelPropertyMutation`.
+ *   - *Operation-level*: For `op getUser(): User | null`, the return type
+ *     union is replaced with the inner type. We mark the **Operation**
+ *     itself. Set by `GraphQLOperationMutation`.
  *   - *Type-level*: For named multi-variant unions with null (e.g.,
  *     `union Pet { Cat, Dog, null }`), the engine creates a new unique union
  *     object without the null variant. This new object is safe to mark
  *     directly. Set by `GraphQLUnionMutation`.
  *
- *   Components call `isNullable(program, property)` and
- *   `isNullable(program, type)` — both use the same state set.
+ *   Components call `isNullable(program, property)`,
+ *   `isNullable(program, operation)`, or `isNullable(program, type)` —
+ *   all use the same state set.
  *
  * **Element nullability** (`hasNullableElements`): Array elements are nullable.
  *
@@ -61,6 +65,7 @@ export function isNullable(program: Program, type: Type): boolean {
  * null variants are stripped during processing.
  *
  * @see {@link GraphQLModelPropertyMutation} — marks ModelProperty for inline `T | null`
+ * @see {@link GraphQLOperationMutation} — marks Operation for `op foo(): T | null`
  * @see {@link GraphQLUnionMutation} — marks the new union for named `Cat | Dog | null`
  */
 export function setNullable(program: Program, type: Type): void {

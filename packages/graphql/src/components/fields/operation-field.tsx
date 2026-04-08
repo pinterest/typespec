@@ -31,6 +31,7 @@ export function OperationField(props: OperationFieldProps) {
       <GraphQLTypeExpression
         type={props.operation.returnType}
         isOptional={false}
+        isNullable={isNullable(program, props.operation)}
         targetType={props.operation}
       >
         {(returnTypeInfo) => (

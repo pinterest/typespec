@@ -2,8 +2,8 @@ import { type ComponentContext, createNamedContext, useContext } from "@alloy-js
 import {
   type Model,
   type Enum,
+  type IntrinsicType,
   type Scalar,
-  type Type,
   type Union,
   type Operation,
 } from "@typespec/compiler";
@@ -50,8 +50,8 @@ export interface ModelVariants {
  * When a scalar has @encode, we emit it as a different GraphQL scalar (e.g., bytes + base64 → Bytes)
  */
 export interface ScalarVariant {
-  /** The original TypeSpec scalar type (or Intrinsic for `unknown`) */
-  sourceScalar: Scalar | Type;
+  /** The original TypeSpec scalar type, or IntrinsicType for `unknown` */
+  sourceScalar: Scalar | IntrinsicType;
   /** The encoding used (e.g., "base64", "rfc3339") */
   encoding: string;
   /** The GraphQL scalar name to emit (e.g., "Bytes", "UTCDateTime") */

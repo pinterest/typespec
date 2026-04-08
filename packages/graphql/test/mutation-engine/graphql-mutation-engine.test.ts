@@ -201,6 +201,38 @@ describe("GraphQL Mutation Engine - Operations", () => {
 
     expect(mutation.mutatedType.name).toBe("get_data");
   });
+
+  it("marks operation as nullable when return type is T | null", async () => {
+    const { getUser } = await tester.compile(
+      t.code`
+        model ${t.model("User")} { name: string; }
+        op ${t.op("getUser")}(): User | null;
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateOperation(getUser);
+
+    // The return type should be unwrapped to the inner type
+    expect(mutation.mutatedType.returnType.kind).toBe("Model");
+    // The operation itself should be marked nullable
+    expect(isNullable(tester.program, mutation.mutatedType)).toBe(true);
+  });
+
+  it("does not mark operation as nullable when return type is non-null", async () => {
+    const { getUser } = await tester.compile(
+      t.code`
+        model ${t.model("User")} { name: string; }
+        op ${t.op("getUser")}(): User;
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateOperation(getUser);
+
+    expect(mutation.mutatedType.returnType.kind).toBe("Model");
+    expect(isNullable(tester.program, mutation.mutatedType)).toBe(false);
+  });
 });
 
 describe("GraphQL Mutation Engine - Scalars", () => {

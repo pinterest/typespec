@@ -165,6 +165,8 @@ export function isStdScalar(tk: Typekit, scalar: Scalar): boolean {
  *
  * @see https://spec.graphql.org/September2025/#sec-Scalars.Built-in-Scalars
  */
+// Note: GraphQL's `ID` built-in is not mapped here — no TypeSpec scalar maps
+// to `ID` by default. It requires an explicit decorator (e.g., @id).
 const GQL_BUILTIN_SCALARS: Partial<Record<IntrinsicScalarName, string>> = {
   string: "String",
   boolean: "Boolean",

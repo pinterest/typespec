@@ -6,7 +6,8 @@ import {
   type SimpleMutationOptions,
   type SimpleMutations,
 } from "@typespec/mutator-framework";
-import { sanitizeNameForGraphQL } from "../../lib/type-utils.js";
+import { setNullable } from "../../lib/nullable.js";
+import { unwrapNullableUnion, sanitizeNameForGraphQL } from "../../lib/type-utils.js";
 import { GraphQLMutationOptions, GraphQLTypeContext } from "../options.js";
 
 /** GraphQL-specific Operation mutation. */
@@ -48,10 +49,25 @@ export class GraphQLOperationMutation extends SimpleOperationMutation<SimpleMuta
   }
 
   mutate() {
+    // Detect if the return type is inline T | null BEFORE super.mutate()
+    // replaces it. Same pattern as GraphQLModelPropertyMutation — see
+    // nullable.ts for the full architectural explanation.
+    const originalReturnType = this.sourceType.returnType;
+    const hasNullableReturn =
+      originalReturnType.kind === "Union" &&
+      unwrapNullableUnion(originalReturnType) !== undefined;
+
     // Apply GraphQL name sanitization via callback
     this.mutationNode.mutate((operation) => {
       operation.name = sanitizeNameForGraphQL(operation.name);
     });
     super.mutate();
+
+    // Mark the mutated operation as having a nullable return type.
+    // The OperationField component checks isNullable(program, operation)
+    // to determine whether the return field should omit the ! wrapper.
+    if (hasNullableReturn) {
+      setNullable(this.engine.$.program, this.mutatedType);
+    }
   }
 }
