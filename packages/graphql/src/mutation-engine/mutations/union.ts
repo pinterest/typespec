@@ -112,7 +112,14 @@ export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, Mu
     const innerType = unwrapNullableUnion(this.sourceType);
     if (innerType) {
       this.#mutationNode.replace(innerType);
-      setNullable(this.engine.$.program, this.mutatedType);
+      // NOTE: We intentionally do NOT call setNullable() on the replacement type here.
+      // For inline T | null unions (e.g., `bio: string | null`), the replacement type
+      // is a shared scalar singleton — marking it would poison all uses of that scalar.
+      // Instead, nullability for inline T | null is tracked on the MODEL PROPERTY by
+      // GraphQLModelPropertyMutation. For named multi-variant unions (Cat | Dog | null),
+      // setNullable is called in mutateAsOutputUnion() on the newly-created union object,
+      // which is safe because the new object is unique.
+      //
       // Don't call super.mutate() — replace() swaps the union out of the
       // graph, so there are no variants to iterate.
       return;

@@ -499,7 +499,9 @@ describe("GraphQL Mutation Engine - Unions", () => {
     // T | null is replaced with the inner type (string scalar)
     expect(mutation.mutatedType.kind).toBe("Scalar");
     expect(mutation.wrapperModels).toHaveLength(0);
-    expect(isNullable(tester.program, mutation.mutatedType)).toBe(true);
+    // The replacement type is NOT marked nullable — nullability for inline T | null
+    // is tracked on the model property, not the shared scalar singleton.
+    expect(isNullable(tester.program, mutation.mutatedType)).toBe(false);
   });
 
   it("replaces nullable model union with inner type", async () => {
@@ -516,7 +518,9 @@ describe("GraphQL Mutation Engine - Unions", () => {
     // Dog | null is replaced with the inner type (Dog model)
     expect(mutation.mutatedType.kind).toBe("Model");
     expect(mutation.wrapperModels).toHaveLength(0);
-    expect(isNullable(tester.program, mutation.mutatedType)).toBe(true);
+    // The replacement type is NOT marked nullable — nullability for inline T | null
+    // is tracked on the model property, not the shared type.
+    expect(isNullable(tester.program, mutation.mutatedType)).toBe(false);
   });
 
   it("creates wrapper models for scalar variants", async () => {
@@ -596,7 +600,7 @@ describe("GraphQL Mutation Engine - Unions", () => {
     expect(mutation.mutatedType.name).toBe("ValidUnion");
   });
 
-  it("strips T | null on model property to inner type and marks nullable", async () => {
+  it("strips T | null on model property to inner type and marks property nullable", async () => {
     const { Foo } = await tester.compile(
       t.code`model ${t.model("Foo")} { name: string | null; }`,
     );
@@ -609,8 +613,10 @@ describe("GraphQL Mutation Engine - Unions", () => {
     expect(nameProp).toBeDefined();
     expect(nameProp!.type.kind).toBe("Scalar");
 
-    // The inner type should be marked as nullable
-    expect(isNullable(tester.program, nameProp!.type)).toBe(true);
+    // Nullability is tracked on the property, not the inner type.
+    // The shared scalar singleton must NOT be marked nullable (would poison all uses).
+    expect(isNullable(tester.program, nameProp!.type)).toBe(false);
+    expect(isNullable(tester.program, nameProp!)).toBe(true);
   });
 });
 

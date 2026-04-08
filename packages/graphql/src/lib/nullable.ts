@@ -19,3 +19,24 @@ export function isNullable(program: Program, type: Type): boolean {
 export function setNullable(program: Program, type: Type): void {
   setNullableState(program, type);
 }
+
+const [getNullableElementsState, setNullableElementsState] = useStateSet<Type>(
+  GraphQLKeys.nullableElements,
+);
+
+/**
+ * Check if a property has been marked as having nullable array elements.
+ * For example, `tags: (string | null)[]` — the property's element type was
+ * originally `T | null`, which the mutation engine replaces with `T`.
+ */
+export function hasNullableElements(program: Program, type: Type): boolean {
+  return getNullableElementsState(program, type);
+}
+
+/**
+ * Mark a property as having nullable array elements. Called by the mutation
+ * engine when the property's array element type is an inline `T | null` union.
+ */
+export function setNullableElements(program: Program, type: Type): void {
+  setNullableElementsState(program, type);
+}

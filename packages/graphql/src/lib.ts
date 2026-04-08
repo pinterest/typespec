@@ -160,6 +160,12 @@ export const libDef = {
         default: paramMessage`Scalar "${"name"}" collides with GraphQL built-in type "${"builtinName"}". This may cause unexpected behavior. Consider renaming the scalar.`,
       },
     },
+    "empty-schema": {
+      severity: "warning",
+      messages: {
+        default: "GraphQL schema is empty. No types or operations were found to emit.",
+      },
+    },
   },
   emitter: {
     options: EmitterOptionsSchema as JSONSchemaType<GraphQLEmitterOptions>,
@@ -178,6 +184,10 @@ export const libDef = {
     nullable: {
       description:
         "State for tracking types that were determined to be nullable from null-variant stripping.",
+    },
+    nullableElements: {
+      description:
+        "State for tracking array properties whose element type was originally T | null.",
     },
   },
 } as const;
