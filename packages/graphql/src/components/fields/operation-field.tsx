@@ -2,6 +2,7 @@ import { type Operation, getDoc, getDeprecationDetails } from "@typespec/compile
 import * as gql from "@alloy-js/graphql";
 import { useTsp } from "@typespec/emitter-framework";
 import { GraphQLTypeResolutionContext } from "../../context/index.js";
+import { isNullable, hasNullableElements } from "../../lib/nullable.js";
 import { GraphQLTypeExpression } from "./type-expression.js";
 
 export interface OperationFieldProps {
@@ -10,10 +11,14 @@ export interface OperationFieldProps {
 }
 
 /**
- * Renders an operation as a field with arguments
+ * Renders an operation as a field with arguments.
  *
  * Used for @operationFields decorator where operations become
  * fields on a type with parameters as arguments.
+ *
+ * Nullability for parameters is tracked by the mutation engine on each
+ * mutated ModelProperty (see nullable.ts). This component queries the
+ * state maps and passes the results to GraphQLTypeExpression.
  */
 export function OperationField(props: OperationFieldProps) {
   const { program } = useTsp();
@@ -49,6 +54,8 @@ export function OperationField(props: OperationFieldProps) {
                   key={param.name}
                   type={param.type}
                   isOptional={param.optional}
+                  isNullable={isNullable(program, param)}
+                  hasNullableElements={hasNullableElements(program, param)}
                   targetType={param}
                 >
                   {(paramTypeInfo) => (

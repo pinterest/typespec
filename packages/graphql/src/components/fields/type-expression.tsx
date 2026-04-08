@@ -1,6 +1,5 @@
 import {
   type Type,
-  type Union,
   type Scalar,
   type ModelProperty,
   getEncode,
@@ -65,17 +64,20 @@ export function GraphQLTypeExpression(props: GraphQLTypeExpressionProps) {
 
   // Nullability from property-level tracking (inline T | null) or
   // type-level state map (named multi-variant unions with null stripped).
+  // See nullable.ts for the full architectural explanation.
   const nullable = props.isNullable || isNullable(program, props.type);
 
-  // In output context: non-null unless optional or nullable (? or | null means nullable)
-  // In input context: non-null unless nullable (? doesn't affect nullability, only | null does)
-  const isNonNull = nullable ? false : mode === "input" ? true : !props.isOptional;
+  // GraphQL non-null rules:
+  // - Output fields: non-null unless optional (?) or nullable (| null)
+  // - Input fields: always non-null unless nullable (| null); optionality is
+  //   expressed via default values, not nullability
+  const isNonNull = nullable ? false : mode === "input" || !props.isOptional;
 
   // Unwrap inline T | null unions that haven't been processed by the mutation engine.
   // This handles cases where the type reaches us still as a union (e.g., array elements
   // like Array<string | null>, or operation parameters).
   if ($.union.is(props.type)) {
-    const innerType = unwrapNullableUnion(props.type as Union);
+    const innerType = unwrapNullableUnion(props.type);
     if (innerType) {
       return (
         <GraphQLTypeExpression
@@ -106,7 +108,7 @@ export function GraphQLTypeExpression(props: GraphQLTypeExpressionProps) {
     const elementIsNullable =
       props.hasNullableElements ||
       isNullable(program, elementType) ||
-      ($.union.is(elementType) && unwrapNullableUnion(elementType as Union) !== undefined);
+      ($.union.is(elementType) && unwrapNullableUnion(elementType) !== undefined);
 
     return (
       <GraphQLTypeExpression
@@ -195,7 +197,7 @@ export function GraphQLTypeExpression(props: GraphQLTypeExpressionProps) {
 
     // Unions
     if ($.union.is(type)) {
-      return getUnionName(type as Union, program);
+      return getUnionName(type, program);
     }
 
     throw new Error(
