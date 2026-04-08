@@ -158,17 +158,38 @@ export function isStdScalar(tk: Typekit, scalar: Scalar): boolean {
 }
 
 /**
- * TypeSpec std scalar names that map directly to GraphQL built-in scalar types:
- * string → String, boolean → Boolean, int32 → Int, float32/float64 → Float.
+ * TypeSpec std scalars that map directly to GraphQL built-in scalar types.
  *
  * These must NOT be renamed by the scalar mutation — they're resolved to
  * GraphQL builtins at emit time.
  *
  * @see https://spec.graphql.org/September2025/#sec-Scalars.Built-in-Scalars
  */
-const TSP_SCALARS_TO_GQL_BUILTINS: IntrinsicScalarName[] = [
-  "string", "boolean", "int32", "float32", "float64",
-];
+// Note: GraphQL's `ID` built-in is not mapped here — no TypeSpec scalar maps
+// to `ID` by default. It requires an explicit decorator (e.g., @id).
+const GQL_BUILTIN_SCALARS: Partial<Record<IntrinsicScalarName, string>> = {
+  string: "String",
+  boolean: "Boolean",
+  int32: "Int",
+  float32: "Float",
+  float64: "Float",
+};
+
+const TSP_SCALARS_TO_GQL_BUILTINS = Object.keys(GQL_BUILTIN_SCALARS) as IntrinsicScalarName[];
+
+/**
+ * Get the GraphQL built-in scalar name for a TypeSpec scalar, if it is one.
+ * Uses identity-based check via typekit to avoid false positives from
+ * user-defined scalars that share the same name in a different namespace.
+ * Returns undefined for non-builtin scalars.
+ */
+export function getGraphQLBuiltinName(program: Program, scalar: Scalar): string | undefined {
+  const checker = program.checker;
+  for (const [name, gqlName] of Object.entries(GQL_BUILTIN_SCALARS)) {
+    if (checker.isStdType(scalar, name as IntrinsicScalarName)) return gqlName;
+  }
+  return undefined;
+}
 
 /**
  * Get the GraphQL scalar mapping for a scalar via its standard library ancestor.
