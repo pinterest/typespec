@@ -21,10 +21,7 @@ import {
 } from "../../lib/type-utils.js";
 import { GraphQLMutationOptions, GraphQLTypeContext } from "../options.js";
 
-/**
- * Get the string name from a union variant name, which may be a string or symbol.
- * Symbols arise from anonymous/expression unions; we use their description as the name.
- */
+/** Convert a variant name (string or symbol) to a string. */
 function variantNameToString(name: string | symbol): string {
   return typeof name === "string" ? name : (name.description ?? "");
 }
@@ -32,13 +29,8 @@ function variantNameToString(name: string | symbol): string {
 /**
  * GraphQL-specific Union mutation.
  *
- * In output context: flattens nested unions, deduplicates variants,
- * and creates synthetic wrapper models for scalar variants since GraphQL unions
- * can only contain object types.
- *
- * In input context: creates a synthetic @oneOf input object, because GraphQL unions
- * are output-only. Each variant becomes a nullable field on the input object, and
- * exactly one field must be provided (oneOf semantics).
+ * Output context: flattens nested unions, deduplicates, wraps scalar variants.
+ * Input context: replaces with @oneOf input object (GraphQL unions are output-only).
  */
 export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, MutationEngine<any>> {
   #mutationNode: UnionMutationNode;
@@ -59,11 +51,7 @@ export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, Mu
     }) as UnionMutationNode;
   }
 
-  /**
-   * The input/output context this union was mutated with.
-   * Undefined when the options are not GraphQLMutationOptions (e.g. via
-   * SimpleMutationOptions edge propagation).
-   */
+  /** The input/output context, or undefined if options aren't GraphQLMutationOptions. */
   get typeContext(): GraphQLTypeContext | undefined {
     return this.options instanceof GraphQLMutationOptions
       ? this.options.typeContext
@@ -83,18 +71,12 @@ export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, Mu
     return this.#flattenedUnion || this.#mutationNode.mutatedType;
   }
 
-  /**
-   * Synthetic wrapper models created for scalar union variants.
-   * These are collected by the emitter and emitted as separate GraphQL object types.
-   */
+  /** Synthetic wrapper models for scalar union variants. */
   get wrapperModels() {
     return this.#wrapperModels;
   }
 
-  /**
-   * Creates a MutationHalfEdge that wraps the node-level edge.
-   * This ensures proper bidirectional updates when variants are mutated.
-   */
+  /** Creates a half-edge for bidirectional variant mutation updates. */
   protected startVariantEdge(): MutationHalfEdge<
     GraphQLUnionMutation,
     SimpleUnionVariantMutation<MutationOptions>
@@ -105,32 +87,17 @@ export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, Mu
   }
 
   mutate() {
-    // A nullable wrapper (e.g. `string | null`) is not a real union —
-    // it's just TypeSpec's way of spelling "nullable T". Replace the union
-    // with the inner type so downstream code sees the unwrapped type.
-    // Nullability is tracked via the state map.
+    // T | null is not a real union — replace with the inner type.
+    // Don't mark the replacement as nullable here; it's a shared singleton.
+    // Nullability is tracked by the container (ModelProperty or Operation).
     const innerType = unwrapNullableUnion(this.sourceType);
     if (innerType) {
       this.#mutationNode.replace(innerType);
-      // NOTE: We intentionally do NOT call setNullable() on the replacement type here.
-      // For inline T | null unions (e.g., `bio: string | null`), the replacement type
-      // is a shared scalar singleton — marking it would poison all uses of that scalar.
-      // Instead, nullability for inline T | null is tracked at the container level:
-      // - Model properties: by GraphQLModelPropertyMutation
-      // - Operation return types: by GraphQLOperationMutation
-      // For named multi-variant unions (Cat | Dog | null), setNullable is called in
-      // mutateAsOutputUnion() below on the newly-created union object, which is safe
-      // because that object is unique.
-      //
-      // Don't call super.mutate() — replace() swaps the union out of the
-      // graph, so there are no variants to iterate.
       return;
     }
 
     if (this.typeContext === GraphQLTypeContext.Input) {
       this.mutateAsOneOfInput();
-      // Don't call super.mutate() — the union node has been replaced with a
-      // Model, so iterating union variants is not needed
       return;
     }
 
@@ -138,16 +105,11 @@ export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, Mu
     super.mutate();
   }
 
-  /**
-   * Mutate as an output union: flatten nested unions, deduplicate, and
-   * wrap scalar variants in synthetic models.
-   */
+  /** Flatten nested unions, deduplicate, and wrap scalar variants in synthetic models. */
   private mutateAsOutputUnion() {
     const tk = this.engine.$;
     const program = tk.program;
 
-    // Strip null variants before processing — null is not a valid GraphQL union member.
-    // Nullability is tracked separately via the state map.
     const { variants: sourceVariants, isNullable: hasNull } = stripNullVariants(this.sourceType);
 
     const flattenedVariants = this.deduplicateVariants(
@@ -162,8 +124,6 @@ export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, Mu
     const needsFlattening = flattenedVariants.length !== sourceVariants.length;
 
     if (needsFlattening || hasNull) {
-      // Create a new union using TypeKit
-      // Convert symbol names to strings — GraphQL identifiers must be strings
       const variantArray = flattenedVariants.map((variant) => {
         return tk.unionVariant.create({
           name: variantNameToString(variant.name),
@@ -185,7 +145,7 @@ export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, Mu
       setNullable(program, this.mutatedType);
     }
 
-    // Wrap scalar variants in synthetic models (GraphQL unions can only contain object types)
+    // GraphQL unions can only contain object types — wrap scalars in synthetic models
     for (const variant of flattenedVariants) {
       const isScalar = variant.type.kind === "Scalar" || variant.type.kind === "Intrinsic";
 
@@ -211,17 +171,13 @@ export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, Mu
   }
 
   /**
-   * Mutate as a @oneOf input object. GraphQL unions are output-only, so when
-   * a union appears in input context it becomes a oneOf Input Object where
-   * each variant is a nullable field and exactly one must be provided.
-   *
+   * Replace with a @oneOf input object (GraphQL unions are output-only).
    * @see https://spec.graphql.org/September2025/#sec-OneOf-Input-Objects
    */
   private mutateAsOneOfInput() {
     const tk = this.engine.$;
     const program = tk.program;
 
-    // Strip null variants before processing
     const { variants: sourceVariants, isNullable: hasNull } = stripNullVariants(this.sourceType);
 
     const flattenedVariants = this.deduplicateVariants(
@@ -233,16 +189,13 @@ export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, Mu
       return;
     }
 
-    // Create one nullable field per variant
     const properties: Record<string, ReturnType<typeof tk.modelProperty.create>> = {};
     for (const variant of flattenedVariants) {
       const fieldName = sanitizeNameForGraphQL(variantNameToString(variant.name));
       properties[fieldName] = tk.modelProperty.create({
         name: fieldName,
         type: variant.type,
-        // All fields are optional — oneOf semantics mean exactly one must be provided,
-        // but from the schema perspective each individual field is nullable
-        optional: true,
+        optional: true, // oneOf: exactly one must be provided
       });
     }
 
@@ -254,26 +207,16 @@ export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, Mu
       properties,
     });
 
-    // Mark as @oneOf so the emitter can emit the directive
     setOneOf(program, oneOfModel);
 
     if (hasNull) {
       setNullable(program, oneOfModel);
     }
 
-    // Replace the union node with the model in the type graph.
-    // This notifies all parent edges (ModelProperty, UnionVariant) via onTailReplaced,
-    // so their mutatedType.type automatically points to the oneOf Model.
     this.#mutationNode.replace(oneOfModel);
   }
 
-  /**
-   * Recursively flatten nested unions into a single list of variants.
-   * GraphQL doesn't support nested unions, so union Pet { cat: Cat, animal: Animal }
-   * where Animal is itself a union becomes union Pet { Cat | Bear | Lion }.
-   *
-   * Null variants are stripped at each level — nested unions may also contain null.
-   */
+  /** Recursively flatten nested unions (GraphQL doesn't support nesting). */
   private flattenVariants(
     variants: readonly { name: string | symbol; type: Type }[],
     seen: Set<Union> = new Set(),
@@ -286,7 +229,6 @@ export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, Mu
         if (seen.has(nestedUnion)) continue;
         seen.add(nestedUnion);
 
-        // Strip null from nested unions too
         const { variants: nestedVariants } = stripNullVariants(nestedUnion);
         flattened.push(...this.flattenVariants(nestedVariants, seen));
       } else {
@@ -297,10 +239,7 @@ export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, Mu
     return flattened;
   }
 
-  /**
-   * Remove duplicate variants by type identity. If two variants reference the
-   * same type, the first occurrence wins and a diagnostic is emitted.
-   */
+  /** Deduplicate variants by type identity; first occurrence wins. */
   private deduplicateVariants(
     variants: Array<{ name: string | symbol; type: Type }>,
   ): Array<{ name: string | symbol; type: Type }> {

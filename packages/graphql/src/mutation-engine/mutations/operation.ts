@@ -22,10 +22,7 @@ export class GraphQLOperationMutation extends SimpleOperationMutation<SimpleMuta
     super(engine, sourceType, referenceTypes, options, info);
   }
 
-  /**
-   * Override to mutate parameters with input context.
-   * Types reachable from operation parameters become GraphQL input types.
-   */
+  /** Mutate parameters with input context. */
   protected override mutateParameters() {
     const inputOptions = new GraphQLMutationOptions(GraphQLTypeContext.Input);
     this.parameters = this.engine.mutate(
@@ -35,10 +32,7 @@ export class GraphQLOperationMutation extends SimpleOperationMutation<SimpleMuta
     );
   }
 
-  /**
-   * Override to mutate return type with output context.
-   * Types reachable from operation return types become GraphQL object types.
-   */
+  /** Mutate return type with output context. */
   protected override mutateReturnType() {
     const outputOptions = new GraphQLMutationOptions(GraphQLTypeContext.Output);
     this.returnType = this.engine.mutate(
@@ -49,23 +43,17 @@ export class GraphQLOperationMutation extends SimpleOperationMutation<SimpleMuta
   }
 
   mutate() {
-    // Detect if the return type is inline T | null BEFORE super.mutate()
-    // replaces it. Same pattern as GraphQLModelPropertyMutation — see
-    // nullable.ts for the full architectural explanation.
+    // Snapshot return-type nullability before mutation replaces it.
     const originalReturnType = this.sourceType.returnType;
     const hasNullableReturn =
       originalReturnType.kind === "Union" &&
       unwrapNullableUnion(originalReturnType) !== undefined;
 
-    // Apply GraphQL name sanitization via callback
     this.mutationNode.mutate((operation) => {
       operation.name = sanitizeNameForGraphQL(operation.name);
     });
     super.mutate();
 
-    // Mark the mutated operation as having a nullable return type.
-    // The OperationField component checks isNullable(program, operation)
-    // to determine whether the return field should omit the ! wrapper.
     if (hasNullableReturn) {
       setNullable(this.engine.$.program, this.mutatedType);
     }
