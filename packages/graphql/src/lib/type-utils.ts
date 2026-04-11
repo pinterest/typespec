@@ -49,6 +49,13 @@ export function unwrapNullableUnion(union: Union): Type | undefined {
 }
 
 /**
+ * Check whether a type is a `T | null` union (exactly two variants, one null).
+ */
+export function isNullableUnion(type: Type): boolean {
+  return type.kind === "Union" && unwrapNullableUnion(type) !== undefined;
+}
+
+/**
  * Strip null variants from a union, returning the remaining variants
  * and whether the union contained null.
  *

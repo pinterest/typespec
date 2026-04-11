@@ -1,7 +1,7 @@
 import type { EnumMember, Model, Union } from "@typespec/compiler";
 import { t } from "@typespec/compiler/testing";
 import { beforeEach, describe, expect, it } from "vitest";
-import { isNullable } from "../../src/lib/nullable.js";
+import { hasNullableElements, isNullable } from "../../src/lib/nullable.js";
 import { isOneOf } from "../../src/lib/one-of.js";
 import { getSpecifiedBy } from "../../src/lib/specified-by.js";
 import {
@@ -649,6 +649,65 @@ describe("GraphQL Mutation Engine - Unions", () => {
     // The shared scalar singleton must NOT be marked nullable (would poison all uses).
     expect(isNullable(tester.program, nameProp!.type)).toBe(false);
     expect(isNullable(tester.program, nameProp!)).toBe(true);
+  });
+
+  it("does not mark non-nullable array property as nullable or nullableElements", async () => {
+    const { Foo } = await tester.compile(
+      t.code`model ${t.model("Foo")} { tags: string[]; }`,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateModel(Foo, GraphQLTypeContext.Output);
+
+    const tagsProp = mutation.mutatedType.properties.get("tags");
+    expect(tagsProp).toBeDefined();
+    expect(isNullable(tester.program, tagsProp!)).toBe(false);
+    expect(hasNullableElements(tester.program, tagsProp!)).toBe(false);
+  });
+
+  it("marks (T | null)[] property as nullableElements only", async () => {
+    const { Foo } = await tester.compile(
+      t.code`model ${t.model("Foo")} { tags: (string | null)[]; }`,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateModel(Foo, GraphQLTypeContext.Output);
+
+    const tagsProp = mutation.mutatedType.properties.get("tags");
+    expect(tagsProp).toBeDefined();
+    expect(isNullable(tester.program, tagsProp!)).toBe(false);
+    expect(hasNullableElements(tester.program, tagsProp!)).toBe(true);
+  });
+
+  it("marks T[] | null property as nullable only", async () => {
+    const { Foo } = await tester.compile(
+      t.code`model ${t.model("Foo")} { tags: string[] | null; }`,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateModel(Foo, GraphQLTypeContext.Output);
+
+    const tagsProp = mutation.mutatedType.properties.get("tags");
+    expect(tagsProp).toBeDefined();
+    expect(isNullable(tester.program, tagsProp!)).toBe(true);
+    expect(hasNullableElements(tester.program, tagsProp!)).toBe(false);
+  });
+
+  it("marks (T | null)[] | null property as both nullable and hasNullableElements", async () => {
+    const { Foo } = await tester.compile(
+      t.code`model ${t.model("Foo")} { tags: (string | null)[] | null; }`,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateModel(Foo, GraphQLTypeContext.Output);
+
+    const tagsProp = mutation.mutatedType.properties.get("tags");
+    expect(tagsProp).toBeDefined();
+
+    // The outer `| null` marks the property as nullable
+    expect(isNullable(tester.program, tagsProp!)).toBe(true);
+    // The inner `(T | null)` marks the property as having nullable elements
+    expect(hasNullableElements(tester.program, tagsProp!)).toBe(true);
   });
 });
 

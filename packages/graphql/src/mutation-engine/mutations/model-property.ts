@@ -1,4 +1,4 @@
-import type { MemberType, ModelProperty } from "@typespec/compiler";
+import { isArrayModelType, type MemberType, type ModelProperty } from "@typespec/compiler";
 import {
   SimpleModelPropertyMutation,
   type MutationInfo,
@@ -7,7 +7,11 @@ import {
   type SimpleMutations,
 } from "@typespec/mutator-framework";
 import { setNullable, setNullableElements } from "../../lib/nullable.js";
-import { isArray, unwrapNullableUnion, sanitizeNameForGraphQL } from "../../lib/type-utils.js";
+import {
+  isNullableUnion,
+  sanitizeNameForGraphQL,
+  unwrapNullableUnion,
+} from "../../lib/type-utils.js";
 
 /** GraphQL-specific ModelProperty mutation. */
 export class GraphQLModelPropertyMutation extends SimpleModelPropertyMutation<SimpleMutationOptions> {
@@ -32,14 +36,17 @@ export class GraphQLModelPropertyMutation extends SimpleModelPropertyMutation<Si
     // We mark the property (not the inner type) to avoid poisoning shared singletons.
     const originalType = this.sourceType.type;
 
-    const isInlineNullable =
-      originalType.kind === "Union" && unwrapNullableUnion(originalType) !== undefined;
+    const isInlineNullable = isNullableUnion(originalType);
+
+    // For element nullability, look through an outer `| null` wrapper to find the array.
+    // e.g. `(string | null)[] | null` → unwrap outer null → check array elements.
+    const innerType =
+      originalType.kind === "Union" ? (unwrapNullableUnion(originalType) ?? originalType) : originalType;
 
     const isArrayWithNullableElements =
-      originalType.kind === "Model" &&
-      isArray(originalType) &&
-      originalType.indexer.value.kind === "Union" &&
-      unwrapNullableUnion(originalType.indexer.value) !== undefined;
+      innerType.kind === "Model" &&
+      isArrayModelType(innerType) &&
+      isNullableUnion(innerType.indexer.value);
 
     this.mutationNode.mutate();
     super.mutate();

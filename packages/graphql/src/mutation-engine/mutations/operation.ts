@@ -7,7 +7,7 @@ import {
   type SimpleMutations,
 } from "@typespec/mutator-framework";
 import { setNullable } from "../../lib/nullable.js";
-import { unwrapNullableUnion, sanitizeNameForGraphQL } from "../../lib/type-utils.js";
+import { isNullableUnion, sanitizeNameForGraphQL } from "../../lib/type-utils.js";
 import { GraphQLMutationOptions, GraphQLTypeContext } from "../options.js";
 
 /** GraphQL-specific Operation mutation. */
@@ -44,10 +44,7 @@ export class GraphQLOperationMutation extends SimpleOperationMutation<SimpleMuta
 
   mutate() {
     // Snapshot return-type nullability before mutation replaces it.
-    const originalReturnType = this.sourceType.returnType;
-    const hasNullableReturn =
-      originalReturnType.kind === "Union" &&
-      unwrapNullableUnion(originalReturnType) !== undefined;
+    const hasNullableReturn = isNullableUnion(this.sourceType.returnType);
 
     this.mutationNode.mutate((operation) => {
       operation.name = sanitizeNameForGraphQL(operation.name);
