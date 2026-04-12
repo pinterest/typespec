@@ -4,6 +4,7 @@ import {
   interpolatePath,
   isArrayModelType,
   isUnknownType,
+  isVoidType,
   navigateTypesInNamespace,
   resolvePath,
   type EmitContext,
@@ -91,6 +92,16 @@ async function emitSchema(
     scalarSpecifications,
   };
 
+  // GraphQL requires at least a Query root type. If there are no query operations,
+  // the schema cannot be built. Emit a diagnostic and skip rendering.
+  if (classifiedTypes.queries.length === 0) {
+    reportDiagnostic(context.program, {
+      code: "empty-schema",
+      target: schema.type,
+    });
+    return;
+  }
+
   // Determine output file name
   const outputFilePattern = context.options["output-file"] ?? "{schema-name}.graphql";
   const schemaName = schema.name || "schema";
@@ -117,14 +128,6 @@ async function emitSchema(
 
   // Convert the GraphQLSchema to SDL string using graphql-js printSchema
   const rawSdl = printSchema(graphqlSchema);
-
-  if (!rawSdl || rawSdl.trim().length === 0) {
-    reportDiagnostic(context.program, {
-      code: "empty-schema",
-      target: schema.type,
-    });
-    return;
-  }
 
   // Ensure file ends with blank line (two newlines)
   const sdl = rawSdl.trimEnd() + "\n\n";
@@ -361,8 +364,16 @@ function classifyTypes(
   // Add wrapper models created by union mutations (always used as output)
   outputModels.push(...mutatedTypes.wrapperModels);
 
-  // Classify operations by kind
+  // Classify operations by kind, filtering out void-returning operations
   for (const op of mutatedTypes.operations) {
+    if (isVoidType(op.returnType)) {
+      reportDiagnostic(program, {
+        code: "void-operation-return",
+        format: { name: op.name },
+        target: op,
+      });
+      continue;
+    }
     const kind = getOperationKind(program, op);
     if (kind === "Query") queries.push(op);
     else if (kind === "Mutation") mutations.push(op);

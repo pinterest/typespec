@@ -64,6 +64,9 @@ describe("input/output type splitting", () => {
           authorId: string;
         }
 
+        @query
+        op getBooks(): string[];
+
         @mutation
         op createBook(input: CreateBookInput): string;
       }
@@ -229,6 +232,9 @@ describe("input/output type splitting", () => {
           age?: int32;
         }
 
+        @query
+        op getUser(id: string): User;
+
         @mutation
         op updateUser(id: string, user: User): User;
       }
@@ -341,6 +347,9 @@ describe("input/output type splitting", () => {
           id: string;
           address: Address;
         }
+
+        @query
+        op getUser(id: string): User;
 
         @mutation
         op createUser(user: User): User;

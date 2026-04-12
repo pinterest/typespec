@@ -230,6 +230,7 @@ describe("Nullability vs. Optionality", () => {
         @schema
         namespace TestNamespace {
           model User { id: string; name: string; }
+          @query op getUser(id: string): User;
           @mutation op createUser(user: User): User;
         }
       `;
@@ -242,6 +243,7 @@ describe("Nullability vs. Optionality", () => {
         @schema
         namespace TestNamespace {
           model User { id: string; name: string; }
+          @query op getUser(id: string): User;
           @mutation op patchUser(user?: User): User;
         }
       `;
@@ -257,6 +259,7 @@ describe("Nullability vs. Optionality", () => {
         @schema
         namespace TestNamespace {
           model User { id: string; name: string; }
+          @query op getUser(id: string): User;
           @mutation op patchUser(user: User | null): User;
         }
       `;
@@ -276,6 +279,7 @@ describe("Nullability vs. Optionality", () => {
         @schema
         namespace TestNamespace {
           model User { id: string; name: string; }
+          @query op getUser(id: string): User;
           @mutation op patchUser(user?: User | null): User;
         }
       `;

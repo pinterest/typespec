@@ -293,10 +293,8 @@ type Author {
 }
 
 type Query {
-  """
-  Placeholder field. No query operations were defined in the TypeSpec schema.
-  """
-  _: Boolean
+  getBooks: [Book!]!
+  getAuthors: [Author!]!
 }
 
 `;
@@ -320,8 +318,8 @@ type Query {
           Mystery,
           Fantasy,
         }
-        op getBooks(): Book[];
-        op getAuthors(): Author[];
+        @query op getBooks(): Book[];
+        @query op getAuthors(): Author[];
       }
     `;
     const results = await emitSingleSchema(code, {});
@@ -361,7 +359,7 @@ type Query {
     strictEqual(result.graphQLOutput?.includes("type Query {"), true, "Should contain Query type");
   });
 
-  it("generates valid empty Query type when no operations defined", async () => {
+  it("emits empty-schema diagnostic when no operations defined", async () => {
     const code = `
       @schema
       namespace TestNamespace {
@@ -372,11 +370,12 @@ type Query {
       }
     `;
 
-    const result = await emitSingleSchema(code, {});
+    const result = await emitSingleSchemaWithDiagnostics(code, {});
 
-    strictEqual(result.includes("type Query {"), true);
-    strictEqual(result.includes("Placeholder field"), true);
-    strictEqual(result.includes("_: Boolean"), true);
+    // Should emit empty-schema warning and produce no output
+    const warnings = result.diagnostics.filter((d) => d.severity === "warning");
+    ok(warnings.some((d) => d.code === "@typespec/graphql/empty-schema"), "Should have empty-schema warning");
+    strictEqual(result.graphQLOutput, undefined, "Should not produce output");
   });
 
   it("handles models with all GraphQL field types", async () => {
@@ -440,7 +439,7 @@ type Query {
     strictEqual(result.includes("content: Content!"), true);
   });
 
-  it("generates Query with placeholder when only mutations exist", async () => {
+  it("emits empty-schema diagnostic when only mutations exist (no query)", async () => {
     const code = `
       @schema
       namespace TestNamespace {
@@ -454,15 +453,13 @@ type Query {
       }
     `;
 
-    const result = await emitSingleSchema(code, {});
+    const result = await emitSingleSchemaWithDiagnostics(code, {});
 
-    // Should have placeholder Query
-    strictEqual(result.includes("type Query {"), true);
-    strictEqual(result.includes("_: Boolean"), true);
-
-    // Should have Mutation
-    strictEqual(result.includes("type Mutation {"), true);
-    strictEqual(result.includes("setUserName(id: String!, name: String!): User"), true);
+    // GraphQL requires a Query root type. Without @query operations, the schema
+    // cannot be built. The emitter should emit a diagnostic and produce no output.
+    const warnings = result.diagnostics.filter((d) => d.severity === "warning");
+    ok(warnings.some((d) => d.code === "@typespec/graphql/empty-schema"), "Should have empty-schema warning");
+    strictEqual(result.graphQLOutput, undefined, "Should not produce output");
   });
 
   it("emits operation parameters as arguments", async () => {

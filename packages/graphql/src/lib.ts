@@ -166,6 +166,12 @@ export const libDef = {
         default: "GraphQL schema is empty. No types or operations were emitted.",
       },
     },
+    "void-operation-return": {
+      severity: "warning",
+      messages: {
+        default: paramMessage`Operation "${"name"}" returns void, which has no GraphQL equivalent. The operation will be omitted from the schema. Add a return type to include it.`,
+      },
+    },
   },
   emitter: {
     options: EmitterOptionsSchema as JSONSchemaType<GraphQLEmitterOptions>,
