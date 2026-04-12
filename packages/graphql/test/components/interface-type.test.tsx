@@ -1,4 +1,3 @@
-import { type Model } from "@typespec/compiler";
 import { t } from "@typespec/compiler/testing";
 import { describe, expect, it, beforeEach } from "vitest";
 import { InterfaceType } from "../../src/components/types/index.js";
