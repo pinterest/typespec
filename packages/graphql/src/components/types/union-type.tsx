@@ -1,18 +1,11 @@
-import { type Type, type Union, getDoc } from "@typespec/compiler";
+import { type Union, getDoc } from "@typespec/compiler";
 import * as gql from "@alloy-js/graphql";
 import { useTsp } from "@typespec/emitter-framework";
-import { getUnionName, toTypeName } from "../../lib/type-utils.js";
+import { getUnionName, isScalarLikeType, toTypeName } from "../../lib/type-utils.js";
 
 export interface UnionTypeProps {
   /** The union type to render */
   type: Union;
-}
-
-/**
- * Check if a type is a scalar (built-in or custom)
- */
-function isScalarType(type: Type): boolean {
-  return type.kind === "Scalar" || type.kind === "Intrinsic";
 }
 
 /**
@@ -32,7 +25,7 @@ export function UnionType(props: UnionTypeProps) {
     const variantName =
       typeof variant.name === "string" ? variant.name : String(variant.name);
 
-    if (isScalarType(variant.type)) {
+    if (isScalarLikeType(variant.type)) {
       // Reference the wrapper type for scalars (created by mutation engine)
       // Include union name to match wrapper model naming convention
       return toTypeName(name) + toTypeName(variantName) + "UnionVariant";
