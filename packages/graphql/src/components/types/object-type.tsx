@@ -25,7 +25,10 @@ export function ObjectType(props: ObjectTypeProps) {
   const implementations = getComposition(program, props.type);
   const operationFields = getOperationFields(program, props.type);
 
-  // Convert interface implementations to string references
+  // Convert interface implementations to string references.
+  // Note: getComposition returns original (pre-mutation) models from decorator state.
+  // This works because the mutation engine doesn't rename models, so iface.name
+  // matches the name used by InterfaceType for the same model.
   const implementsRefs = implementations?.map((iface) => iface.name) || [];
 
   return (
