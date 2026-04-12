@@ -5,10 +5,21 @@ import { describe, expect, it, beforeEach } from "vitest";
 import { UnionType } from "../../src/components/types/index.js";
 import {
   createGraphQLMutationEngine,
+  type GraphQLUnionMutation,
   GraphQLTypeContext,
 } from "../../src/mutation-engine/index.js";
 import { Tester } from "../test-host.js";
 import { renderComponentToSDL } from "./component-test-utils.js";
+
+/** Assert that an output-context union mutation produced a Union (not a Model). */
+function assertUnionResult(mutation: GraphQLUnionMutation): Union {
+  if (mutation.mutatedType.kind !== "Union") {
+    throw new Error(
+      `Expected Union from output-context mutation, got ${mutation.mutatedType.kind}`,
+    );
+  }
+  return mutation.mutatedType;
+}
 
 describe("UnionType component", () => {
   let tester: Awaited<ReturnType<typeof Tester.createInstance>>;
@@ -27,6 +38,7 @@ describe("UnionType component", () => {
 
     const engine = createGraphQLMutationEngine(tester.program);
     const mutation = engine.mutateUnion(Pet, GraphQLTypeContext.Output);
+    const mutatedUnion = assertUnionResult(mutation);
 
     // Union members must be registered in the schema for buildSchema to resolve them
     const sdl = renderComponentToSDL(
@@ -38,7 +50,7 @@ describe("UnionType component", () => {
         <gql.ObjectType name="Dog">
           <gql.Field name="breed" type={gql.String} nonNull />
         </gql.ObjectType>
-        <UnionType type={mutation.mutatedType as Union} />
+        <UnionType type={mutatedUnion} />
       </>,
     );
 
@@ -59,6 +71,7 @@ describe("UnionType component", () => {
 
     const engine = createGraphQLMutationEngine(tester.program);
     const mutation = engine.mutateUnion(Result, GraphQLTypeContext.Output);
+    const mutatedUnion = assertUnionResult(mutation);
 
     const sdl = renderComponentToSDL(
       tester.program,
@@ -69,7 +82,7 @@ describe("UnionType component", () => {
         <gql.ObjectType name="Failure">
           <gql.Field name="message" type={gql.String} nonNull />
         </gql.ObjectType>
-        <UnionType type={mutation.mutatedType as Union} />
+        <UnionType type={mutatedUnion} />
       </>,
     );
 
@@ -89,6 +102,7 @@ describe("UnionType component", () => {
 
     const engine = createGraphQLMutationEngine(tester.program);
     const mutation = engine.mutateUnion(Shape, GraphQLTypeContext.Output);
+    const mutatedUnion = assertUnionResult(mutation);
 
     const sdl = renderComponentToSDL(
       tester.program,
@@ -102,7 +116,7 @@ describe("UnionType component", () => {
         <gql.ObjectType name="Triangle">
           <gql.Field name="base" type={gql.Float} nonNull />
         </gql.ObjectType>
-        <UnionType type={mutation.mutatedType as Union} />
+        <UnionType type={mutatedUnion} />
       </>,
     );
 
@@ -122,6 +136,7 @@ describe("UnionType component", () => {
 
     const engine = createGraphQLMutationEngine(tester.program);
     const mutation = engine.mutateUnion(Mixed, GraphQLTypeContext.Output);
+    const mutatedUnion = assertUnionResult(mutation);
 
     // Register Cat and the wrapper type that the union will reference
     const sdl = renderComponentToSDL(
@@ -133,7 +148,7 @@ describe("UnionType component", () => {
         <gql.ObjectType name="MixedTextUnionVariant">
           <gql.Field name="value" type={gql.String} nonNull />
         </gql.ObjectType>
-        <UnionType type={mutation.mutatedType as Union} />
+        <UnionType type={mutatedUnion} />
       </>,
     );
 
