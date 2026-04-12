@@ -160,6 +160,19 @@ export const libDef = {
         default: paramMessage`Scalar "${"name"}" collides with GraphQL built-in type "${"builtinName"}". This may cause unexpected behavior. Consider renaming the scalar.`,
       },
     },
+    "empty-schema": {
+      severity: "warning",
+      messages: {
+        default:
+          "A GraphQL schema must declare at least one query operation. No schema will be emitted.",
+      },
+    },
+    "void-operation-return": {
+      severity: "warning",
+      messages: {
+        default: paramMessage`Operation "${"name"}" returns void, which has no GraphQL equivalent. The operation will be omitted from the schema. Add a return type to include it.`,
+      },
+    },
   },
   emitter: {
     options: EmitterOptionsSchema as JSONSchemaType<GraphQLEmitterOptions>,
