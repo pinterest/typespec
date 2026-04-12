@@ -1,4 +1,4 @@
-import { type Model, getDoc } from "@typespec/compiler";
+import type { Model } from "@typespec/compiler";
 import * as gql from "@alloy-js/graphql";
 import { useTsp } from "@typespec/emitter-framework";
 import { Field, OperationField } from "../fields/index.js";
@@ -19,13 +19,16 @@ export interface ObjectTypeProps {
  * - Operation fields via @operationFields
  */
 export function ObjectType(props: ObjectTypeProps) {
-  const { program } = useTsp();
-  const doc = getDoc(program, props.type);
+  const { $, program } = useTsp();
+  const doc = $.type.getDoc(props.type);
   const properties = Array.from(props.type.properties.values());
   const implementations = getComposition(program, props.type);
   const operationFields = getOperationFields(program, props.type);
 
-  // Convert interface implementations to string references
+  // Convert interface implementations to string references.
+  // Note: getComposition returns original (pre-mutation) models from decorator state.
+  // This works because the mutation engine doesn't rename models, so iface.name
+  // matches the name used by InterfaceType for the same model.
   const implementsRefs = implementations?.map((iface) => iface.name) || [];
 
   return (

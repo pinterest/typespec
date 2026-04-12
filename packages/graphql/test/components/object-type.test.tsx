@@ -1,4 +1,3 @@
-import { type Model } from "@typespec/compiler";
 import { t } from "@typespec/compiler/testing";
 import * as gql from "@alloy-js/graphql";
 import { describe, expect, it, beforeEach } from "vitest";

@@ -1,4 +1,4 @@
-import { type Model, getDoc } from "@typespec/compiler";
+import type { Model } from "@typespec/compiler";
 import * as gql from "@alloy-js/graphql";
 import { useTsp } from "@typespec/emitter-framework";
 import { Field } from "../fields/index.js";
@@ -14,8 +14,8 @@ export interface InterfaceTypeProps {
  * Interfaces are marked with @Interface decorator in TypeSpec
  */
 export function InterfaceType(props: InterfaceTypeProps) {
-  const { program } = useTsp();
-  const doc = getDoc(program, props.type);
+  const { $ } = useTsp();
+  const doc = $.type.getDoc(props.type);
   const properties = Array.from(props.type.properties.values());
 
   return (

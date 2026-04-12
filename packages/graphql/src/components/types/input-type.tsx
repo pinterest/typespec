@@ -1,4 +1,4 @@
-import { type Model, getDoc } from "@typespec/compiler";
+import type { Model } from "@typespec/compiler";
 import * as gql from "@alloy-js/graphql";
 import { useTsp } from "@typespec/emitter-framework";
 import { useGraphQLSchema } from "../../context/index.js";
@@ -17,9 +17,9 @@ export interface InputTypeProps {
  * - Otherwise, uses the name as-is
  */
 export function InputType(props: InputTypeProps) {
-  const { program } = useTsp();
+  const { $ } = useTsp();
   const { modelVariants } = useGraphQLSchema();
-  const doc = getDoc(program, props.type);
+  const doc = $.type.getDoc(props.type);
   const properties = Array.from(props.type.properties.values());
 
   // If there's an output variant with the same name, add Input suffix
