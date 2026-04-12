@@ -1,8 +1,11 @@
 import {
+  emitFile,
   getEncode,
+  interpolatePath,
   isArrayModelType,
   isUnknownType,
   navigateTypesInNamespace,
+  resolvePath,
   type EmitContext,
   type Enum,
   type Model,
@@ -14,23 +17,30 @@ import {
   type Type,
   type Union,
 } from "@typespec/compiler";
+import { renderSchema, printSchema } from "@alloy-js/graphql";
 import { isInterface } from "./lib/interface.js";
 import { getOperationKind } from "./lib/operation-kind.js";
-import type { GraphQLEmitterOptions } from "./lib.js";
+import { type GraphQLEmitterOptions, reportDiagnostic } from "./lib.js";
 import { resolveTypeUsage, GraphQLTypeUsage, type TypeUsageResolver } from "./type-usage.js";
 import { listSchemas } from "./lib/schema.js";
 import { createGraphQLMutationEngine, GraphQLTypeContext } from "./mutation-engine/index.js";
+import { GraphQLSchema } from "./components/graphql-schema.js";
+import {
+  ScalarVariantTypes,
+  EnumTypes,
+  UnionTypes,
+  InterfaceTypes,
+  ObjectTypes,
+  InputTypes,
+} from "./components/type-collections.js";
+import { QueryType, MutationType, SubscriptionType } from "./components/operations/index.js";
 import type { ClassifiedTypes, ModelVariants, ScalarVariant } from "./context/index.js";
 import { unwrapNullableUnion } from "./lib/type-utils.js";
 import { getGraphQLBuiltinName, getScalarMapping } from "./lib/scalar-mappings.js";
 import { getSpecifiedBy } from "./lib/specified-by.js";
 
 /**
- * Main emitter entry point for GraphQL SDL generation.
- *
- * Runs the full data pipeline (type usage → mutation → classification) but
- * does not yet render output. Component-based SDL rendering will be added
- * in follow-up PRs.
+ * Main emitter entry point for GraphQL SDL generation (component-based)
  */
 export async function $onEmit(context: EmitContext<GraphQLEmitterOptions>) {
   const schemas = listSchemas(context.program);
@@ -44,26 +54,26 @@ export async function $onEmit(context: EmitContext<GraphQLEmitterOptions>) {
 }
 
 /**
- * Process a single GraphQL schema through the data pipeline.
+ * Emit a single GraphQL schema
  */
 async function emitSchema(
   context: EmitContext<GraphQLEmitterOptions>,
   schema: { type: Namespace; name?: string },
 ) {
-  // Phase 1: Type usage tracking — determine which types are reachable from operations.
-  // Must run before mutation so we can filter on original (pre-clone) type objects.
+  // Phase 1: Type usage tracking - Determine which types are reachable from operations
+  // Must run before mutation so we can filter on original (pre-clone) type objects
   const omitUnreachable = context.options["omit-unreachable-types"] ?? false;
   const typeUsage = resolveTypeUsage(schema.type, omitUnreachable);
 
-  // Phase 2: Mutation — transform TypeSpec types with GraphQL naming conventions.
-  // Unreachable enums/unions are skipped during mutation (avoids identity mismatch with cloned objects).
+  // Phase 2: Mutation - Transform TypeSpec types with GraphQL naming conventions
+  // Unreachable enums/unions are skipped during mutation (avoids identity mismatch with cloned objects)
   const { mutatedTypes, scalarSpecifications, originalToMutated } = mutateTypes(
     context,
     schema,
     typeUsage,
   );
 
-  // Phase 3: Classification — separate types by category.
+  // Phase 3: Classification - Separate types by category
   const classifiedTypes = classifyTypes(
     context.program,
     mutatedTypes,
@@ -71,21 +81,65 @@ async function emitSchema(
     typeUsage,
   );
 
-  // Phase 4: Build model variant lookups.
-  const _modelVariants = buildModelVariants(classifiedTypes);
+  // Phase 4: Build model variant lookups
+  const modelVariants = buildModelVariants(classifiedTypes);
 
-  // Phase 5: Component-based SDL rendering.
-  // TODO: Render using Alloy JSX components (added in follow-up PRs).
-  void _modelVariants;
-  void scalarSpecifications;
+  // Phase 5: Component-based SDL Generation
+  const contextValue = {
+    classifiedTypes,
+    modelVariants,
+    scalarSpecifications,
+  };
+
+  // Determine output file name
+  const outputFilePattern = context.options["output-file"] ?? "{schema-name}.graphql";
+  const schemaName = schema.name || "schema";
+  const outputFileName = interpolatePath(outputFilePattern, {
+    "schema-name": schemaName,
+  });
+
+  // Render the schema using Alloy's renderSchema to get a GraphQLSchema object.
+  // We disable name policy validation because TypeSpec has already validated names and applied mutations.
+  const graphqlSchema = renderSchema(
+    <GraphQLSchema program={context.program} contextValue={contextValue}>
+      <ScalarVariantTypes />
+      <EnumTypes />
+      <UnionTypes />
+      <InterfaceTypes />
+      <ObjectTypes />
+      <InputTypes />
+      <QueryType operations={classifiedTypes.queries} />
+      <MutationType operations={classifiedTypes.mutations} />
+      <SubscriptionType operations={classifiedTypes.subscriptions} />
+    </GraphQLSchema>,
+    { namePolicy: null },
+  );
+
+  // Convert the GraphQLSchema to SDL string using graphql-js printSchema
+  const rawSdl = printSchema(graphqlSchema);
+
+  if (!rawSdl || rawSdl.trim().length === 0) {
+    reportDiagnostic(context.program, {
+      code: "empty-schema",
+      target: schema.type,
+    });
+    return;
+  }
+
+  // Ensure file ends with blank line (two newlines)
+  const sdl = rawSdl.trimEnd() + "\n\n";
+
+  // Write to file
+  const outputPath = resolvePath(context.emitterOutputDir, outputFileName);
+
+  await emitFile(context.program, {
+    path: outputPath,
+    content: sdl,
+  });
 }
 
-// ---------------------------------------------------------------------------
-// Phase 2: Mutation
-// ---------------------------------------------------------------------------
-
 /**
- * Mutate all types in a schema namespace using the mutation engine.
+ * Phase 2: Mutate all types using the mutation engine.
  * Unreachable enums/unions are skipped based on the type usage resolver.
  */
 function mutateTypes(
@@ -178,6 +232,9 @@ function mutateTypes(
     union: (node: Union) => {
       // Skip nullable unions (e.g., string | null) — they're not union declarations.
       // Nullability for these is detected at render time in GraphQLTypeExpression.
+      // We must NOT mutate them here because replace() would call setNullable()
+      // on the shared inner type (e.g., the string scalar singleton), poisoning
+      // all other uses of that type.
       if (unwrapNullableUnion(node) !== undefined) {
         return;
       }
@@ -187,9 +244,10 @@ function mutateTypes(
       wrapperModels.push(...mutation.wrapperModels);
     },
     operation: (node: Operation) => {
-      // Operations are passed through unmutated. This is load-bearing:
-      // typeUsage walked operation params/returns on original types to mark input/output.
-      // classifyTypes reverse-maps mutated models via originalToMutated.
+      // INVARIANT: Operations are passed through unmutated. This is load-bearing:
+      // 1. typeUsage walked operation params/returns on original types to mark input/output.
+      // 2. classifyTypes reverse-maps mutated models to originals via originalToMutated.
+      //    Operations must reference original types for this mapping to work.
       mutatedOperations.push(node);
     },
   });
@@ -220,6 +278,7 @@ function mutateTypes(
     }
   };
 
+  // Collect referenced scalars and scalar variants from model properties and operations.
   // Uses original (pre-mutation) models because mutated type refs won't match processedScalars.
   const originalModels = Array.from(originalToMutated.keys());
   for (const model of originalModels) {
@@ -252,12 +311,8 @@ function mutateTypes(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Phase 3: Classification
-// ---------------------------------------------------------------------------
-
 /**
- * Classify types into categories (interfaces, output types, input types, operations).
+ * Phase 3: Classify types into categories (interfaces, output types, input types, operations)
  */
 function classifyTypes(
   program: Program,
@@ -328,12 +383,8 @@ function classifyTypes(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Phase 4: Model variant lookups
-// ---------------------------------------------------------------------------
-
 /**
- * Build model variant lookups for checking which variants exist.
+ * Build model variant lookups for checking which variants exist
  */
 function buildModelVariants(classifiedTypes: ClassifiedTypes): ModelVariants {
   const modelVariants: ModelVariants = {
