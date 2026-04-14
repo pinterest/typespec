@@ -171,6 +171,21 @@ const TSP_SCALARS_TO_GQL_BUILTINS: IntrinsicScalarName[] = [
 ];
 
 /**
+ * Map a TypeSpec std scalar to its GraphQL built-in scalar name, if any.
+ *
+ * Returns undefined for non-builtin scalars. Uses checker.isStdType
+ * (name + namespace) which works on both original and mutated scalars.
+ */
+export function getGraphQLBuiltinName(program: Program, scalar: Scalar): string | undefined {
+  if (program.checker.isStdType(scalar, "string")) return "String";
+  if (program.checker.isStdType(scalar, "boolean")) return "Boolean";
+  if (program.checker.isStdType(scalar, "int32")) return "Int";
+  if (program.checker.isStdType(scalar, "float32")) return "Float";
+  if (program.checker.isStdType(scalar, "float64")) return "Float";
+  return undefined;
+}
+
+/**
  * Get the GraphQL scalar mapping for a scalar via its standard library ancestor.
  *
  * Uses `tk.scalar.getStdBase()` to find the std ancestor (e.g. `int64` for
