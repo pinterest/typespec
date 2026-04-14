@@ -5,17 +5,37 @@ import { GraphQLKeys } from "../lib.js";
 const [getNullableState, setNullableState] = useStateSet<Type>(GraphQLKeys.nullable);
 
 /**
- * Check if a type has been marked as nullable due to null-variant stripping.
- * For example, `Cat | Dog | null` becomes `union CatDog` marked as nullable.
+ * Check whether a type was marked nullable after null-variant stripping.
+ *
+ * Marked on different targets depending on context:
+ * - **ModelProperty**: inline `T | null` (can't mark the shared scalar singleton)
+ * - **Operation**: return type `T | null`
+ * - **Union**: named unions like `Cat | Dog | null` (safe — new unique object)
  */
 export function isNullable(program: Program, type: Type): boolean {
   return getNullableState(program, type);
 }
 
-/**
- * Mark a type as nullable. Called by the mutation engine when null variants
- * are stripped from a union during processing.
- */
+/** Mark a type, property, or operation as nullable. */
 export function setNullable(program: Program, type: Type): void {
   setNullableState(program, type);
+}
+
+const [getNullableElementsState, setNullableElementsState] = useStateSet<Type>(
+  GraphQLKeys.nullableElements,
+);
+
+/**
+ * Check whether a property's array elements were originally `T | null`.
+ *
+ * For `(string | null)[]`, marks the ModelProperty so components emit
+ * `[String]` instead of `[String!]`.
+ */
+export function hasNullableElements(program: Program, type: Type): boolean {
+  return getNullableElementsState(program, type);
+}
+
+/** Mark a property as having nullable array elements. */
+export function setNullableElements(program: Program, type: Type): void {
+  setNullableElementsState(program, type);
 }

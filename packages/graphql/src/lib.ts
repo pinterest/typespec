@@ -177,7 +177,11 @@ export const libDef = {
     oneOf: { description: "State for tracking @oneOf input objects created from input unions." },
     nullable: {
       description:
-        "State for tracking types that were determined to be nullable from null-variant stripping.",
+        "State for tracking types and properties marked nullable after null-variant stripping by the mutation engine.",
+    },
+    nullableElements: {
+      description:
+        "State for tracking properties whose array element type was originally T | null before mutation.",
     },
   },
 } as const;

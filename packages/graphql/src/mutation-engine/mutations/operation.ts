@@ -6,7 +6,8 @@ import {
   type SimpleMutationOptions,
   type SimpleMutations,
 } from "@typespec/mutator-framework";
-import { sanitizeNameForGraphQL } from "../../lib/type-utils.js";
+import { setNullable } from "../../lib/nullable.js";
+import { isNullableUnion, sanitizeNameForGraphQL } from "../../lib/type-utils.js";
 import { GraphQLMutationOptions, GraphQLTypeContext } from "../options.js";
 
 /** GraphQL-specific Operation mutation. */
@@ -21,10 +22,7 @@ export class GraphQLOperationMutation extends SimpleOperationMutation<SimpleMuta
     super(engine, sourceType, referenceTypes, options, info);
   }
 
-  /**
-   * Override to mutate parameters with input context.
-   * Types reachable from operation parameters become GraphQL input types.
-   */
+  /** Mutate parameters with input context. */
   protected override mutateParameters() {
     const inputOptions = new GraphQLMutationOptions(GraphQLTypeContext.Input);
     this.parameters = this.engine.mutate(
@@ -34,10 +32,7 @@ export class GraphQLOperationMutation extends SimpleOperationMutation<SimpleMuta
     );
   }
 
-  /**
-   * Override to mutate return type with output context.
-   * Types reachable from operation return types become GraphQL object types.
-   */
+  /** Mutate return type with output context. */
   protected override mutateReturnType() {
     const outputOptions = new GraphQLMutationOptions(GraphQLTypeContext.Output);
     this.returnType = this.engine.mutate(
@@ -48,10 +43,16 @@ export class GraphQLOperationMutation extends SimpleOperationMutation<SimpleMuta
   }
 
   mutate() {
-    // Apply GraphQL name sanitization via callback
+    // Snapshot return-type nullability before mutation replaces it.
+    const hasNullableReturn = isNullableUnion(this.sourceType.returnType);
+
     this.mutationNode.mutate((operation) => {
       operation.name = sanitizeNameForGraphQL(operation.name);
     });
     super.mutate();
+
+    if (hasNullableReturn) {
+      setNullable(this.engine.$.program, this.mutatedType);
+    }
   }
 }

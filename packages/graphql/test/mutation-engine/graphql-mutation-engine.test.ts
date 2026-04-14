@@ -1,7 +1,7 @@
 import type { EnumMember, Model, Union } from "@typespec/compiler";
 import { t } from "@typespec/compiler/testing";
 import { beforeEach, describe, expect, it } from "vitest";
-import { isNullable } from "../../src/lib/nullable.js";
+import { hasNullableElements, isNullable } from "../../src/lib/nullable.js";
 import { isOneOf } from "../../src/lib/one-of.js";
 import { getSpecifiedBy } from "../../src/lib/specified-by.js";
 import {
@@ -200,6 +200,38 @@ describe("GraphQL Mutation Engine - Operations", () => {
     const mutation = engine.mutateOperation(GetDataOp);
 
     expect(mutation.mutatedType.name).toBe("get_data");
+  });
+
+  it("marks operation as nullable when return type is T | null", async () => {
+    const { getUser } = await tester.compile(
+      t.code`
+        model ${t.model("User")} { name: string; }
+        op ${t.op("getUser")}(): User | null;
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateOperation(getUser);
+
+    // The return type should be unwrapped to the inner type
+    expect(mutation.mutatedType.returnType.kind).toBe("Model");
+    // The operation itself should be marked nullable
+    expect(isNullable(tester.program, mutation.mutatedType)).toBe(true);
+  });
+
+  it("does not mark operation as nullable when return type is non-null", async () => {
+    const { getUser } = await tester.compile(
+      t.code`
+        model ${t.model("User")} { name: string; }
+        op ${t.op("getUser")}(): User;
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateOperation(getUser);
+
+    expect(mutation.mutatedType.returnType.kind).toBe("Model");
+    expect(isNullable(tester.program, mutation.mutatedType)).toBe(false);
   });
 });
 
@@ -499,7 +531,9 @@ describe("GraphQL Mutation Engine - Unions", () => {
     // T | null is replaced with the inner type (string scalar)
     expect(mutation.mutatedType.kind).toBe("Scalar");
     expect(mutation.wrapperModels).toHaveLength(0);
-    expect(isNullable(tester.program, mutation.mutatedType)).toBe(true);
+    // The replacement type is NOT marked nullable — nullability for inline T | null
+    // is tracked on the model property, not the shared scalar singleton.
+    expect(isNullable(tester.program, mutation.mutatedType)).toBe(false);
   });
 
   it("replaces nullable model union with inner type", async () => {
@@ -516,7 +550,9 @@ describe("GraphQL Mutation Engine - Unions", () => {
     // Dog | null is replaced with the inner type (Dog model)
     expect(mutation.mutatedType.kind).toBe("Model");
     expect(mutation.wrapperModels).toHaveLength(0);
-    expect(isNullable(tester.program, mutation.mutatedType)).toBe(true);
+    // The replacement type is NOT marked nullable — nullability for inline T | null
+    // is tracked on the model property, not the shared type.
+    expect(isNullable(tester.program, mutation.mutatedType)).toBe(false);
   });
 
   it("creates wrapper models for scalar variants", async () => {
@@ -596,7 +632,7 @@ describe("GraphQL Mutation Engine - Unions", () => {
     expect(mutation.mutatedType.name).toBe("ValidUnion");
   });
 
-  it("strips T | null on model property to inner type and marks nullable", async () => {
+  it("strips T | null on model property to inner type and marks property nullable", async () => {
     const { Foo } = await tester.compile(
       t.code`model ${t.model("Foo")} { name: string | null; }`,
     );
@@ -609,8 +645,69 @@ describe("GraphQL Mutation Engine - Unions", () => {
     expect(nameProp).toBeDefined();
     expect(nameProp!.type.kind).toBe("Scalar");
 
-    // The inner type should be marked as nullable
-    expect(isNullable(tester.program, nameProp!.type)).toBe(true);
+    // Nullability is tracked on the property, not the inner type.
+    // The shared scalar singleton must NOT be marked nullable (would poison all uses).
+    expect(isNullable(tester.program, nameProp!.type)).toBe(false);
+    expect(isNullable(tester.program, nameProp!)).toBe(true);
+  });
+
+  it("does not mark non-nullable array property as nullable or nullableElements", async () => {
+    const { Foo } = await tester.compile(
+      t.code`model ${t.model("Foo")} { tags: string[]; }`,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateModel(Foo, GraphQLTypeContext.Output);
+
+    const tagsProp = mutation.mutatedType.properties.get("tags");
+    expect(tagsProp).toBeDefined();
+    expect(isNullable(tester.program, tagsProp!)).toBe(false);
+    expect(hasNullableElements(tester.program, tagsProp!)).toBe(false);
+  });
+
+  it("marks (T | null)[] property as nullableElements only", async () => {
+    const { Foo } = await tester.compile(
+      t.code`model ${t.model("Foo")} { tags: (string | null)[]; }`,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateModel(Foo, GraphQLTypeContext.Output);
+
+    const tagsProp = mutation.mutatedType.properties.get("tags");
+    expect(tagsProp).toBeDefined();
+    expect(isNullable(tester.program, tagsProp!)).toBe(false);
+    expect(hasNullableElements(tester.program, tagsProp!)).toBe(true);
+  });
+
+  it("marks T[] | null property as nullable only", async () => {
+    const { Foo } = await tester.compile(
+      t.code`model ${t.model("Foo")} { tags: string[] | null; }`,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateModel(Foo, GraphQLTypeContext.Output);
+
+    const tagsProp = mutation.mutatedType.properties.get("tags");
+    expect(tagsProp).toBeDefined();
+    expect(isNullable(tester.program, tagsProp!)).toBe(true);
+    expect(hasNullableElements(tester.program, tagsProp!)).toBe(false);
+  });
+
+  it("marks (T | null)[] | null property as both nullable and hasNullableElements", async () => {
+    const { Foo } = await tester.compile(
+      t.code`model ${t.model("Foo")} { tags: (string | null)[] | null; }`,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateModel(Foo, GraphQLTypeContext.Output);
+
+    const tagsProp = mutation.mutatedType.properties.get("tags");
+    expect(tagsProp).toBeDefined();
+
+    // The outer `| null` marks the property as nullable
+    expect(isNullable(tester.program, tagsProp!)).toBe(true);
+    // The inner `(T | null)` marks the property as having nullable elements
+    expect(hasNullableElements(tester.program, tagsProp!)).toBe(true);
   });
 });
 
