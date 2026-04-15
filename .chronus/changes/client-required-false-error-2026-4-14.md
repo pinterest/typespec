@@ -1,8 +1,8 @@
 ---
 # Change versionKind to one of: internal, fix, dependencies, feature, deprecation, breaking
-changeKind: internal
+changeKind: fix
 packages:
   - "@typespec/http-client-java"
 ---
 
-Add test case for `withRelativeNextLink`, `FlattenUnknownModel`, `FlattenReadOnlyModel` scenario.
+Report an error when `clientRequired` is set to `false` on a property.
