@@ -142,7 +142,7 @@ export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, Mu
     }
 
     if (hasNull) {
-      setNullable(program, this.mutatedType);
+      setNullable(this.mutatedType);
     }
 
     // GraphQL unions can only contain object types — wrap scalars in synthetic models
@@ -207,10 +207,10 @@ export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, Mu
       properties,
     });
 
-    setOneOf(program, oneOfModel);
+    setOneOf(oneOfModel);
 
     if (hasNull) {
-      setNullable(program, oneOfModel);
+      setNullable(oneOfModel);
     }
 
     this.#mutationNode.replace(oneOfModel);
