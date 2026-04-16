@@ -1,4 +1,4 @@
-import type { MemberType, Operation } from "@typespec/compiler";
+import { isArrayModelType, type MemberType, type Operation } from "@typespec/compiler";
 import {
   SimpleOperationMutation,
   type MutationInfo,
@@ -6,8 +6,12 @@ import {
   type SimpleMutationOptions,
   type SimpleMutations,
 } from "@typespec/mutator-framework";
-import { setNullable } from "../../lib/nullable.js";
-import { isNullableUnion, sanitizeNameForGraphQL } from "../../lib/type-utils.js";
+import { setNullable, setNullableElements } from "../../lib/nullable.js";
+import {
+  isNullableUnion,
+  sanitizeNameForGraphQL,
+  unwrapNullableUnion,
+} from "../../lib/type-utils.js";
 import { GraphQLMutationOptions, GraphQLTypeContext } from "../options.js";
 
 /** GraphQL-specific Operation mutation. */
@@ -44,7 +48,18 @@ export class GraphQLOperationMutation extends SimpleOperationMutation<SimpleMuta
 
   mutate() {
     // Snapshot return-type nullability before mutation replaces it.
-    const hasNullableReturn = isNullableUnion(this.sourceType.returnType);
+    const returnType = this.sourceType.returnType;
+    const hasNullableReturn = isNullableUnion(returnType);
+
+    // For element nullability, look through an outer `| null` wrapper to find the array.
+    // e.g. `(string | null)[] | null` → unwrap outer null → check array elements.
+    const innerReturnType =
+      returnType.kind === "Union" ? (unwrapNullableUnion(returnType) ?? returnType) : returnType;
+
+    const hasNullableElements =
+      innerReturnType.kind === "Model" &&
+      isArrayModelType(innerReturnType) &&
+      isNullableUnion(innerReturnType.indexer.value);
 
     this.mutationNode.mutate((operation) => {
       operation.name = sanitizeNameForGraphQL(operation.name);
@@ -52,7 +67,10 @@ export class GraphQLOperationMutation extends SimpleOperationMutation<SimpleMuta
     super.mutate();
 
     if (hasNullableReturn) {
-      setNullable(this.engine.$.program, this.mutatedType);
+      setNullable(this.mutatedType);
+    }
+    if (hasNullableElements) {
+      setNullableElements(this.mutatedType);
     }
   }
 }
