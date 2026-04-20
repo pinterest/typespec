@@ -3,7 +3,7 @@ import { describe, it } from "vitest";
 import { emitSingleSchemaWithDiagnostics } from "./test-host.js";
 
 describe("emitter", () => {
-  it("runs the data pipeline without errors", async () => {
+  it("runs the full pipeline and produces SDL output", async () => {
     const code = `
       @schema
       namespace TestNamespace {
@@ -24,9 +24,7 @@ describe("emitter", () => {
     const result = await emitSingleSchemaWithDiagnostics(code, {});
     const errors = result.diagnostics.filter((d) => d.severity === "error");
     strictEqual(errors.length, 0, "Should have no errors");
-
-    // No SDL output yet — component-based rendering is added in follow-up PRs.
-    strictEqual(result.graphQLOutput, undefined, "Should not produce output yet");
+    strictEqual(typeof result.graphQLOutput, "string", "Should produce SDL output");
   });
 
   it("warns when a schema has no query operations", async () => {
