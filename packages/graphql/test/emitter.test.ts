@@ -1,9 +1,9 @@
 import { strictEqual } from "node:assert";
-import { describe, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { emitSingleSchemaWithDiagnostics } from "./test-host.js";
 
 describe("emitter", () => {
-  it("runs the data pipeline without errors", async () => {
+  it("runs the full pipeline and produces SDL output", async () => {
     const code = `
       @schema
       namespace TestNamespace {
@@ -25,8 +25,24 @@ describe("emitter", () => {
     const errors = result.diagnostics.filter((d) => d.severity === "error");
     strictEqual(errors.length, 0, "Should have no errors");
 
-    // No SDL output yet — component-based rendering is added in follow-up PRs.
-    strictEqual(result.graphQLOutput, undefined, "Should not produce output yet");
+    expect(result.graphQLOutput).toBe(`type Book {
+  name: String!
+  page_count: Int!
+  published: Boolean!
+  price: Float!
+}
+
+type Author {
+  name: String!
+  books: [Book!]!
+}
+
+type Query {
+  getBooks: [Book!]!
+  getAuthors: [Author!]!
+}
+
+`);
   });
 
   it("warns when a schema has no query operations", async () => {
