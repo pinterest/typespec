@@ -1,6 +1,7 @@
 import {
   type Enum,
   type Model,
+  type Namespace,
   type Operation,
   type Program,
   type Scalar,
@@ -15,6 +16,7 @@ import {
   SimpleLiteralMutation,
   SimpleUnionVariantMutation,
 } from "@typespec/mutator-framework";
+import type { TypeUsageResolver } from "../type-usage.js";
 import {
   GraphQLEnumMemberMutation,
   GraphQLEnumMutation,
@@ -25,6 +27,7 @@ import {
   GraphQLUnionMutation,
 } from "./mutations/index.js";
 import { GraphQLMutationOptions, GraphQLTypeContext } from "./options.js";
+import { mutateSchema, type MutatedSchema } from "./schema-mutator.js";
 
 /**
  * Registry configuration for the GraphQL mutation engine.
@@ -62,8 +65,10 @@ export class GraphQLMutationEngine {
   // MutationEngine<typeof graphqlMutationRegistry> doesn't work because the
   // generic expects instance types, not constructor types.
   private engine;
+  private program: Program;
 
   constructor(program: Program) {
+    this.program = program;
     const tk = $(program);
     this.engine = new MutationEngine(tk, graphqlMutationRegistry);
   }
@@ -108,6 +113,21 @@ export class GraphQLMutationEngine {
    */
   mutateUnion(union: Union, context: GraphQLTypeContext): GraphQLUnionMutation {
     return this.engine.mutate(union, new GraphQLMutationOptions(context)) as GraphQLUnionMutation;
+  }
+
+  /**
+   * Mutate every type declared in a schema namespace and return a fully-
+   * classified `MutatedSchema`. This is the program-level entry point: the
+   * emitter calls this once and gets back models split into input/output/
+   * interface buckets, operations classified by kind, and all derived
+   * metadata (scalar variants, specification URLs, wrapper models).
+   *
+   * `typeUsage` is consumed internally to filter unreachable types and
+   * determine input/output classification. Callers don't need to hold onto
+   * it after this call returns.
+   */
+  mutateSchema(schema: Namespace, typeUsage: TypeUsageResolver): MutatedSchema {
+    return mutateSchema(this.program, this, schema, typeUsage);
   }
 }
 
