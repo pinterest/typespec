@@ -318,6 +318,11 @@ function getTemplateStringInternal(
   return args.length > 0 ? args.map(toTypeName).join(options.conjunction) : "";
 }
 
+/** Check if a type is a scalar (built-in or custom) or an intrinsic type like `unknown`. */
+export function isScalarLikeType(type: Type): boolean {
+  return type.kind === "Scalar" || type.kind === "Intrinsic";
+}
+
 /** Check if a model should be emitted as a GraphQL object type (not an array, record, or never). */
 export function isTrueModel(model: Model): boolean {
   return !(
