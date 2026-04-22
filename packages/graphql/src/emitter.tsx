@@ -1,4 +1,11 @@
-import { type EmitContext, type Namespace } from "@typespec/compiler";
+import {
+  emitFile,
+  interpolatePath,
+  resolvePath,
+  type EmitContext,
+  type Namespace,
+} from "@typespec/compiler";
+import { renderSchema as renderAlloySchema, printSchema } from "@alloy-js/graphql";
 import { type GraphQLEmitterOptions, reportDiagnostic } from "./lib.js";
 import { listSchemas } from "./lib/schema.js";
 import {
@@ -6,15 +13,23 @@ import {
   type MutatedSchema,
 } from "./mutation-engine/index.js";
 import { resolveTypeUsage } from "./type-usage.js";
-import type { ModelVariants } from "./context/index.js";
+import { GraphQLSchema } from "./components/graphql-schema.js";
+import {
+  ScalarVariantTypes,
+  EnumTypes,
+  UnionTypes,
+  InterfaceTypes,
+  ObjectTypes,
+  InputTypes,
+} from "./components/type-collections.js";
+import { QueryType, MutationType, SubscriptionType } from "./components/operations/index.js";
+import type { ClassifiedTypes, ModelVariants } from "./context/index.js";
 
 /**
  * The bundle of schema-wide data the renderer needs to emit SDL.
  *
  * Produced by the data pipeline (type usage → mutation → variant lookups)
- * and consumed by `renderSchema`. Making this explicit keeps the pipeline
- * and the renderer as separable stages: the pipeline decides *what* goes
- * in the schema, the renderer decides *how* it's serialized.
+ * and consumed by `renderSchema`.
  */
 export interface SchemaPipelineResult {
   mutated: MutatedSchema;
@@ -25,8 +40,8 @@ export interface SchemaPipelineResult {
  * Main emitter entry point for GraphQL SDL generation.
  *
  * Runs the data pipeline (type usage → mutation → variant lookups) and
- * passes the result to `renderSchema`. Component-based rendering is a stub
- * in this PR and will be implemented in a follow-up.
+ * passes the result to `renderSchema`, which renders via Alloy components
+ * and writes the SDL file.
  */
 export async function $onEmit(context: EmitContext<GraphQLEmitterOptions>) {
   const schemas = listSchemas(context.program);
@@ -37,7 +52,7 @@ export async function $onEmit(context: EmitContext<GraphQLEmitterOptions>) {
   for (const schema of schemas) {
     const pipelineResult = await emitSchema(context, schema);
     if (pipelineResult) {
-      renderSchema(pipelineResult);
+      await renderSchema(context, schema, pipelineResult);
     }
   }
 }
@@ -65,8 +80,7 @@ async function emitSchema(
   const mutated = engine.mutateSchema(schema.type, typeUsage);
 
   // Report void-returning operations — GraphQL fields must return a type,
-  // so these are excluded from the schema. Mutation collected them; the
-  // emitter decides to warn.
+  // so these are excluded from the schema.
   for (const op of mutated.voidOperations) {
     reportDiagnostic(context.program, {
       code: "void-operation-return",
@@ -92,12 +106,76 @@ async function emitSchema(
 }
 
 /**
- * Phase 4: Render the pipeline result to GraphQL SDL.
- *
- * Stub in this PR — does nothing. The component-based Alloy renderer that
- * consumes `mutated` and `modelVariants` is implemented in a follow-up PR.
+ * Phase 4: Render the pipeline result to GraphQL SDL via Alloy components,
+ * then write the SDL to the emitter output directory.
  */
-function renderSchema(_result: SchemaPipelineResult): void {}
+async function renderSchema(
+  context: EmitContext<GraphQLEmitterOptions>,
+  schema: { type: Namespace; name?: string },
+  result: SchemaPipelineResult,
+): Promise<void> {
+  const { mutated, modelVariants } = result;
+
+  // Wrapper models from union mutations are always output — fold them into
+  // the output bucket for the renderer.
+  const classifiedTypes: ClassifiedTypes = {
+    interfaces: mutated.interfaces,
+    outputModels: [...mutated.outputModels, ...mutated.wrapperModels],
+    inputModels: mutated.inputModels,
+    enums: mutated.enums,
+    scalars: mutated.scalars,
+    scalarVariants: mutated.scalarVariants,
+    unions: mutated.unions,
+    queries: mutated.queries,
+    mutations: mutated.mutations,
+    subscriptions: mutated.subscriptions,
+  };
+
+  const contextValue = {
+    classifiedTypes,
+    modelVariants,
+    scalarSpecifications: mutated.scalarSpecifications,
+  };
+
+  // Determine output file name
+  const outputFilePattern = context.options["output-file"] ?? "{schema-name}.graphql";
+  const schemaName = schema.name || "schema";
+  const outputFileName = interpolatePath(outputFilePattern, {
+    "schema-name": schemaName,
+  });
+
+  // Render the schema using Alloy's renderSchema to get a GraphQLSchema object.
+  // We disable name policy validation because TypeSpec has already validated names and applied mutations.
+  const graphqlSchema = renderAlloySchema(
+    <GraphQLSchema program={context.program} contextValue={contextValue}>
+      <ScalarVariantTypes />
+      <EnumTypes />
+      <UnionTypes />
+      <InterfaceTypes />
+      <ObjectTypes />
+      <InputTypes />
+      <QueryType operations={classifiedTypes.queries} />
+      <MutationType operations={classifiedTypes.mutations} />
+      <SubscriptionType operations={classifiedTypes.subscriptions} />
+    </GraphQLSchema>,
+    { namePolicy: null },
+  );
+
+  // Convert the GraphQLSchema to SDL string using graphql-js printSchema
+  const rawSdl = printSchema(graphqlSchema);
+
+  // Ensure file ends with blank line (two newlines)
+  const sdl = rawSdl.trimEnd() + "\n\n";
+
+  // Write to file
+  const outputPath = resolvePath(context.emitterOutputDir, outputFileName);
+
+  await emitFile(context.program, {
+    path: outputPath,
+    content: sdl,
+    newLine: context.options["new-line"] ?? "lf",
+  });
+}
 
 /**
  * Build model variant lookups (name → Model) for checking which variants exist.
@@ -115,6 +193,10 @@ function buildModelVariants(mutated: MutatedSchema): ModelVariants {
   }
   for (const model of mutated.inputModels) {
     modelVariants.inputModels.set(model.name, model);
+  }
+  // Wrapper models are always output variants — include them for name lookups too.
+  for (const model of mutated.wrapperModels) {
+    modelVariants.outputModels.set(model.name, model);
   }
 
   return modelVariants;
