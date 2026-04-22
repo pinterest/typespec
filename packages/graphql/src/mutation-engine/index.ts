@@ -9,3 +9,4 @@ export {
   GraphQLScalarMutation,
   GraphQLUnionMutation,
 } from "./mutations/index.js";
+export type { MutatedSchema } from "./schema-mutator.js";
