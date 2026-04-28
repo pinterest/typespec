@@ -87,12 +87,16 @@ export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, Mu
   }
 
   mutate() {
-    // T | null is not a real union — replace with the inner type.
-    // Don't mark the replacement as nullable here; it's a shared singleton.
-    // Nullability is tracked by the container (ModelProperty or Operation).
+    // T | null is not a real union — replace with the inner type, mutated
+    // with the same context so that e.g. Address | null → AddressInput in
+    // input context. Don't mark the replacement as nullable here; it's a
+    // shared singleton. Nullability is tracked by the container (ModelProperty
+    // or Operation).
     const innerType = unwrapNullableUnion(this.sourceType);
     if (innerType) {
-      this.#mutationNode.replace(innerType);
+      // Mutate the inner type with the same options (preserving input/output context)
+      const innerMutation = this.engine.mutate(innerType, this.options);
+      this.#mutationNode.replace(innerMutation.mutationNode.mutatedType);
       return;
     }
 

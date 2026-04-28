@@ -776,8 +776,8 @@ describe("GraphQL Mutation Engine - Input/Output Context", () => {
 
     // Different mutation objects (different cache entries)
     expect(inputMutation).not.toBe(outputMutation);
-    // Both produce valid mutated types
-    expect(inputMutation.mutatedType.name).toBe("Book");
+    // Input context adds "Input" suffix, output context doesn't
+    expect(inputMutation.mutatedType.name).toBe("BookInput");
     expect(outputMutation.mutatedType.name).toBe("Book");
   });
 
@@ -1135,5 +1135,169 @@ describe("GraphQL Mutation Engine - oneOf Input Objects", () => {
     // Simulate a downstream mutation stage cloning the type
     const clone = tester.program.checker.cloneType(mutation.mutatedType);
     expect(isNullable(clone)).toBe(true);
+  });
+});
+
+describe("GraphQL Mutation Engine - Input suffix", () => {
+  let tester: Awaited<ReturnType<typeof Tester.createInstance>>;
+  beforeEach(async () => {
+    tester = await Tester.createInstance();
+  });
+
+  it("adds Input suffix when mutated with Input context", async () => {
+    const { Pet } = await tester.compile(t.code`model ${t.model("Pet")} { name: string }`);
+
+    const engine = createTestEngine(tester.program);
+    const inputMutation = engine.mutateModel(Pet, GraphQLTypeContext.Input);
+
+    expect(inputMutation.mutatedType.name).toBe("PetInput");
+  });
+
+  it("does not add Input suffix when mutated with Output context", async () => {
+    const { Pet } = await tester.compile(t.code`model ${t.model("Pet")} { name: string }`);
+
+    const engine = createTestEngine(tester.program);
+    const outputMutation = engine.mutateModel(Pet, GraphQLTypeContext.Output);
+
+    expect(outputMutation.mutatedType.name).toBe("Pet");
+  });
+
+  it("does not double-suffix models already ending in Input", async () => {
+    const { CreateBookInput } = await tester.compile(
+      t.code`model ${t.model("CreateBookInput")} { title: string; }`,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const inputMutation = engine.mutateModel(CreateBookInput, GraphQLTypeContext.Input);
+
+    // Should remain "CreateBookInput", not become "CreateBookInputInput"
+    expect(inputMutation.mutatedType.name).toBe("CreateBookInput");
+  });
+});
+
+describe("GraphQL Mutation Engine - Nullable union replacement", () => {
+  let tester: Awaited<ReturnType<typeof Tester.createInstance>>;
+  beforeEach(async () => {
+    tester = await Tester.createInstance();
+  });
+
+  it("replaces nullable union with mutated inner type in input context", async () => {
+    const { Container } = await tester.compile(
+      t.code`
+        model ${t.model("Address")} { street: string; }
+        model ${t.model("Container")} { address: Address | null; }
+      `,
+    );
+
+    // Get the nullable union type from the property
+    const addressProp = Container.properties.get("address")!;
+    const nullableUnion = addressProp.type as Union;
+
+    const engine = createTestEngine(tester.program);
+    const unionMutation = engine.mutateUnion(nullableUnion, GraphQLTypeContext.Input);
+
+    // The replacement should be the mutated model with Input suffix
+    expect(unionMutation.mutatedType.kind).toBe("Model");
+    expect(unionMutation.mutatedType.name).toBe("AddressInput");
+  });
+
+  it("replaces nullable union with original type name in output context", async () => {
+    const { Container } = await tester.compile(
+      t.code`
+        model ${t.model("Address")} { street: string; }
+        model ${t.model("Container")} { address: Address | null; }
+      `,
+    );
+
+    // Get the nullable union type from the property
+    const addressProp = Container.properties.get("address")!;
+    const nullableUnion = addressProp.type as Union;
+
+    const engine = createTestEngine(tester.program);
+    const unionMutation = engine.mutateUnion(nullableUnion, GraphQLTypeContext.Output);
+
+    // In output context, should be unwrapped to Address (no Input suffix)
+    expect(unionMutation.mutatedType.kind).toBe("Model");
+    expect(unionMutation.mutatedType.name).toBe("Address");
+  });
+});
+
+describe("GraphQL Mutation Engine - Operation type references", () => {
+  let tester: Awaited<ReturnType<typeof Tester.createInstance>>;
+  beforeEach(async () => {
+    tester = await Tester.createInstance();
+  });
+
+  it("operation parameters reference mutated input models", async () => {
+    const { createBook } = await tester.compile(
+      t.code`
+        model ${t.model("Book")} { title: string; }
+        op ${t.op("createBook")}(book: Book): void;
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateOperation(createBook);
+
+    // Get the parameter type from the mutated operation
+    const bookParam = mutation.mutatedType.parameters.properties.get("book");
+    expect(bookParam).toBeDefined();
+
+    // The parameter type should be the mutated model (BookInput), not the original (Book)
+    expect(bookParam!.type.kind).toBe("Model");
+    expect((bookParam!.type as Model).name).toBe("BookInput");
+  });
+
+  it("operation return type references mutated output models", async () => {
+    const { getBook } = await tester.compile(
+      t.code`
+        model ${t.model("Book")} { title: string; }
+        op ${t.op("getBook")}(): Book;
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateOperation(getBook);
+
+    // The return type should be the mutated model (Book, no suffix for output)
+    expect(mutation.mutatedType.returnType.kind).toBe("Model");
+    expect((mutation.mutatedType.returnType as Model).name).toBe("Book");
+  });
+
+  it("operation with both input and output references correct variants", async () => {
+    const { updateBook } = await tester.compile(
+      t.code`
+        model ${t.model("Book")} { title: string; }
+        op ${t.op("updateBook")}(book: Book): Book;
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateOperation(updateBook);
+
+    // Parameter should reference BookInput
+    const bookParam = mutation.mutatedType.parameters.properties.get("book");
+    expect((bookParam!.type as Model).name).toBe("BookInput");
+
+    // Return type should reference Book (output variant)
+    expect((mutation.mutatedType.returnType as Model).name).toBe("Book");
+  });
+
+  it("operation with nullable parameter references mutated type", async () => {
+    const { createOrder } = await tester.compile(
+      t.code`
+        model ${t.model("Address")} { street: string; }
+        op ${t.op("createOrder")}(address: Address | null): void;
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateOperation(createOrder);
+
+    // The nullable union should be unwrapped and reference the mutated type
+    const addressParam = mutation.mutatedType.parameters.properties.get("address");
+    expect(addressParam).toBeDefined();
+    expect(addressParam!.type.kind).toBe("Model");
+    expect((addressParam!.type as Model).name).toBe("AddressInput");
   });
 });

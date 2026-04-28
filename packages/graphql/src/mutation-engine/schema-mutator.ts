@@ -255,10 +255,10 @@ export function mutateSchema(
       wrapperModels.push(...mutation.wrapperModels);
     },
     operation: (node: Operation) => {
-      // Operations pass through unmutated. classifyOperation collects void
-      // ops for the emitter to report on, and routes the rest by
-      // @query/@mutation/@subscription.
-      classifyOperation(node);
+      // Mutate the operation so parameter types point to mutated input models
+      // and return types point to mutated output models.
+      const mutation = engine.mutateOperation(node);
+      classifyOperation(mutation.mutatedType);
     },
   });
 

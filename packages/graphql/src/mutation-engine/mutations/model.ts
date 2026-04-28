@@ -34,9 +34,13 @@ export class GraphQLModelMutation extends SimpleModelMutation<SimpleMutationOpti
   }
 
   mutate() {
-    // Apply GraphQL name sanitization
     this.mutationNode.mutate((model) => {
+      // Apply GraphQL name sanitization
       model.name = sanitizeNameForGraphQL(model.name);
+      // Input models get "Input" suffix (unless they already have it)
+      if (this.typeContext === GraphQLTypeContext.Input && !model.name.endsWith("Input")) {
+        model.name = model.name + "Input";
+      }
     });
     super.mutate();
   }
