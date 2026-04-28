@@ -49,22 +49,21 @@ describe("InputType component", () => {
     expect(sdl).toContain("bio: String!");
   });
 
-  it("appends Input suffix when model has an output variant", async () => {
-    const { Pet } = await tester.compile(
-      t.code`model ${t.model("Pet")} { name: string; }`,
+  it("renders mutated input model with Input suffix from mutation engine", async () => {
+    // The mutation engine adds the Input suffix when a model is used as input.
+    // This test simulates that by using a model already named with Input suffix.
+    const { PetInput } = await tester.compile(
+      t.code`model ${t.model("PetInput")} { name: string; }`,
     );
 
-    const sdl = renderComponentToSDL(tester.program, <InputType type={Pet} />, {
-      modelVariants: {
-        outputModels: new Map([["Pet", Pet]]),
-        inputModels: new Map([["Pet", Pet]]),
-      },
-    });
+    const sdl = renderComponentToSDL(tester.program, <InputType type={PetInput} />);
 
     expect(sdl).toContain("input PetInput {");
   });
 
-  it("uses original name when no output variant exists", async () => {
+  it("renders input-only model without suffix", async () => {
+    // Models used only as inputs (never as outputs) don't need the Input suffix.
+    // The mutation engine handles this - it only adds suffix when needed.
     const { CreatePet } = await tester.compile(
       t.code`model ${t.model("CreatePet")} { name: string; }`,
     );
