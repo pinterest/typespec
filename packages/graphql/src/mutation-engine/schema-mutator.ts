@@ -187,11 +187,12 @@ export function mutateSchema(
     }
   };
 
-  const classifyModel = (originalModel: Model, mutatedModel: Model): void => {
+  const classifyModel = (originalModel: Model): void => {
     // @Interface is checked on the original (pre-clone) model, since decorator
     // state is stored against original type identity, not mutated clones.
     if (isInterface(program, originalModel)) {
-      interfaces.push(mutatedModel);
+      const mutation = engine.mutateModel(originalModel, GraphQLTypeContext.Output);
+      interfaces.push(mutation.mutatedType);
       return;
     }
 
@@ -204,11 +205,20 @@ export function mutateSchema(
       // that namespace-declared models still appear in the schema. Without
       // this, a model declared in the schema namespace but never referenced
       // by a query/mutation would silently disappear.
-      outputModels.push(mutatedModel);
+      const mutation = engine.mutateModel(originalModel, GraphQLTypeContext.Output);
+      outputModels.push(mutation.mutatedType);
       return;
     }
-    if (usedAsOutput) outputModels.push(mutatedModel);
-    if (usedAsInput) inputModels.push(mutatedModel);
+
+    // Mutate separately for each context - input models get "Input" suffix
+    if (usedAsOutput) {
+      const mutation = engine.mutateModel(originalModel, GraphQLTypeContext.Output);
+      outputModels.push(mutation.mutatedType);
+    }
+    if (usedAsInput) {
+      const mutation = engine.mutateModel(originalModel, GraphQLTypeContext.Input);
+      inputModels.push(mutation.mutatedType);
+    }
   };
 
   const classifyOperation = (op: Operation): void => {
@@ -230,8 +240,7 @@ export function mutateSchema(
     model: (node: Model) => {
       if (isArrayModelType(program, node)) return;
       if (typeUsage.isUnreachable(node)) return;
-      const mutation = engine.mutateModel(node, GraphQLTypeContext.Output);
-      classifyModel(node, mutation.mutatedType);
+      classifyModel(node);
       visitedModelOriginals.push(node);
     },
     enum: (node: Enum) => {
