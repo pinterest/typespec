@@ -84,4 +84,12 @@ describe("InputType component", () => {
 
     expect(sdl).toContain("values: [String!]!");
   });
+
+  it("throws error for empty model (GraphQL requires at least one field)", async () => {
+    const { Empty } = await tester.compile(t.code`model ${t.model("Empty")} {}`);
+
+    expect(() => {
+      renderComponentToSDL(tester.program, <InputType type={Empty} />);
+    }).toThrow(/must define fields/);
+  });
 });
