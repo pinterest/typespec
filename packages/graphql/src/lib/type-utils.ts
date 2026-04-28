@@ -113,6 +113,10 @@ export function sanitizeNameForGraphQL(name: string, prefix: string = ""): strin
   return name;
 }
 
+/** Add "Input" suffix to a name if it doesn't already have one. */
+export function withInputSuffix(name: string): string {
+  return name.endsWith("Input") ? name : name + "Input";
+}
 
 /** Convert a name to CONSTANT_CASE for GraphQL enum members. */
 export function toEnumMemberName(enumName: string, name: string) {

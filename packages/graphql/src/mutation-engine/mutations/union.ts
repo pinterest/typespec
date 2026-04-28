@@ -18,6 +18,7 @@ import {
   sanitizeNameForGraphQL,
   stripNullVariants,
   toTypeName,
+  withInputSuffix,
 } from "../../lib/type-utils.js";
 import { GraphQLMutationOptions, GraphQLTypeContext } from "../options.js";
 
@@ -196,15 +197,18 @@ export class GraphQLUnionMutation extends UnionMutation<MutationOptions, any, Mu
     const properties: Record<string, ReturnType<typeof tk.modelProperty.create>> = {};
     for (const variant of flattenedVariants) {
       const fieldName = sanitizeNameForGraphQL(variantNameToString(variant.name));
+      // Mutate the variant type with the same options (preserving input context)
+      // so that model variants get their Input suffix.
+      const variantMutation = this.engine.mutate(variant.type, this.options);
       properties[fieldName] = tk.modelProperty.create({
         name: fieldName,
-        type: variant.type,
+        type: variantMutation.mutationNode.mutatedType,
         optional: true, // oneOf: exactly one must be provided
       });
     }
 
     const unionName = getUnionName(this.sourceType, program);
-    const modelName = sanitizeNameForGraphQL(unionName) + "Input";
+    const modelName = withInputSuffix(sanitizeNameForGraphQL(unionName));
 
     const oneOfModel = tk.model.create({
       name: modelName,

@@ -6,7 +6,7 @@ import {
   type SimpleMutationOptions,
   type SimpleMutations,
 } from "@typespec/mutator-framework";
-import { sanitizeNameForGraphQL } from "../../lib/type-utils.js";
+import { sanitizeNameForGraphQL, withInputSuffix } from "../../lib/type-utils.js";
 import { GraphQLMutationOptions, GraphQLTypeContext } from "../options.js";
 
 /**
@@ -38,8 +38,8 @@ export class GraphQLModelMutation extends SimpleModelMutation<SimpleMutationOpti
       // Apply GraphQL name sanitization
       model.name = sanitizeNameForGraphQL(model.name);
       // Input models get "Input" suffix (unless they already have it)
-      if (this.typeContext === GraphQLTypeContext.Input && !model.name.endsWith("Input")) {
-        model.name = model.name + "Input";
+      if (this.typeContext === GraphQLTypeContext.Input) {
+        model.name = withInputSuffix(model.name);
       }
     });
     super.mutate();
