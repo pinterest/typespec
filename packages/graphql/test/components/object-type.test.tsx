@@ -119,4 +119,52 @@ describe("ObjectType component", () => {
     expect(sdl).toContain("id: String!");
     expect(sdl).toContain("name: String!");
   });
+
+  it("renders operation fields via @operationFields", async () => {
+    const { Book } = await tester.compile(
+      t.code`
+        @operationFields(getRelated)
+        model ${t.model("Book")} { title: string; }
+
+        op getRelated(limit: int32): Book[];
+      `,
+    );
+
+    const sdl = renderComponentToSDL(tester.program, <ObjectType type={Book} />);
+
+    expect(sdl).toContain("type Book {");
+    expect(sdl).toContain("title: String!");
+    expect(sdl).toContain("getRelated(limit: Int!): [Book!]!");
+  });
+
+  it("renders fields that reference other models", async () => {
+    const { Author } = await tester.compile(
+      t.code`
+        model ${t.model("Book")} { title: string; }
+        model ${t.model("Author")} { name: string; favoriteBook: Book; }
+      `,
+    );
+
+    const sdl = renderComponentToSDL(
+      tester.program,
+      <>
+        <gql.ObjectType name="Book">
+          <gql.Field name="title" type={gql.String} nonNull />
+        </gql.ObjectType>
+        <ObjectType type={Author} />
+      </>,
+    );
+
+    expect(sdl).toContain("type Author {");
+    expect(sdl).toContain("name: String!");
+    expect(sdl).toContain("favoriteBook: Book!");
+  });
+
+  it("throws error for empty model (GraphQL requires at least one field)", async () => {
+    const { Empty } = await tester.compile(t.code`model ${t.model("Empty")} {}`);
+
+    expect(() => {
+      renderComponentToSDL(tester.program, <ObjectType type={Empty} />);
+    }).toThrow(/must define fields/);
+  });
 });

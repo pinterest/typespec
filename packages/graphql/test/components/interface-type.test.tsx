@@ -72,4 +72,17 @@ describe("InterfaceType component", () => {
     expect(sdl).toContain("description: String");
     expect(sdl).not.toContain("description: String!");
   });
+
+  it("throws error for empty interface (GraphQL requires at least one field)", async () => {
+    const { Empty } = await tester.compile(
+      t.code`
+        @Interface
+        model ${t.model("Empty")} {}
+      `,
+    );
+
+    expect(() => {
+      renderComponentToSDL(tester.program, <InterfaceType type={Empty} />);
+    }).toThrow(/must define fields/);
+  });
 });
