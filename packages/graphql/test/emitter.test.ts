@@ -1,9 +1,8 @@
-import { strictEqual } from "node:assert";
 import { describe, expect, it } from "vitest";
 import { emitSingleSchemaWithDiagnostics } from "./test-host.js";
 
 describe("emitter", () => {
-  it("runs the full pipeline and produces SDL output", async () => {
+  it("emits multiple types and operations", async () => {
     const code = `
       @schema
       namespace TestNamespace {
@@ -21,28 +20,31 @@ describe("emitter", () => {
         @query op getAuthors(): Author[];
       }
     `;
+
     const result = await emitSingleSchemaWithDiagnostics(code, {});
     const errors = result.diagnostics.filter((d) => d.severity === "error");
-    strictEqual(errors.length, 0, "Should have no errors");
 
-    expect(result.graphQLOutput).toBe(`type Book {
-  name: String!
-  page_count: Int!
-  published: Boolean!
-  price: Float!
-}
+    expect(errors).toHaveLength(0);
+    expect(result.graphQLOutput).toMatchInlineSnapshot(`
+      "type Book {
+        name: String!
+        page_count: Int!
+        published: Boolean!
+        price: Float!
+      }
 
-type Author {
-  name: String!
-  books: [Book!]!
-}
+      type Author {
+        name: String!
+        books: [Book!]!
+      }
 
-type Query {
-  getBooks: [Book!]!
-  getAuthors: [Author!]!
-}
+      type Query {
+        getBooks: [Book!]!
+        getAuthors: [Author!]!
+      }
 
-`);
+      "
+    `);
   });
 
   it("warns when a schema has no query operations", async () => {
@@ -54,12 +56,14 @@ type Query {
         }
       }
     `;
+
     const result = await emitSingleSchemaWithDiagnostics(code, {});
     const emptySchemaDiagnostics = result.diagnostics.filter(
       (d) => d.code === "@typespec/graphql/empty-schema",
     );
-    strictEqual(emptySchemaDiagnostics.length, 1, "Should emit empty-schema warning");
-    strictEqual(emptySchemaDiagnostics[0].severity, "warning");
+
+    expect(emptySchemaDiagnostics).toHaveLength(1);
+    expect(emptySchemaDiagnostics[0].severity).toBe("warning");
   });
 
   it("warns when an operation returns void", async () => {
@@ -73,11 +77,13 @@ type Query {
         @mutation op doNothing(): void;
       }
     `;
+
     const result = await emitSingleSchemaWithDiagnostics(code, {});
     const voidDiagnostics = result.diagnostics.filter(
       (d) => d.code === "@typespec/graphql/void-operation-return",
     );
-    strictEqual(voidDiagnostics.length, 1, "Should emit void-operation-return warning");
-    strictEqual(voidDiagnostics[0].severity, "warning");
+
+    expect(voidDiagnostics).toHaveLength(1);
+    expect(voidDiagnostics[0].severity).toBe("warning");
   });
 });

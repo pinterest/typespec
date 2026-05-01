@@ -1,5 +1,4 @@
-import { strictEqual } from "node:assert";
-import { describe, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { emitSingleSchemaWithDiagnostics } from "./test-host.js";
 
 /**
@@ -24,8 +23,19 @@ describe("End-to-end", () => {
 
     const result = await emitSingleSchemaWithDiagnostics(code, {});
     const errors = result.diagnostics.filter((d) => d.severity === "error");
-    strictEqual(errors.length, 0, "Should have no errors for valid schema");
-    strictEqual(result.graphQLOutput?.includes("type Book {"), true, "Should contain Book type");
-    strictEqual(result.graphQLOutput?.includes("type Query {"), true, "Should contain Query type");
+
+    expect(errors).toHaveLength(0);
+    expect(result.graphQLOutput).toMatchInlineSnapshot(`
+      "type Book {
+        id: String!
+        title: String!
+      }
+
+      type Query {
+        getBook(id: String!): Book!
+      }
+
+      "
+    `);
   });
 });
