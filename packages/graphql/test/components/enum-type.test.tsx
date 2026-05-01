@@ -21,10 +21,17 @@ describe("EnumType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <EnumType type={mutated} />);
 
-    expect(sdl).toContain("enum Color {");
-    expect(sdl).toContain("Red");
-    expect(sdl).toContain("Green");
-    expect(sdl).toContain("Blue");
+    expect(sdl).toMatchInlineSnapshot(`
+      "enum Color {
+        Red
+        Green
+        Blue
+      }
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders enum with doc comment description", async () => {
@@ -40,8 +47,17 @@ describe("EnumType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <EnumType type={mutated} />);
 
-    expect(sdl).toContain("The role a user can have");
-    expect(sdl).toContain("enum Role {");
+    expect(sdl).toMatchInlineSnapshot(`
+      """"The role a user can have"""
+      enum Role {
+        Admin
+        User
+      }
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders enum with member descriptions", async () => {
@@ -61,10 +77,19 @@ describe("EnumType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <EnumType type={mutated} />);
 
-    expect(sdl).toContain("Currently active");
-    expect(sdl).toContain("Active");
-    expect(sdl).toContain("No longer active");
-    expect(sdl).toContain("Inactive");
+    expect(sdl).toMatchInlineSnapshot(`
+      "enum Status {
+        """Currently active"""
+        Active
+
+        """No longer active"""
+        Inactive
+      }
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders enum with deprecated members", async () => {
@@ -83,10 +108,16 @@ describe("EnumType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <EnumType type={mutated} />);
 
-    expect(sdl).toContain("Active");
-    expect(sdl).toContain("Legacy");
-    expect(sdl).toContain("@deprecated");
-    expect(sdl).toContain("use Active instead");
+    expect(sdl).toMatchInlineSnapshot(`
+      "enum Status {
+        Active
+        Legacy @deprecated(reason: "use Active instead")
+      }
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders enum with sanitized member names", async () => {
@@ -99,9 +130,15 @@ describe("EnumType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <EnumType type={mutated} />);
 
-    expect(sdl).toContain("_val1_");
-    expect(sdl).toContain("val_2");
-    expect(sdl).not.toContain("$val1$");
-    expect(sdl).not.toContain("val-2");
+    expect(sdl).toMatchInlineSnapshot(`
+      "enum E {
+        _val1_
+        val_2
+      }
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 });

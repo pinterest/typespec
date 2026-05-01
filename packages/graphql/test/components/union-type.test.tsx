@@ -54,9 +54,21 @@ describe("UnionType component", () => {
       </>,
     );
 
-    expect(sdl).toContain("union Pet =");
-    expect(sdl).toContain("Cat");
-    expect(sdl).toContain("Dog");
+    expect(sdl).toMatchInlineSnapshot(`
+      "type Cat {
+        name: String!
+      }
+
+      type Dog {
+        breed: String!
+      }
+
+      union Pet = Cat | Dog
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders a union with doc comment description", async () => {
@@ -86,8 +98,22 @@ describe("UnionType component", () => {
       </>,
     );
 
-    expect(sdl).toContain("The result of an operation");
-    expect(sdl).toContain("union Result =");
+    expect(sdl).toMatchInlineSnapshot(`
+      "type Success {
+        value: String!
+      }
+
+      type Failure {
+        message: String!
+      }
+
+      """The result of an operation"""
+      union Result = Success | Failure
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders a union with multiple model members", async () => {
@@ -120,10 +146,25 @@ describe("UnionType component", () => {
       </>,
     );
 
-    expect(sdl).toContain("union Shape =");
-    expect(sdl).toContain("Circle");
-    expect(sdl).toContain("Square");
-    expect(sdl).toContain("Triangle");
+    expect(sdl).toMatchInlineSnapshot(`
+      "type Circle {
+        radius: Float!
+      }
+
+      type Square {
+        side: Float!
+      }
+
+      type Triangle {
+        base: Float!
+      }
+
+      union Shape = Circle | Square | Triangle
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("references wrapper type names for scalar variants", async () => {
@@ -152,9 +193,20 @@ describe("UnionType component", () => {
       </>,
     );
 
-    // Scalar variant should reference wrapper type name
-    expect(sdl).toContain("union Mixed =");
-    expect(sdl).toContain("MixedTextUnionVariant");
-    expect(sdl).toContain("Cat");
+    expect(sdl).toMatchInlineSnapshot(`
+      "type Cat {
+        name: String!
+      }
+
+      type MixedTextUnionVariant {
+        value: String!
+      }
+
+      union Mixed = Cat | MixedTextUnionVariant
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 });

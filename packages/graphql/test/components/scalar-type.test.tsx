@@ -22,7 +22,13 @@ describe("ScalarType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <ScalarType type={mutation.mutatedType} />);
 
-    expect(sdl).toContain("scalar DateTime");
+    expect(sdl).toMatchInlineSnapshot(`
+      "scalar DateTime
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders a scalar with doc comment description", async () => {
@@ -38,8 +44,14 @@ describe("ScalarType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <ScalarType type={mutation.mutatedType} />);
 
-    expect(sdl).toContain("Arbitrary JSON blob");
-    expect(sdl).toContain("scalar JSON");
+    expect(sdl).toMatchInlineSnapshot(`
+      """"Arbitrary JSON blob"""
+      scalar JSON
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders a scalar with @specifiedBy from context", async () => {
@@ -66,9 +78,13 @@ describe("ScalarType component", () => {
       { scalarSpecifications },
     );
 
-    expect(sdl).toContain("scalar MyScalar");
-    expect(sdl).toContain("@specifiedBy");
-    expect(sdl).toContain("https://example.com/spec");
+    expect(sdl).toMatchInlineSnapshot(`
+      "scalar MyScalar @specifiedBy(url: "https://example.com/spec")
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders a scalar without @specifiedBy when not in context", async () => {
@@ -81,8 +97,13 @@ describe("ScalarType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <ScalarType type={mutation.mutatedType} />);
 
-    expect(sdl).toContain("scalar MyScalar");
-    expect(sdl).not.toContain("@specifiedBy");
+    expect(sdl).toMatchInlineSnapshot(`
+      "scalar MyScalar
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders a scalar with sanitized name", async () => {
@@ -96,7 +117,12 @@ describe("ScalarType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <ScalarType type={mutation.mutatedType} />);
 
-    expect(sdl).toContain("scalar _Bad_");
-    expect(sdl).not.toContain("$Bad$");
+    expect(sdl).toMatchInlineSnapshot(`
+      "scalar _Bad_
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 });
