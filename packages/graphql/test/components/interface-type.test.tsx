@@ -20,8 +20,15 @@ describe("InterfaceType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <InterfaceType type={Node} />);
 
-    expect(sdl).toContain("interface Node {");
-    expect(sdl).toContain("id: String!");
+    expect(sdl).toMatchInlineSnapshot(`
+      "interface Node {
+        id: String!
+      }
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders with doc comment description", async () => {
@@ -35,8 +42,16 @@ describe("InterfaceType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <InterfaceType type={Entity} />);
 
-    expect(sdl).toContain("A base entity");
-    expect(sdl).toContain("interface Entity {");
+    expect(sdl).toMatchInlineSnapshot(`
+      """"A base entity"""
+      interface Entity {
+        id: String!
+      }
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders multiple fields with correct types", async () => {
@@ -53,10 +68,17 @@ describe("InterfaceType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <InterfaceType type={Timestamped} />);
 
-    expect(sdl).toContain("interface Timestamped {");
-    expect(sdl).toContain("createdAt: String!");
-    expect(sdl).toContain("updatedAt: String!");
-    expect(sdl).toContain("version: Int!");
+    expect(sdl).toMatchInlineSnapshot(`
+      "interface Timestamped {
+        createdAt: String!
+        updatedAt: String!
+        version: Int!
+      }
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders optional fields as nullable", async () => {
@@ -69,8 +91,15 @@ describe("InterfaceType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <InterfaceType type={Described} />);
 
-    expect(sdl).toContain("description: String");
-    expect(sdl).not.toContain("description: String!");
+    expect(sdl).toMatchInlineSnapshot(`
+      "interface Described {
+        description: String
+      }
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("throws error for empty interface (GraphQL requires at least one field)", async () => {
