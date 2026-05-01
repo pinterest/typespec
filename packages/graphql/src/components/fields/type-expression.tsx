@@ -7,7 +7,6 @@ import {
 } from "@typespec/compiler";
 import { type Children } from "@alloy-js/core";
 import { useTsp } from "@typespec/emitter-framework";
-import { useGraphQLSchema } from "../../context/index.js";
 import { isNullable } from "../../lib/nullable.js";
 import { unwrapNullableUnion, getUnionName } from "../../lib/type-utils.js";
 import { getGraphQLBuiltinName, getScalarMapping } from "../../lib/scalar-mappings.js";
@@ -42,7 +41,6 @@ export interface GraphQLTypeExpressionProps {
 
 export function GraphQLTypeExpression(props: GraphQLTypeExpressionProps) {
   const { $, program } = useTsp();
-  const { modelVariants } = useGraphQLSchema();
 
   const nullable = props.isNullable || isNullable(props.type);
 
@@ -145,14 +143,8 @@ export function GraphQLTypeExpression(props: GraphQLTypeExpressionProps) {
     }
 
     if ($.model.is(type)) {
-      // Both input and output variants share the same source model identity,
-      // so we use name-based lookup to determine if both variants exist.
-      const hasOutputVariant = modelVariants.outputModels.has(type.name);
-      const hasInputVariant = modelVariants.inputModels.has(type.name);
-
-      if (props.isInput && hasOutputVariant && hasInputVariant) {
-        return `${type.name}Input`;
-      }
+      // The mutation engine handles input/output naming - input models are
+      // already suffixed with "Input" when they need to be distinguished.
       return type.name;
     }
 

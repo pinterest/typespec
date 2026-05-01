@@ -35,17 +35,6 @@ export interface ClassifiedTypes {
 }
 
 /**
- * Model variant lookups for quick checking whether output and/or input variants exist.
- * Used to determine when to append "Input" suffix during type resolution.
- */
-export interface ModelVariants {
-  /** Output model variants indexed by name */
-  outputModels: Map<string, Model>;
-  /** Input model variants indexed by name */
-  inputModels: Map<string, Model>;
-}
-
-/**
  * Scalar variant information for encoded scalars.
  * When a scalar has @encode, we emit it as a different GraphQL scalar (e.g., bytes + base64 → Bytes)
  */
@@ -69,8 +58,8 @@ export interface ScalarVariant {
 export interface GraphQLSchemaContextValue {
   /** Classified types for schema generation */
   classifiedTypes: ClassifiedTypes;
-  /** Model variant lookups for input/output type resolution */
-  modelVariants: ModelVariants;
+  /** Ordered member names for each union, keyed by the mutated Union */
+  unionMembers: Map<Union, readonly string[]>;
   /** Scalar specification URLs for @specifiedBy directives */
   scalarSpecifications: Map<string, string>;
 }
