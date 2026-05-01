@@ -17,9 +17,16 @@ describe("InputType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <InputType type={CreateUser} />);
 
-    expect(sdl).toContain("input CreateUser {");
-    expect(sdl).toContain("name: String!");
-    expect(sdl).toContain("email: String!");
+    expect(sdl).toMatchInlineSnapshot(`
+      "input CreateUser {
+        name: String!
+        email: String!
+      }
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders with doc comment description", async () => {
@@ -32,8 +39,17 @@ describe("InputType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <InputType type={LoginInput} />);
 
-    expect(sdl).toContain("Credentials for login");
-    expect(sdl).toContain("input LoginInput {");
+    expect(sdl).toMatchInlineSnapshot(`
+      """"Credentials for login"""
+      input LoginInput {
+        username: String!
+        password: String!
+      }
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders optional fields as non-null (GraphQL input convention)", async () => {
@@ -45,8 +61,16 @@ describe("InputType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <InputType type={UpdateUser} />);
 
-    expect(sdl).toContain("name: String!");
-    expect(sdl).toContain("bio: String!");
+    expect(sdl).toMatchInlineSnapshot(`
+      "input UpdateUser {
+        name: String!
+        bio: String!
+      }
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders array fields as list types", async () => {
@@ -56,7 +80,15 @@ describe("InputType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <InputType type={TagInput} />);
 
-    expect(sdl).toContain("values: [String!]!");
+    expect(sdl).toMatchInlineSnapshot(`
+      "input TagInput {
+        values: [String!]!
+      }
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("throws error for empty model (GraphQL requires at least one field)", async () => {

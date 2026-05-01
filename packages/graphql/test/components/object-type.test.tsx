@@ -18,9 +18,16 @@ describe("ObjectType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <ObjectType type={User} />);
 
-    expect(sdl).toContain("type User {");
-    expect(sdl).toContain("name: String!");
-    expect(sdl).toContain("age: Int!");
+    expect(sdl).toMatchInlineSnapshot(`
+      "type User {
+        name: String!
+        age: Int!
+      }
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders with doc comment description", async () => {
@@ -33,8 +40,16 @@ describe("ObjectType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <ObjectType type={Item} />);
 
-    expect(sdl).toContain("A store item");
-    expect(sdl).toContain("type Item {");
+    expect(sdl).toMatchInlineSnapshot(`
+      """"A store item"""
+      type Item {
+        title: String!
+      }
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders optional fields as nullable", async () => {
@@ -44,8 +59,15 @@ describe("ObjectType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <ObjectType type={Profile} />);
 
-    expect(sdl).toContain("bio: String");
-    expect(sdl).not.toContain("bio: String!");
+    expect(sdl).toMatchInlineSnapshot(`
+      "type Profile {
+        bio: String
+      }
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders array fields as list types", async () => {
@@ -55,7 +77,15 @@ describe("ObjectType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <ObjectType type={Post} />);
 
-    expect(sdl).toContain("tags: [String!]!");
+    expect(sdl).toMatchInlineSnapshot(`
+      "type Post {
+        tags: [String!]!
+      }
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders field with doc comment description", async () => {
@@ -70,8 +100,16 @@ describe("ObjectType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <ObjectType type={Thing} />);
 
-    expect(sdl).toContain("The display name");
-    expect(sdl).toContain("name: String!");
+    expect(sdl).toMatchInlineSnapshot(`
+      "type Thing {
+        """The display name"""
+        name: String!
+      }
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders deprecated fields", async () => {
@@ -87,10 +125,16 @@ describe("ObjectType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <ObjectType type={Entry} />);
 
-    expect(sdl).toContain("current: String!");
-    expect(sdl).toContain("old: String!");
-    expect(sdl).toContain("@deprecated");
-    expect(sdl).toContain("use current instead");
+    expect(sdl).toMatchInlineSnapshot(`
+      "type Entry {
+        current: String!
+        old: String! @deprecated(reason: "use current instead")
+      }
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders with interface implementation via @compose", async () => {
@@ -115,9 +159,20 @@ describe("ObjectType component", () => {
       </>,
     );
 
-    expect(sdl).toContain("type Pet implements Node {");
-    expect(sdl).toContain("id: String!");
-    expect(sdl).toContain("name: String!");
+    expect(sdl).toMatchInlineSnapshot(`
+      "interface Node {
+        id: String!
+      }
+
+      type Pet implements Node {
+        id: String!
+        name: String!
+      }
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders operation fields via @operationFields", async () => {
@@ -132,9 +187,16 @@ describe("ObjectType component", () => {
 
     const sdl = renderComponentToSDL(tester.program, <ObjectType type={Book} />);
 
-    expect(sdl).toContain("type Book {");
-    expect(sdl).toContain("title: String!");
-    expect(sdl).toContain("getRelated(limit: Int!): [Book!]!");
+    expect(sdl).toMatchInlineSnapshot(`
+      "type Book {
+        title: String!
+        getRelated(limit: Int!): [Book!]!
+      }
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("renders fields that reference other models", async () => {
@@ -155,9 +217,20 @@ describe("ObjectType component", () => {
       </>,
     );
 
-    expect(sdl).toContain("type Author {");
-    expect(sdl).toContain("name: String!");
-    expect(sdl).toContain("favoriteBook: Book!");
+    expect(sdl).toMatchInlineSnapshot(`
+      "type Book {
+        title: String!
+      }
+
+      type Author {
+        name: String!
+        favoriteBook: Book!
+      }
+
+      type Query {
+        _placeholder: Boolean
+      }"
+    `);
   });
 
   it("throws error for empty model (GraphQL requires at least one field)", async () => {
