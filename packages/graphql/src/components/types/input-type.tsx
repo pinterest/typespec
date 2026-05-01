@@ -9,10 +9,7 @@ export interface InputTypeProps {
 }
 
 /**
- * Renders a GraphQL input type declaration
- *
- * The mutation engine handles naming: input models are already suffixed
- * with "Input" when they need to be distinguished from output types.
+ * Renders a GraphQL input type declaration.
  */
 export function InputType(props: InputTypeProps) {
   const { $ } = useTsp();
