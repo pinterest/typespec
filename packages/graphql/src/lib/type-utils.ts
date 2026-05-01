@@ -1,21 +1,14 @@
 import {
-  type ArrayModelType,
-  type Enum,
   getDoc,
   getTypeName,
   type IndeterminateEntity,
-  isNeverType,
   isNullType,
   isTemplateInstance,
-  type Model,
   type Program,
-  type RecordModelType,
-  type Scalar,
   type Type,
   type Union,
   type UnionVariant,
   type Value,
-  walkPropertiesInherited,
 } from "@typespec/compiler";
 import {
   type AliasStatementNode,
@@ -73,14 +66,6 @@ export function stripNullVariants(union: Union): {
     variants: nonNullVariants,
     isNullable: nonNullVariants.length < allVariants.length,
   };
-}
-
-/** Generate a GraphQL type name for a templated model (e.g., `ListOfString`). */
-export function getTemplatedModelName(model: Model): string {
-  const name = getTypeName(model, {});
-  const baseName = toTypeName(name.replace(/<[^>]*>/g, ""));
-  const templateString = getTemplateString(model);
-  return templateString ? `${baseName}Of${templateString}` : baseName;
 }
 
 function splitWithAcronyms(
@@ -233,64 +218,6 @@ function getUnionNameForOperation(program: Program, union: Union): string {
   return toTypeName(getTypeName(operation));
 }
 
-/** Convert a namespaced name to a single name by replacing dots with underscores. */
-export function getSingleNameWithNamespace(name: string): string {
-  return name.trim().replace(/\./g, "_");
-}
-
-/**
- * Check if a model is an array type.
- */
-export function isArray(model: Model): model is ArrayModelType {
-  return Boolean(model.indexer && model.indexer.key.name === "integer");
-}
-
-/**
- * Check if a model is a record/map type.
- */
-export function isRecordType(type: Model): type is RecordModelType {
-  return Boolean(type.indexer && type.indexer.key.name === "string");
-}
-
-/** Check if a model is an array of scalars or enums. */
-export function isScalarOrEnumArray(type: Model): type is ArrayModelType {
-  return (
-    isArray(type) && (type.indexer?.value.kind === "Scalar" || type.indexer?.value.kind === "Enum")
-  );
-}
-
-/** Check if a model is an array of unions. */
-export function isUnionArray(type: Model): type is ArrayModelType {
-  return isArray(type) && type.indexer?.value.kind === "Union";
-}
-
-/** Extract the element type from an array model, or return the model itself. */
-export function unwrapModel(model: ArrayModelType): Model | Scalar | Enum | Union;
-export function unwrapModel(model: Exclude<Model, ArrayModelType>): Model;
-export function unwrapModel(model: Model): Model | Scalar | Enum | Union {
-  if (!isArray(model)) {
-    return model;
-  }
-
-  if (model.indexer?.value.kind) {
-    if (["Model", "Scalar", "Enum", "Union"].includes(model.indexer.value.kind)) {
-      return model.indexer.value as Model | Scalar | Enum | Union;
-    }
-    throw new Error(`Unexpected array type: ${model.indexer.value.kind}`);
-  }
-  return model;
-}
-
-/** Unwrap array types to get the inner element type. */
-export function unwrapType(type: Model): Model | Scalar | Enum | Union;
-export function unwrapType(type: Type): Type;
-export function unwrapType(type: Type): Type {
-  if (type.kind === "Model") {
-    return unwrapModel(type);
-  }
-  return type;
-}
-
 /** Get the GraphQL description for a type from its doc comments. */
 export function getGraphQLDoc(program: Program, type: Type): string | undefined {
   // GraphQL uses CommonMark for descriptions
@@ -318,15 +245,3 @@ function getTemplateStringInternal(
   return args.length > 0 ? args.map(toTypeName).join(options.conjunction) : "";
 }
 
-/** Check if a model should be emitted as a GraphQL object type (not an array, record, or never). */
-export function isTrueModel(model: Model): boolean {
-  return !(
-    // Array of scalars/enums — represented as a list type, not an object type
-    isScalarOrEnumArray(model) ||
-    // Array of unions — represented as a list type, not an object type
-    isUnionArray(model) ||
-    isNeverType(model) ||
-    // Pure record with no properties — emitted as a custom scalar, not an object type
-    (isRecordType(model) && [...walkPropertiesInherited(model)].length === 0)
-  );
-}

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  getSingleNameWithNamespace,
   sanitizeNameForGraphQL,
   toEnumMemberName,
   toFieldName,
@@ -110,20 +109,6 @@ describe("type-utils", () => {
     it("preserves leading underscores", () => {
       expect(toFieldName("_private")).toBe("_private");
       expect(toFieldName("__internal")).toBe("__internal");
-    });
-  });
-
-  describe("getSingleNameWithNamespace", () => {
-    it("replaces dots with underscores", () => {
-      expect(getSingleNameWithNamespace("My.Namespace.Type")).toBe("My_Namespace_Type");
-    });
-
-    it("trims whitespace", () => {
-      expect(getSingleNameWithNamespace("  My.Type  ")).toBe("My_Type");
-    });
-
-    it("handles names without namespace", () => {
-      expect(getSingleNameWithNamespace("MyType")).toBe("MyType");
     });
   });
 
