@@ -218,6 +218,11 @@ function getUnionNameForOperation(program: Program, union: Union): string {
   return toTypeName(getTypeName(operation));
 }
 
+/** Check if a type is a scalar (built-in or custom) or an intrinsic type like `unknown`. */
+export function isScalarLikeType(type: Type): boolean {
+  return type.kind === "Scalar" || type.kind === "Intrinsic";
+}
+
 /** Get the GraphQL description for a type from its doc comments. */
 export function getGraphQLDoc(program: Program, type: Type): string | undefined {
   // GraphQL uses CommonMark for descriptions
