@@ -2,6 +2,5 @@ export {
   GraphQLSchemaContext,
   useGraphQLSchema,
   type GraphQLSchemaContextValue,
-  type ClassifiedTypes,
-  type ScalarVariant,
+  type TypeGraph,
 } from "./graphql-schema-context.js";

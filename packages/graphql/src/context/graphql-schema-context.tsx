@@ -1,67 +1,22 @@
 import { type ComponentContext, createNamedContext, useContext } from "@alloy-js/core";
-import {
-  type Model,
-  type Enum,
-  type IntrinsicType,
-  type Scalar,
-  type Union,
-  type Operation,
-} from "@typespec/compiler";
+import type { Namespace } from "@typespec/compiler";
 
 /**
- * Classified types separated by category for schema generation
+ * A self-contained type world produced by the mutation pipeline.
+ * The namespace contains all mutated types for the schema.
  */
-export interface ClassifiedTypes {
-  /** Interface types marked with @Interface */
-  interfaces: Model[];
-  /** Models used as output types (return values) */
-  outputModels: Model[];
-  /** Models used as input types (parameters) */
-  inputModels: Model[];
-  /** Enum types */
-  enums: Enum[];
-  /** Custom scalar types */
-  scalars: Scalar[];
-  /** Scalar variants for encoded scalars (e.g., bytes + base64 → Bytes) */
-  scalarVariants: ScalarVariant[];
-  /** Union types */
-  unions: Union[];
-  /** Query operations */
-  queries: Operation[];
-  /** Mutation operations */
-  mutations: Operation[];
-  /** Subscription operations */
-  subscriptions: Operation[];
+export interface TypeGraph {
+  readonly globalNamespace: Namespace;
 }
 
 /**
- * Scalar variant information for encoded scalars.
- * When a scalar has @encode, we emit it as a different GraphQL scalar (e.g., bytes + base64 → Bytes)
- */
-export interface ScalarVariant {
-  /** The original TypeSpec scalar type, or IntrinsicType for `unknown` */
-  sourceScalar: Scalar | IntrinsicType;
-  /** The encoding used (e.g., "base64", "rfc3339") */
-  encoding: string;
-  /** The GraphQL scalar name to emit (e.g., "Bytes", "UTCDateTime") */
-  graphqlName: string;
-  /** Optional specification URL for @specifiedBy directive */
-  specificationUrl?: string;
-}
-
-/**
- * Context value containing GraphQL-specific schema information.
+ * Context value containing the mutated type graph for schema generation.
  *
  * For access to the TypeSpec program and typekit, use `useTsp()` from
  * `@typespec/emitter-framework` instead.
  */
 export interface GraphQLSchemaContextValue {
-  /** Classified types for schema generation */
-  classifiedTypes: ClassifiedTypes;
-  /** Ordered member names for each union, keyed by the mutated Union */
-  unionMembers: Map<Union, readonly string[]>;
-  /** Scalar specification URLs for @specifiedBy directives */
-  scalarSpecifications: Map<string, string>;
+  typeGraph: TypeGraph;
 }
 
 /**
@@ -80,7 +35,7 @@ export function useGraphQLSchema(): GraphQLSchemaContextValue {
 
   if (!context) {
     throw new Error(
-      "useGraphQLSchema must be used within GraphQLSchemaContext.Provider."
+      "useGraphQLSchema must be used within GraphQLSchemaContext.Provider.",
     );
   }
 
