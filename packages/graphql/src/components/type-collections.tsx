@@ -1,6 +1,7 @@
 import { For } from "@alloy-js/core";
 import * as gql from "@alloy-js/graphql";
-import { useGraphQLSchema } from "../context/index.js";
+import type { Enum, Model, Scalar, Union } from "@typespec/compiler";
+import type { ScalarVariant } from "../mutation-engine/index.js";
 import {
   ScalarType,
   EnumType,
@@ -10,26 +11,26 @@ import {
   InputType,
 } from "./types/index.js";
 
+export interface ScalarVariantTypesProps {
+  scalarVariants: ScalarVariant[];
+  scalars: Scalar[];
+  scalarSpecifications: Map<string, string>;
+}
+
 /**
  * Renders scalar variant types for encoded scalars (e.g., bytes + base64 -> Bytes)
  * AND custom user-defined scalars
  */
-export function ScalarVariantTypes() {
-  const { classifiedTypes } = useGraphQLSchema();
-
+export function ScalarVariantTypes(props: ScalarVariantTypesProps) {
   // Get set of variant names to avoid duplicates
-  const variantNames = new Set(
-    classifiedTypes.scalarVariants.map((v) => v.graphqlName),
-  );
+  const variantNames = new Set(props.scalarVariants.map((v) => v.graphqlName));
 
   // Filter custom scalars to only include ones not already in variants
-  const customScalars = classifiedTypes.scalars.filter(
-    (s) => !variantNames.has(s.name),
-  );
+  const customScalars = props.scalars.filter((s) => !variantNames.has(s.name));
 
   return (
     <>
-      <For each={classifiedTypes.scalarVariants}>
+      <For each={props.scalarVariants}>
         {(variant) => (
           <gql.ScalarType
             name={variant.graphqlName}
@@ -38,68 +39,80 @@ export function ScalarVariantTypes() {
         )}
       </For>
       <For each={customScalars}>
-        {(scalar) => <ScalarType type={scalar} />}
+        {(scalar) => (
+          <ScalarType
+            type={scalar}
+            specificationUrl={props.scalarSpecifications.get(scalar.name)}
+          />
+        )}
       </For>
     </>
   );
 }
 
+export interface EnumTypesProps {
+  enums: Enum[];
+}
+
 /**
  * Renders all enum types in the schema
  */
-export function EnumTypes() {
-  const { classifiedTypes } = useGraphQLSchema();
+export function EnumTypes(props: EnumTypesProps) {
   return (
-    <For each={classifiedTypes.enums}>
-      {(enumType) => <EnumType type={enumType} />}
-    </For>
+    <For each={props.enums}>{(enumType) => <EnumType type={enumType} />}</For>
   );
+}
+
+export interface UnionTypesProps {
+  unions: Union[];
 }
 
 /**
  * Renders all union types in the schema
  */
-export function UnionTypes() {
-  const { classifiedTypes } = useGraphQLSchema();
+export function UnionTypes(props: UnionTypesProps) {
   return (
-    <For each={classifiedTypes.unions}>
-      {(union) => <UnionType type={union} />}
-    </For>
+    <For each={props.unions}>{(union) => <UnionType type={union} />}</For>
   );
+}
+
+export interface InterfaceTypesProps {
+  interfaces: Model[];
 }
 
 /**
  * Renders all interface types in the schema
  */
-export function InterfaceTypes() {
-  const { classifiedTypes } = useGraphQLSchema();
+export function InterfaceTypes(props: InterfaceTypesProps) {
   return (
-    <For each={classifiedTypes.interfaces}>
+    <For each={props.interfaces}>
       {(iface) => <InterfaceType type={iface} />}
     </For>
   );
 }
 
+export interface ObjectTypesProps {
+  models: Model[];
+}
+
 /**
  * Renders all object types in the schema
  */
-export function ObjectTypes() {
-  const { classifiedTypes } = useGraphQLSchema();
+export function ObjectTypes(props: ObjectTypesProps) {
   return (
-    <For each={classifiedTypes.outputModels}>
-      {(model) => <ObjectType type={model} />}
-    </For>
+    <For each={props.models}>{(model) => <ObjectType type={model} />}</For>
   );
+}
+
+export interface InputTypesProps {
+  models: Model[];
 }
 
 /**
  * Renders all input types in the schema
  */
-export function InputTypes() {
-  const { classifiedTypes } = useGraphQLSchema();
+export function InputTypes(props: InputTypesProps) {
   return (
-    <For each={classifiedTypes.inputModels}>
-      {(model) => <InputType type={model} />}
-    </For>
+    <For each={props.models}>{(model) => <InputType type={model} />}</For>
   );
 }

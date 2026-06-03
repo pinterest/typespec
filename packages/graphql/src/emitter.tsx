@@ -23,7 +23,7 @@ import {
   InputTypes,
 } from "./components/type-collections.js";
 import { QueryType, MutationType, SubscriptionType } from "./components/operations/index.js";
-import type { ClassifiedTypes } from "./context/index.js";
+import type { GraphQLSchemaContextValue } from "./context/index.js";
 
 /**
  * Main emitter entry point for GraphQL SDL generation.
@@ -101,23 +101,14 @@ async function renderSchema(
 ): Promise<void> {
   // Wrapper models from union mutations are always output — fold them into
   // the output bucket for the renderer.
-  const classifiedTypes: ClassifiedTypes = {
-    interfaces: mutated.interfaces,
-    outputModels: [...mutated.outputModels, ...mutated.wrapperModels],
-    inputModels: mutated.inputModels,
-    enums: mutated.enums,
-    scalars: mutated.scalars,
-    scalarVariants: mutated.scalarVariants,
-    unions: mutated.unions,
-    queries: mutated.queries,
-    mutations: mutated.mutations,
-    subscriptions: mutated.subscriptions,
-  };
+  const outputModels = [...mutated.outputModels, ...mutated.wrapperModels];
 
-  const contextValue = {
-    classifiedTypes,
-    unionMembers: mutated.unionMembers,
-    scalarSpecifications: mutated.scalarSpecifications,
+  // Build the TypeGraph context - components access the type graph through context,
+  // while specific data is passed via props
+  const contextValue: GraphQLSchemaContextValue = {
+    typeGraph: {
+      globalNamespace: schema.type,
+    },
   };
 
   // Determine output file name
@@ -131,15 +122,19 @@ async function renderSchema(
   // We disable name policy validation because TypeSpec has already validated names and applied mutations.
   const graphqlSchema = renderAlloySchema(
     <GraphQLSchema program={context.program} contextValue={contextValue}>
-      <ScalarVariantTypes />
-      <EnumTypes />
-      <UnionTypes />
-      <InterfaceTypes />
-      <ObjectTypes />
-      <InputTypes />
-      <QueryType operations={classifiedTypes.queries} />
-      <MutationType operations={classifiedTypes.mutations} />
-      <SubscriptionType operations={classifiedTypes.subscriptions} />
+      <ScalarVariantTypes
+        scalarVariants={mutated.scalarVariants}
+        scalars={mutated.scalars}
+        scalarSpecifications={mutated.scalarSpecifications}
+      />
+      <EnumTypes enums={mutated.enums} />
+      <UnionTypes unions={mutated.unions} />
+      <InterfaceTypes interfaces={mutated.interfaces} />
+      <ObjectTypes models={outputModels} />
+      <InputTypes models={mutated.inputModels} />
+      <QueryType operations={mutated.queries} />
+      <MutationType operations={mutated.mutations} />
+      <SubscriptionType operations={mutated.subscriptions} />
     </GraphQLSchema>,
     { namePolicy: null },
   );
