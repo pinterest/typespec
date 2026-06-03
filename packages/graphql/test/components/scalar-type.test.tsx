@@ -54,7 +54,7 @@ describe("ScalarType component", () => {
     `);
   });
 
-  it("renders a scalar with @specifiedBy from context", async () => {
+  it("renders a scalar with @specifiedBy from prop", async () => {
     const { MyScalar } = await tester.compile(
       t.code`
         @specifiedBy("https://example.com/spec")
@@ -65,17 +65,12 @@ describe("ScalarType component", () => {
     const engine = createGraphQLMutationEngine(tester.program);
     const mutation = engine.mutateScalar(MyScalar);
 
-    // Build scalarSpecifications map like the emitter does
+    // Get spec URL like the emitter does
     const specUrl = getSpecifiedBy(tester.program, mutation.mutatedType);
-    const scalarSpecifications = new Map<string, string>();
-    if (specUrl) {
-      scalarSpecifications.set(mutation.mutatedType.name, specUrl);
-    }
 
     const sdl = renderComponentToSDL(
       tester.program,
-      <ScalarType type={mutation.mutatedType} />,
-      { scalarSpecifications },
+      <ScalarType type={mutation.mutatedType} specificationUrl={specUrl} />,
     );
 
     expect(sdl).toMatchInlineSnapshot(`

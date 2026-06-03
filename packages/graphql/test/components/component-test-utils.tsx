@@ -19,20 +19,9 @@ export function renderComponentToSDL(
   contextOverrides?: Partial<GraphQLSchemaContextValue>,
 ): string {
   const contextValue: GraphQLSchemaContextValue = {
-    classifiedTypes: {
-      interfaces: [],
-      outputModels: [],
-      inputModels: [],
-      enums: [],
-      scalars: [],
-      scalarVariants: [],
-      unions: [],
-      queries: [],
-      mutations: [],
-      subscriptions: [],
+    typeGraph: {
+      globalNamespace: program.getGlobalNamespaceType(),
     },
-    modelVariants: { outputModels: new Map(), inputModels: new Map() },
-    scalarSpecifications: new Map(),
     ...contextOverrides,
   };
 
