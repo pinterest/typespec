@@ -5,6 +5,7 @@ import {
   isVoidType,
   navigateTypesInNamespace,
   type Enum,
+  type IntrinsicType,
   type Model,
   type ModelProperty,
   type Namespace,
@@ -14,7 +15,6 @@ import {
   type Type,
   type Union,
 } from "@typespec/compiler";
-import type { ScalarVariant } from "../context/index.js";
 import { isInterface } from "../lib/interface.js";
 import { getOperationKind } from "../lib/operation-kind.js";
 import { getGraphQLBuiltinName, getScalarMapping } from "../lib/scalar-mappings.js";
@@ -26,6 +26,21 @@ import {
 } from "../type-usage.js";
 import type { GraphQLMutationEngine } from "./engine.js";
 import { GraphQLTypeContext } from "./options.js";
+
+/**
+ * Scalar variant information for encoded scalars.
+ * When a scalar has @encode, we emit it as a different GraphQL scalar (e.g., bytes + base64 → Bytes)
+ */
+export interface ScalarVariant {
+  /** The original TypeSpec scalar type, or IntrinsicType for `unknown` */
+  sourceScalar: Scalar | IntrinsicType;
+  /** The encoding used (e.g., "base64", "rfc3339") */
+  encoding: string;
+  /** The GraphQL scalar name to emit (e.g., "Bytes", "UTCDateTime") */
+  graphqlName: string;
+  /** Optional specification URL for @specifiedBy directive */
+  specificationUrl?: string;
+}
 
 /**
  * The fully-mutated schema produced by `GraphQLMutationEngine.mutateSchema`.
