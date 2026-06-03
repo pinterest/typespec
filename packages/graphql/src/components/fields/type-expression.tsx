@@ -44,9 +44,11 @@ export function GraphQLTypeExpression(props: GraphQLTypeExpressionProps) {
 
   const nullable = props.isNullable || isNullable(props.type);
 
-  // Input fields are non-null unless nullable; optionality is expressed via
-  // default values. Output fields are non-null unless optional or nullable.
-  const isNonNull = nullable ? false : props.isInput || !props.isOptional;
+  // Fields are non-null unless nullable or optional.
+  // In GraphQL, optional fields are represented as nullable (per spec:
+  // "nullability directly determines whether a field is required").
+  // This also allows circular references in input types (e.g., Author.friend?: Author).
+  const isNonNull = !nullable && !props.isOptional;
 
   // Unwrap T | null unions the mutation engine didn't process (e.g., array
   // elements, operation parameters that arrive here still wrapped).
