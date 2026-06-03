@@ -275,7 +275,7 @@ describe("input/output type splitting", () => {
       input AuthorInput {
         id: String!
         name: String!
-        bio: String!
+        bio: String
       }
 
       input CreateBookInput {
@@ -329,8 +329,8 @@ describe("input/output type splitting", () => {
       input UserInput {
         id: String!
         name: String!
-        bio: String!
-        age: Int!
+        bio: String
+        age: Int
       }
 
       type Query {
@@ -409,7 +409,7 @@ describe("input/output type splitting", () => {
 
       input ContactInfoInput {
         email: String!
-        phone: String!
+        phone: String
         address: AddressInput!
       }
 

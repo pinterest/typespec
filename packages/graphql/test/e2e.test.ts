@@ -186,12 +186,12 @@ describe("End-to-end", () => {
         owner: OwnerInput!
         vaccinated: Boolean!
         nicknames: [String!]!
-        notes: String!
+        notes: String
       }
 
       type Query {
         getPet(id: String!): Pet!
-        listPets(species: Species!, limit: Int!): [Pet!]!
+        listPets(species: Species, limit: Int): [Pet!]!
         getStoreStats: StoreStats!
       }
 

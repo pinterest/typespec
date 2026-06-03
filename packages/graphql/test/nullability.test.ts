@@ -139,7 +139,7 @@ describe("Nullability vs. Optionality", () => {
       `);
     });
 
-    it("optional field is NON-NULL in input (key design doc rule)", async () => {
+    it("optional field is nullable in input (per GraphQL spec)", async () => {
       const code = `
         @schema
         namespace TestNamespace {
@@ -155,7 +155,7 @@ describe("Nullability vs. Optionality", () => {
         }
 
         input FooInput {
-          b: String!
+          b: String
         }
 
         type Query {
@@ -259,7 +259,7 @@ describe("Nullability vs. Optionality", () => {
 
         input FooInput {
           a: String!
-          b: String!
+          b: String
           c: String
           d: String
         }
@@ -320,7 +320,7 @@ describe("Nullability vs. Optionality", () => {
         input UserInput {
           id: Int!
           name: String!
-          pronouns: String!
+          pronouns: String
           birthYear: Int
           pet: PetInput
         }
@@ -372,7 +372,7 @@ describe("Nullability vs. Optionality", () => {
       `);
     });
 
-    it("optional params are NON-NULL in input context", async () => {
+    it("optional params are nullable (per GraphQL spec)", async () => {
       const code = `
         @schema
         namespace TestNamespace {
@@ -398,7 +398,7 @@ describe("Nullability vs. Optionality", () => {
         }
 
         type Mutation {
-          patchUser(user: UserInput!): User!
+          patchUser(user: UserInput): User!
         }
 
         "
@@ -491,7 +491,7 @@ describe("Nullability vs. Optionality", () => {
         }
 
         type Mutation {
-          updateUser(id: String!, email: String!, phone: String!): User!
+          updateUser(id: String!, email: String, phone: String): User!
         }
 
         "
@@ -574,7 +574,7 @@ describe("Nullability vs. Optionality", () => {
         }
 
         input FooInput {
-          tags: [String!]!
+          tags: [String!]
         }
 
         type Query {
@@ -657,7 +657,7 @@ describe("Nullability vs. Optionality", () => {
 
         input UserInput {
           name: String!
-          address: AddressInput!
+          address: AddressInput
         }
 
         type Query {
@@ -815,7 +815,7 @@ describe("Nullability vs. Optionality", () => {
         }
 
         type Mutation {
-          updateUser(id: String!, email: String!, phoneNumber: String!): User!
+          updateUser(id: String!, email: String, phoneNumber: String): User!
         }
 
         "
@@ -854,7 +854,7 @@ describe("Nullability vs. Optionality", () => {
 
         input FooInput {
           a: String!
-          b: String!
+          b: String
           c: String
           d: String
         }
@@ -922,7 +922,7 @@ describe("Nullability vs. Optionality", () => {
         }
 
         type Query {
-          listUsers(limit: Int!, offset: Int!): [User!]!
+          listUsers(limit: Int, offset: Int): [User!]!
         }
 
         "
