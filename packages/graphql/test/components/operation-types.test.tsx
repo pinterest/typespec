@@ -112,9 +112,10 @@ describe("QueryType component", () => {
       { skipPlaceholderQuery: true },
     );
 
+    // Optional parameters are nullable per GraphQL spec
     expect(sdl).toMatchInlineSnapshot(`
       "type Query {
-        search(query: String!, limit: Int!): [String!]!
+        search(query: String!, limit: Int): [String!]!
       }"
     `);
   });
