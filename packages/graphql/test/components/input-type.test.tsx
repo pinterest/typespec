@@ -52,9 +52,10 @@ describe("InputType component", () => {
     `);
   });
 
-  it("renders optional fields as non-null (GraphQL input convention)", async () => {
-    // In GraphQL, input fields are always non-null; optionality is expressed
-    // via default values, not nullability. Only `| null` makes them nullable.
+  it("renders optional fields as nullable", async () => {
+    // In GraphQL, optional fields without defaults are nullable (per spec:
+    // "nullability directly determines whether a field is required").
+    // This also allows circular references in input types (e.g., Author.friend?: Author).
     const { UpdateUser } = await tester.compile(
       t.code`model ${t.model("UpdateUser")} { name?: string; bio?: string; }`,
     );
@@ -63,8 +64,8 @@ describe("InputType component", () => {
 
     expect(sdl).toMatchInlineSnapshot(`
       "input UpdateUser {
-        name: String!
-        bio: String!
+        name: String
+        bio: String
       }
 
       type Query {
