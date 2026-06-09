@@ -2,7 +2,7 @@ import { t } from "@typespec/compiler/testing";
 import { describe, expect, it, beforeEach } from "vitest";
 import { InputType } from "../../src/components/types/index.js";
 import { Tester } from "../test-host.js";
-import { renderComponentToSDL } from "./component-test-utils.js";
+import { renderToSDL } from "./test-utils.js";
 
 describe("InputType component", () => {
   let tester: Awaited<ReturnType<typeof Tester.createInstance>>;
@@ -15,7 +15,7 @@ describe("InputType component", () => {
       t.code`model ${t.model("CreateUser")} { name: string; email: string; }`,
     );
 
-    const sdl = renderComponentToSDL(tester.program, <InputType type={CreateUser} />);
+    const sdl = renderToSDL(tester.program, <InputType type={CreateUser} />);
 
     expect(sdl).toMatchInlineSnapshot(`
       "input CreateUser {
@@ -37,7 +37,7 @@ describe("InputType component", () => {
       `,
     );
 
-    const sdl = renderComponentToSDL(tester.program, <InputType type={LoginInput} />);
+    const sdl = renderToSDL(tester.program, <InputType type={LoginInput} />);
 
     expect(sdl).toMatchInlineSnapshot(`
       """"Credentials for login"""
@@ -60,7 +60,7 @@ describe("InputType component", () => {
       t.code`model ${t.model("UpdateUser")} { name?: string; bio?: string; }`,
     );
 
-    const sdl = renderComponentToSDL(tester.program, <InputType type={UpdateUser} />);
+    const sdl = renderToSDL(tester.program, <InputType type={UpdateUser} />);
 
     expect(sdl).toMatchInlineSnapshot(`
       "input UpdateUser {
@@ -79,7 +79,7 @@ describe("InputType component", () => {
       t.code`model ${t.model("TagInput")} { values: string[]; }`,
     );
 
-    const sdl = renderComponentToSDL(tester.program, <InputType type={TagInput} />);
+    const sdl = renderToSDL(tester.program, <InputType type={TagInput} />);
 
     expect(sdl).toMatchInlineSnapshot(`
       "input TagInput {
@@ -96,7 +96,7 @@ describe("InputType component", () => {
     const { Empty } = await tester.compile(t.code`model ${t.model("Empty")} {}`);
 
     expect(() => {
-      renderComponentToSDL(tester.program, <InputType type={Empty} />);
+      renderToSDL(tester.program, <InputType type={Empty} />);
     }).toThrow(/must define fields/);
   });
 });

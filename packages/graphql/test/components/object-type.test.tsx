@@ -3,7 +3,7 @@ import * as gql from "@alloy-js/graphql";
 import { describe, expect, it, beforeEach } from "vitest";
 import { ObjectType } from "../../src/components/types/index.js";
 import { Tester } from "../test-host.js";
-import { renderComponentToSDL } from "./component-test-utils.js";
+import { renderToSDL } from "./test-utils.js";
 
 describe("ObjectType component", () => {
   let tester: Awaited<ReturnType<typeof Tester.createInstance>>;
@@ -16,7 +16,7 @@ describe("ObjectType component", () => {
       t.code`model ${t.model("User")} { name: string; age: int32; }`,
     );
 
-    const sdl = renderComponentToSDL(tester.program, <ObjectType type={User} />);
+    const sdl = renderToSDL(tester.program, <ObjectType type={User} />);
 
     expect(sdl).toMatchInlineSnapshot(`
       "type User {
@@ -38,7 +38,7 @@ describe("ObjectType component", () => {
       `,
     );
 
-    const sdl = renderComponentToSDL(tester.program, <ObjectType type={Item} />);
+    const sdl = renderToSDL(tester.program, <ObjectType type={Item} />);
 
     expect(sdl).toMatchInlineSnapshot(`
       """"A store item"""
@@ -57,7 +57,7 @@ describe("ObjectType component", () => {
       t.code`model ${t.model("Profile")} { bio?: string; }`,
     );
 
-    const sdl = renderComponentToSDL(tester.program, <ObjectType type={Profile} />);
+    const sdl = renderToSDL(tester.program, <ObjectType type={Profile} />);
 
     expect(sdl).toMatchInlineSnapshot(`
       "type Profile {
@@ -75,7 +75,7 @@ describe("ObjectType component", () => {
       t.code`model ${t.model("Post")} { tags: string[]; }`,
     );
 
-    const sdl = renderComponentToSDL(tester.program, <ObjectType type={Post} />);
+    const sdl = renderToSDL(tester.program, <ObjectType type={Post} />);
 
     expect(sdl).toMatchInlineSnapshot(`
       "type Post {
@@ -98,7 +98,7 @@ describe("ObjectType component", () => {
       `,
     );
 
-    const sdl = renderComponentToSDL(tester.program, <ObjectType type={Thing} />);
+    const sdl = renderToSDL(tester.program, <ObjectType type={Thing} />);
 
     expect(sdl).toMatchInlineSnapshot(`
       "type Thing {
@@ -123,7 +123,7 @@ describe("ObjectType component", () => {
       `,
     );
 
-    const sdl = renderComponentToSDL(tester.program, <ObjectType type={Entry} />);
+    const sdl = renderToSDL(tester.program, <ObjectType type={Entry} />);
 
     expect(sdl).toMatchInlineSnapshot(`
       "type Entry {
@@ -149,7 +149,7 @@ describe("ObjectType component", () => {
     );
 
     // Register the Node interface in the schema so buildSchema can resolve it
-    const sdl = renderComponentToSDL(
+    const sdl = renderToSDL(
       tester.program,
       <>
         <gql.InterfaceType name="Node">
@@ -185,7 +185,7 @@ describe("ObjectType component", () => {
       `,
     );
 
-    const sdl = renderComponentToSDL(tester.program, <ObjectType type={Book} />);
+    const sdl = renderToSDL(tester.program, <ObjectType type={Book} />);
 
     expect(sdl).toMatchInlineSnapshot(`
       "type Book {
@@ -207,7 +207,7 @@ describe("ObjectType component", () => {
       `,
     );
 
-    const sdl = renderComponentToSDL(
+    const sdl = renderToSDL(
       tester.program,
       <>
         <gql.ObjectType name="Book">
@@ -237,7 +237,7 @@ describe("ObjectType component", () => {
     const { Empty } = await tester.compile(t.code`model ${t.model("Empty")} {}`);
 
     expect(() => {
-      renderComponentToSDL(tester.program, <ObjectType type={Empty} />);
+      renderToSDL(tester.program, <ObjectType type={Empty} />);
     }).toThrow(/must define fields/);
   });
 });

@@ -2,7 +2,7 @@ import { t } from "@typespec/compiler/testing";
 import { describe, expect, it, beforeEach } from "vitest";
 import { InterfaceType } from "../../src/components/types/index.js";
 import { Tester } from "../test-host.js";
-import { renderComponentToSDL } from "./component-test-utils.js";
+import { renderToSDL } from "./test-utils.js";
 
 describe("InterfaceType component", () => {
   let tester: Awaited<ReturnType<typeof Tester.createInstance>>;
@@ -18,7 +18,7 @@ describe("InterfaceType component", () => {
       `,
     );
 
-    const sdl = renderComponentToSDL(tester.program, <InterfaceType type={Node} />);
+    const sdl = renderToSDL(tester.program, <InterfaceType type={Node} />);
 
     expect(sdl).toMatchInlineSnapshot(`
       "interface Node {
@@ -40,7 +40,7 @@ describe("InterfaceType component", () => {
       `,
     );
 
-    const sdl = renderComponentToSDL(tester.program, <InterfaceType type={Entity} />);
+    const sdl = renderToSDL(tester.program, <InterfaceType type={Entity} />);
 
     expect(sdl).toMatchInlineSnapshot(`
       """"A base entity"""
@@ -66,7 +66,7 @@ describe("InterfaceType component", () => {
       `,
     );
 
-    const sdl = renderComponentToSDL(tester.program, <InterfaceType type={Timestamped} />);
+    const sdl = renderToSDL(tester.program, <InterfaceType type={Timestamped} />);
 
     expect(sdl).toMatchInlineSnapshot(`
       "interface Timestamped {
@@ -89,7 +89,7 @@ describe("InterfaceType component", () => {
       `,
     );
 
-    const sdl = renderComponentToSDL(tester.program, <InterfaceType type={Described} />);
+    const sdl = renderToSDL(tester.program, <InterfaceType type={Described} />);
 
     expect(sdl).toMatchInlineSnapshot(`
       "interface Described {
@@ -111,7 +111,7 @@ describe("InterfaceType component", () => {
     );
 
     expect(() => {
-      renderComponentToSDL(tester.program, <InterfaceType type={Empty} />);
+      renderToSDL(tester.program, <InterfaceType type={Empty} />);
     }).toThrow(/must define fields/);
   });
 });
