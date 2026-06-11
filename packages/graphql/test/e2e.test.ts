@@ -616,6 +616,24 @@ describe("e2e: @operationFields", () => {
       }"
     `);
   });
+
+  it("renders operation fields on model used as both input and output", async () => {
+    const result = await emitSingleSchemaWithDiagnostics(`
+      @schema namespace Test {
+        model Post { id: GraphQL.ID; title: string; author: User; }
+        @operationFields(getUserPosts)
+        model User { id: GraphQL.ID; name: string; }
+        @query op getUserPosts(userId: GraphQL.ID, limit?: int32): Post[];
+        @query op getUser(id: GraphQL.ID): User;
+        @mutation op createUser(input: User): User;
+      }
+    `);
+    const output = result.graphQLOutput;
+    // Operation field must appear on the output User type, not just in Query
+    const userTypeBlock = output.match(/type User \{[\s\S]*?\}/);
+    expect(userTypeBlock).not.toBeNull();
+    expect(userTypeBlock![0]).toContain("getUserPosts");
+  });
 });
 
 describe("e2e: circular references", () => {
@@ -687,6 +705,35 @@ describe("e2e: anonymous unions", () => {
 
       type Query {
         getPet: GetPetUnion!
+      }"
+    `);
+  });
+});
+
+describe("e2e: TypeSpec interface keyword", () => {
+  it("prefixes operations with interface name", async () => {
+    const result = await emitSingleSchemaWithDiagnostics(`
+      @schema namespace Test {
+        model Board { name: string; }
+        interface BoardOps {
+          @query getBoard(id: string): Board;
+          @query listBoards(): Board[];
+          @mutation createBoard(name: string): Board;
+        }
+      }
+    `);
+    expect(result.graphQLOutput).toMatchInlineSnapshot(`
+      "type Board {
+        name: String!
+      }
+
+      type Query {
+        boardOpsGetBoard(id: String!): Board!
+        boardOpsListBoards: [Board!]!
+      }
+
+      type Mutation {
+        boardOpsCreateBoard(name: String!): Board!
       }"
     `);
   });

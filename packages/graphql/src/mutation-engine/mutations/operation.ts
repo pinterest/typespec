@@ -58,8 +58,10 @@ export class GraphQLOperationMutation extends SimpleOperationMutation<SimpleMuta
       isArrayModelType(innerReturnType) &&
       isNullableUnion(innerReturnType.indexer.value);
 
+    const iface = this.sourceType.interface;
     this.mutationNode.mutate((operation) => {
-      operation.name = applyFieldNamePipeline(operation.name);
+      const prefixedName = iface ? `${iface.name}_${operation.name}` : operation.name;
+      operation.name = applyFieldNamePipeline(prefixedName);
     });
     super.mutate();
 
