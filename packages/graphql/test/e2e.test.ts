@@ -571,6 +571,54 @@ describe("e2e: nullable scalar does not emit built-in scalar declaration", () =>
   });
 });
 
+describe("e2e: spread-only models with omit-unreachable-types", () => {
+  it("omits spread-only models when omit-unreachable-types is true", async () => {
+    const result = await emitSingleSchemaWithDiagnostics(`
+      @schema namespace Test {
+        scalar DateTime extends utcDateTime;
+        model Timestamps { createdAt: DateTime; updatedAt: DateTime; }
+        model Auditable { createdBy: string; lastModifiedBy: string; }
+        model User { name: string; ...Timestamps; ...Auditable; }
+        @query op getUser(): User;
+      }
+    `, { "omit-unreachable-types": true });
+    // Timestamps and Auditable should NOT appear as standalone types
+    // because they are only consumed via spread — their fields are inlined into User.
+    expect(result.graphQLOutput).not.toContain("type Timestamps");
+    expect(result.graphQLOutput).not.toContain("type Auditable");
+    expect(result.graphQLOutput).toMatchInlineSnapshot(`
+      "scalar DateTime
+
+      type User {
+        name: String!
+        createdAt: DateTime!
+        updatedAt: DateTime!
+        createdBy: String!
+        lastModifiedBy: String!
+      }
+
+      type Query {
+        getUser: User!
+      }"
+    `);
+  });
+
+  it("retains spread-source model when also referenced directly", async () => {
+    const result = await emitSingleSchemaWithDiagnostics(`
+      @schema namespace Test {
+        scalar DateTime extends utcDateTime;
+        model Timestamps { createdAt: DateTime; updatedAt: DateTime; }
+        model User { name: string; ...Timestamps; }
+        @query op getUser(): User;
+        @query op getTimestamps(): Timestamps;
+      }
+    `, { "omit-unreachable-types": true });
+    // Timestamps IS directly referenced as a return type, so it should still appear
+    expect(result.graphQLOutput).toContain("type Timestamps");
+    expect(result.graphQLOutput).toContain("type User");
+  });
+});
+
 describe("e2e: @operationFields", () => {
   it("renders operation as field with arguments on object type", async () => {
     const result = await emitSingleSchemaWithDiagnostics(`
@@ -615,6 +663,23 @@ describe("e2e: @operationFields", () => {
         getUser(id: String!): User!
       }"
     `);
+  });
+
+  it("renders operation fields when model is used as both input and output", async () => {
+    const result = await emitSingleSchemaWithDiagnostics(`
+      @schema namespace Test {
+        model Post { id: GraphQL.ID; title: string; author: User; }
+        @operationFields(getUserPosts)
+        model User { id: GraphQL.ID; name: string; }
+        @query op getUserPosts(userId: GraphQL.ID, limit?: int32): Post[];
+        @query op getUser(id: GraphQL.ID): User;
+        @mutation op createUser(input: User): User;
+      }
+    `);
+    // The operation fields should appear on the output User type
+    const userTypeMatch = result.graphQLOutput.match(/type User \{[\s\S]*?\}/);
+    expect(userTypeMatch).not.toBeNull();
+    expect(userTypeMatch![0]).toContain("getUserPosts(userId: ID!, limit: Int): [Post!]!");
   });
 });
 
