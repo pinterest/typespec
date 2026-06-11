@@ -3,7 +3,28 @@ import {
   type Model,
   type ModelProperty,
   type Operation,
+  type Type,
 } from "@typespec/compiler";
+
+/**
+ * Compare two types for structural equality. Uses reference equality as a fast
+ * path, then falls back to kind + name comparison for named types.
+ *
+ * This is necessary because the mutation framework creates new type instances
+ * for the same logical type. When decorators are re-invoked on mutated types,
+ * reference equality fails even though the types are semantically identical.
+ */
+function typesEqual(type1: Type, type2: Type): boolean {
+  if (type1 === type2) return true;
+  if (type1.kind !== type2.kind) return false;
+
+  // For named types (Scalar, Model, Enum, Union), compare by name.
+  if ("name" in type1 && "name" in type2) {
+    return (type1 as { name: string }).name === (type2 as { name: string }).name;
+  }
+
+  return false;
+}
 
 export function propertiesEqual(
   prop1: ModelProperty,
@@ -13,7 +34,7 @@ export function propertiesEqual(
   if (!ignoreNames && prop1.name !== prop2.name) {
     return false;
   }
-  return prop1.type === prop2.type && prop1.optional === prop2.optional;
+  return typesEqual(prop1.type, prop2.type) && prop1.optional === prop2.optional;
 }
 
 export function modelsEqual(model1: Model, model2: Model, ignoreNames: boolean = false): boolean {
@@ -43,5 +64,5 @@ export function operationsEqual(
   if (!ignoreNames && op1.name !== op2.name) {
     return false;
   }
-  return op1.returnType === op2.returnType && modelsEqual(op1.parameters, op2.parameters, true);
+  return typesEqual(op1.returnType, op2.returnType) && modelsEqual(op1.parameters, op2.parameters, true);
 }

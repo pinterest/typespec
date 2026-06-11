@@ -409,6 +409,43 @@ describe("e2e: interfaces", () => {
       }"
     `);
   });
+
+  it("validates spread properties as compatible with composed interface", async () => {
+    const result = await emitSingleSchemaWithDiagnostics(`
+      @schema namespace Test {
+        @Interface(#{interfaceOnly: true})
+        model Node { id: GraphQL.ID; }
+
+        @compose(Node)
+        model Article { ...Node; title: string; }
+        @query op getArticle(): Article;
+      }
+    `);
+    const incompatibleDiags = result.diagnostics.filter(
+      (d) => d.code === "@typespec/graphql/incompatible-interface-property",
+    );
+    expect(incompatibleDiags).toEqual([]);
+  });
+
+  it("validates spread properties with multiple composed interfaces", async () => {
+    const result = await emitSingleSchemaWithDiagnostics(`
+      @schema namespace Test {
+        @Interface(#{interfaceOnly: true})
+        model Node { id: GraphQL.ID; }
+
+        @Interface
+        model Reactable { likeCount: int32; }
+
+        @compose(Node, Reactable)
+        model Review { ...Node; ...Reactable; text: string; }
+        @query op getReview(): Review;
+      }
+    `);
+    const incompatibleDiags = result.diagnostics.filter(
+      (d) => d.code === "@typespec/graphql/incompatible-interface-property",
+    );
+    expect(incompatibleDiags).toEqual([]);
+  });
 });
 
 describe("e2e: input/output splitting", () => {
@@ -616,6 +653,33 @@ describe("e2e: @operationFields", () => {
       }"
     `);
   });
+
+  it("renders operation fields when model is used as input and output without duplicate warnings", async () => {
+    const result = await emitSingleSchemaWithDiagnostics(`
+      @schema namespace Test {
+        model Post { id: GraphQL.ID; title: string; author: User; }
+        @operationFields(getUserPosts)
+        model User { id: GraphQL.ID; name: string; }
+        @query op getUserPosts(userId: GraphQL.ID, limit?: int32): Post[];
+        @query op getUser(id: GraphQL.ID): User;
+        @mutation op createUser(input: User): User;
+      }
+    `);
+    // Operation field must appear on the output User type
+    const userTypeBlock = result.graphQLOutput?.match(/type User \{[\s\S]*?\}/);
+    expect(userTypeBlock).not.toBeNull();
+    expect(userTypeBlock![0]).toContain("getUserPosts");
+    // Should not have duplicate operation field warnings
+    const duplicateWarnings = result.diagnostics.filter(
+      (d) => d.message.includes("defined multiple times"),
+    );
+    expect(duplicateWarnings).toHaveLength(0);
+    // Operation fields should NOT appear on the input type
+    const inputBlock = result.graphQLOutput?.match(/input UserInput \{[\s\S]*?\}/);
+    expect(inputBlock).not.toBeNull();
+    expect(inputBlock![0]).not.toContain("getUserPosts");
+  });
+
 });
 
 describe("e2e: circular references", () => {

@@ -93,6 +93,13 @@ export class GraphQLModelMutation extends SimpleModelMutation<SimpleMutationOpti
         isInput: isInputContext,
         isInterface: needsInterfaceSuffix,
       });
+      if (isInputContext) {
+        // @operationFields makes no sense on input types — strip it before
+        // finishType re-applies decorators on the clone.
+        model.decorators = model.decorators.filter(
+          (d) => d.decorator.name !== "$operationFields",
+        );
+      }
       this.mutateDecoratorTypeArgs(model);
     });
     super.mutate();

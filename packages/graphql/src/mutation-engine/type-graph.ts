@@ -15,8 +15,10 @@ export interface TypeGraph {
 
 /**
  * Package a set of types into a self-contained TypeGraph.
- * Sets `.namespace` and calls `finishType` on each so that
- * `navigateTypesInNamespace` will visit them.
+ * Sets `.namespace` on each type so they are discoverable via the namespace maps.
+ * Only calls `finishType` on types that aren't already finished — re-running it on
+ * already-finished types would re-apply decorators (e.g. @operationFields) causing
+ * spurious duplicate diagnostics.
  */
 export function buildTypeGraph(program: Program, tk: Typekit, types: Type[]): TypeGraph {
   const globalNamespace = tk.type.clone(program.getGlobalNamespaceType());
@@ -38,7 +40,12 @@ export function buildTypeGraph(program: Program, tk: Typekit, types: Type[]): Ty
 }
 
 function addToNamespace(tk: Typekit, ns: Namespace, type: Type): void {
-  tk.type.finishType(type);
+  // Only finish types that aren't already finished (e.g. manually cloned types
+  // in chained stages). Re-running finishType on already-finished types would
+  // re-apply decorators like @operationFields causing duplicate diagnostics.
+  if (!type.isFinished) {
+    tk.type.finishType(type);
+  }
 
   switch (type.kind) {
     case "Model":
