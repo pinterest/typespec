@@ -1,3 +1,4 @@
+import { hasAutoDecorator, setAutoDecorator } from "@typespec/compiler";
 import { expectTypeEquals, t, type TesterInstance } from "@typespec/compiler/testing";
 import { $ } from "@typespec/compiler/typekit";
 import { beforeEach, expect, it } from "vitest";
@@ -123,4 +124,30 @@ it("creates a literal mutation node for StringTemplate types", async () => {
   const node = engine.getMutationNode(prop.type);
   expect(node).toBeDefined();
   expect(node.sourceType).toBe(prop.type);
+});
+
+it("carries auto decorator state onto the mutated clone", async () => {
+  const { Foo, program } = await runner.compile(t.code`
+      model ${t.model("Foo")} {
+        prop: string;
+      }
+    `);
+  const prop = Foo.properties.get("prop")!;
+  setAutoDecorator(program, "Test.marker", Foo, { value: 1 });
+  setAutoDecorator(program, "Test.propMarker", prop);
+  // Non-decorator state (no `dec:` key) must not be copied.
+  const cacheKey = Symbol.for("Test.cache");
+  program.stateMap(cacheKey).set(Foo, "cached");
+
+  const engine = getEngine(program);
+  const fooNode = engine.getMutationNode(Foo);
+  const propNode = engine.getMutationNode(prop);
+  fooNode.connectProperty(propNode);
+  propNode.mutate();
+
+  expect(hasAutoDecorator(program, "Test.marker", fooNode.mutatedType)).toBe(true);
+  expect(hasAutoDecorator(program, "Test.propMarker", propNode.mutatedType)).toBe(true);
+  expect(program.stateMap(cacheKey).has(fooNode.mutatedType)).toBe(false);
+  // The source keeps its markers.
+  expect(hasAutoDecorator(program, "Test.marker", Foo)).toBe(true);
 });

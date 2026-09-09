@@ -122,3 +122,25 @@ export function getAutoDecoratorTargets(
   const key = getAutoDecoratorStateKey(decoratorFqn);
   return program.stateMap(key);
 }
+
+/**
+ * Copy every auto decorator applied to `source` onto `target`.
+ *
+ * Auto decorator state lives in program state maps keyed by the target type, so
+ * a type created by cloning another (e.g. by the mutator framework) starts out
+ * with none of the source's markers. Call this right after cloning to carry
+ * them over. Existing markers on `target` are left untouched.
+ * @param program - The current program.
+ * @param source - The type whose auto decorators should be copied.
+ * @param target - The type to mark.
+ */
+export function copyAutoDecorators(program: Program, source: Type, target: Type): void {
+  for (const [key, map] of program.stateMaps) {
+    if (key.description?.startsWith("dec:") !== true) {
+      continue;
+    }
+    if (map.has(source) && !map.has(target)) {
+      map.set(target, map.get(source));
+    }
+  }
+}

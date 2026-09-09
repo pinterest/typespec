@@ -1,6 +1,7 @@
 export { resolveCompilerOptions } from "./config/index.js";
 export type { ResolveCompilerOptionsOptions } from "./config/index.js";
 export {
+  copyAutoDecorators,
   getAutoDecoratorTargets,
   getAutoDecoratorValue,
   hasAutoDecorator,
