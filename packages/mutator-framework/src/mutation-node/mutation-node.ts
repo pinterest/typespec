@@ -1,4 +1,4 @@
-import type { Type } from "@typespec/compiler";
+import { copyAutoDecorators, type Type } from "@typespec/compiler";
 import type { Typekit } from "@typespec/compiler/typekit";
 import type { MutationEngine } from "../mutation/mutation-engine.js";
 import { mutationNodeFor, type MutationNodeForType } from "./factory.js";
@@ -106,6 +106,10 @@ export abstract class MutationNode<T extends Type> {
     traceNode(this, "Mutating.");
 
     this.mutatedType = this.$.type.clone(this.sourceType);
+    // `clone` copies the type's own fields but not the program state keyed by
+    // it, so markers set with `setAutoDecorator` (rather than written as
+    // decorators re-applied by `finishType`) would be lost on the clone.
+    copyAutoDecorators(this.$.program, this.sourceType, this.mutatedType);
 
     this.isMutated = true;
     initializeMutation?.(this.mutatedType);
