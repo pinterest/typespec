@@ -26,6 +26,28 @@ describe("GraphQL Mutation Engine - Models", () => {
     expect(mutation.mutatedType.name).toBe("ValidModel");
   });
 
+  it("drops the flattened derived model from the mutated base's derivedModels", async () => {
+    const { Animal, Dog } = await tester.compile(
+      t.code`
+        model ${t.model("Animal")} { kind: string; }
+        model ${t.model("Dog")} extends Animal { barkVolume: int32; }
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const dog = engine.mutateModel(Dog, GraphQLTypeContext.Output);
+    const animal = engine.mutateModel(Animal, GraphQLTypeContext.Output);
+
+    // Inheritance is flattened into the derived model...
+    expect(dog.mutatedType.baseModel).toBeUndefined();
+    expect([...dog.mutatedType.properties.keys()]).toEqual(["kind", "barkVolume"]);
+    // ...so the mutated base must not keep a derived back-reference (neither to
+    // the mutated Dog nor to the source Dog the shallow clone carried over).
+    expect(animal.mutatedType.derivedModels).toEqual([]);
+    // The source graph is untouched.
+    expect(Animal.derivedModels).toEqual([Dog]);
+  });
+
   it("renames invalid model names", async () => {
     await tester.compile(`model \`$Invalid$\` { x: string; }`);
 
