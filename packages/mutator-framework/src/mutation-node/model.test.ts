@@ -92,6 +92,71 @@ it("handles mutation of base models", async () => {
   expect(fooNode.mutatedType.baseModel === barNode.mutatedType).toBeTruthy();
 });
 
+it("keeps the mutated base model's derivedModels pointing at the mutated derived model", async () => {
+  const { Foo, Bar, program } = await runner.compile(t.code`
+      model ${t.model("Foo")} extends Bar {
+        barProp: string;
+      }
+
+      model ${t.model("Bar")} {
+        bazProp: string;
+      }
+    `);
+  const engine = getEngine(program);
+  const fooNode = engine.getMutationNode(Foo);
+  const barNode = engine.getMutationNode(Bar);
+  fooNode.connectBase(barNode);
+  barNode.mutate();
+
+  expect(barNode.mutatedType.derivedModels).toEqual([fooNode.mutatedType]);
+  expect(barNode.mutatedType.derivedModels).not.toContain(Foo);
+  // The source graph is left untouched.
+  expect(Bar.derivedModels).toEqual([Foo]);
+});
+
+it("syncs derivedModels when the base is mutated before the derived model connects", async () => {
+  const { Foo, Bar, program } = await runner.compile(t.code`
+      model ${t.model("Foo")} extends Bar {
+        barProp: string;
+      }
+
+      model ${t.model("Bar")} {
+        bazProp: string;
+      }
+    `);
+  const engine = getEngine(program);
+  const barNode = engine.getMutationNode(Bar);
+  barNode.mutate();
+  // Freshly cloned: still lists the source derived model.
+  expect(barNode.mutatedType.derivedModels).toEqual([Foo]);
+
+  const fooNode = engine.getMutationNode(Foo);
+  fooNode.connectBase(barNode);
+  expect(fooNode.isMutated).toBe(true);
+  expect(barNode.mutatedType.derivedModels).toEqual([fooNode.mutatedType]);
+});
+
+it("removes a deleted derived model from the mutated base's derivedModels", async () => {
+  const { Foo, Bar, program } = await runner.compile(t.code`
+      model ${t.model("Foo")} extends Bar {
+        barProp: string;
+      }
+
+      model ${t.model("Bar")} {
+        bazProp: string;
+      }
+    `);
+  const engine = getEngine(program);
+  const fooNode = engine.getMutationNode(Foo);
+  const barNode = engine.getMutationNode(Bar);
+  fooNode.connectBase(barNode);
+  barNode.mutate();
+  expect(barNode.mutatedType.derivedModels).toEqual([fooNode.mutatedType]);
+
+  fooNode.delete();
+  expect(barNode.mutatedType.derivedModels).toEqual([]);
+});
+
 it("handles deletion of base models", async () => {
   const { Foo, Bar, program } = await runner.compile(t.code`
       model ${t.model("Foo")} extends Bar {

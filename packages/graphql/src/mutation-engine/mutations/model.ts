@@ -161,6 +161,16 @@ export class GraphQLModelMutation extends SimpleModelMutation<SimpleMutationOpti
       mutated.properties.set(name, prop);
     }
     mutated.baseModel = undefined;
+    // Inheritance is gone from the flattened graph, so drop the back-reference
+    // the framework keeps in sync on the mutated base. Only touch a mutated
+    // base: an un-mutated one is the source type and must stay untouched.
+    const base = this.baseModel.mutatedType;
+    if (base !== this.baseModel.sourceType) {
+      const index = base.derivedModels.indexOf(mutated);
+      if (index !== -1) {
+        base.derivedModels.splice(index, 1);
+      }
+    }
   }
 
   private shouldReplaceWithScalar(

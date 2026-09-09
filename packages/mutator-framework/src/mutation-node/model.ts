@@ -11,6 +11,31 @@ export interface ModelConnectOptions {
   indexerValue?: string;
 }
 
+/**
+ * Keep a mutated base model's `derivedModels` back-reference in sync with the
+ * mutated derived model.
+ *
+ * `$.type.clone` copies `derivedModels` as a shallow array, so a mutated base
+ * still lists the *source* derived models. Swap the source entry for the mutated
+ * one (or append it when the derived model was not in the source list), so
+ * consumers walking base -> derived land on mutated types.
+ */
+function syncDerivedModel(base: Model, sourceDerived: Model, mutatedDerived: Model) {
+  const index = base.derivedModels.indexOf(sourceDerived);
+  if (index !== -1) {
+    base.derivedModels[index] = mutatedDerived;
+  } else if (!base.derivedModels.includes(mutatedDerived)) {
+    base.derivedModels.push(mutatedDerived);
+  }
+}
+
+function removeDerivedModel(base: Model, derived: Model) {
+  const index = base.derivedModels.indexOf(derived);
+  if (index !== -1) {
+    base.derivedModels.splice(index, 1);
+  }
+}
+
 export class ModelMutationNode extends MutationNode<Model> {
   readonly kind = "Model";
   startBaseModelEdge() {
@@ -18,6 +43,14 @@ export class ModelMutationNode extends MutationNode<Model> {
       onTailMutation: ({ tail }) => {
         this.mutate();
         this.mutatedType!.baseModel = tail.mutatedType;
+        const base = tail.mutatedType;
+        const mutatedDerived = this.mutatedType;
+        syncDerivedModel(base, this.sourceType, mutatedDerived);
+        this.whenMutated((type) => {
+          if (type === null) {
+            removeDerivedModel(base, mutatedDerived);
+          }
+        });
       },
       onTailDeletion: () => {
         this.mutate();
