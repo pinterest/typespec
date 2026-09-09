@@ -164,6 +164,12 @@ export class SimpleModelMutation<TOptions extends SimpleMutationOptions>
     );
   }
 
+  startTemplateArgEdge(index: number) {
+    return this.#createHalfEdge(`templateArg:${index}`, (tail) =>
+      this.#mutationNode.connectTemplateArg(index, tail.mutationNode as MutationNodeForType<Type>),
+    );
+  }
+
   #createHalfEdge(
     kind: string,
     cb: (tail: SimpleMutation) => void,

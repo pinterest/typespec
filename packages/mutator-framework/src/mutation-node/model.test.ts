@@ -1,8 +1,14 @@
 import type { Model, Type } from "@typespec/compiler";
 import { expectTypeEquals, t, type TesterInstance } from "@typespec/compiler/testing";
+import { $ } from "@typespec/compiler/typekit";
 import { beforeEach, expect, it } from "vitest";
 import { Tester } from "../../test/test-host.js";
 import { getEngine } from "../../test/utils.js";
+import {
+  SimpleModelMutation,
+  SimpleMutationEngine,
+  SimpleMutationOptions,
+} from "../mutation/simple-mutation-engine.js";
 
 let runner: TesterInstance;
 beforeEach(async () => {
@@ -181,4 +187,89 @@ it("handles circular models", async () => {
   fooNode.mutate();
   expect(fooNode.isMutated).toBe(true);
   expect(barNode.isMutated).toBe(true);
+});
+
+it("rewires a template argument to the mutated argument type", async () => {
+  const { Foo, Bar, program } = await runner.compile(t.code`
+      model Wrapper<T> {
+        item: T;
+      }
+      model ${t.model("Foo")} {
+        name: string;
+      }
+      model ${t.model("Bar")} {
+        wrapped: Wrapper<Foo>;
+      }
+    `);
+  const instance = Bar.properties.get("wrapped")!.type as Model;
+  const sourceMapper = instance.templateMapper!;
+  expect(sourceMapper.args[0]).toBe(Foo);
+
+  const engine = getEngine(program);
+  const instanceNode = engine.getMutationNode(instance);
+  const fooNode = engine.getMutationNode(Foo);
+  instanceNode.connectTemplateArg(0, fooNode);
+  fooNode.mutate();
+
+  expect(instanceNode.isMutated).toBe(true);
+  const mutatedMapper = instanceNode.mutatedType.templateMapper!;
+  expect(mutatedMapper.args[0]).toBe(fooNode.mutatedType);
+  const [parameter] = (sourceMapper as unknown as { map: Map<unknown, unknown> }).map.keys();
+  expect(mutatedMapper.getMappedType(parameter as never)).toBe(fooNode.mutatedType);
+  // The mutated model got its own mapper; the source mapper is untouched.
+  expect(mutatedMapper).not.toBe(sourceMapper);
+  expect(instance.templateMapper!.args[0]).toBe(Foo);
+  expect(sourceMapper.getMappedType(parameter as never)).toBe(Foo);
+});
+
+it("mutates template arguments as part of a model mutation", async () => {
+  const { Foo, Bar, program } = await runner.compile(t.code`
+      model Wrapper<T> {
+        item: T;
+      }
+      model ${t.model("Foo")} {
+        name: string;
+      }
+      model ${t.model("Bar")} {
+        wrapped: Wrapper<Foo>;
+      }
+    `);
+  const instance = Bar.properties.get("wrapped")!.type as Model;
+
+  const engine = new SimpleMutationEngine($(program), {});
+  const options = new SimpleMutationOptions();
+  const mutation = engine.mutate(instance, options) as SimpleModelMutation<SimpleMutationOptions>;
+  const fooMutation = engine.mutate(Foo, options) as SimpleModelMutation<SimpleMutationOptions>;
+  expect(mutation.templateArgs.get(0)).toBe(fooMutation);
+
+  // Force the argument to mutate; the instance's mapper must follow.
+  fooMutation.mutationNode.mutate((foo: Model) => {
+    foo.name = "MutatedFoo";
+  });
+  const mutatedMapper = mutation.mutatedType.templateMapper!;
+  expect(mutatedMapper.args[0]).toBe(fooMutation.mutatedType);
+  expect((mutatedMapper.args[0] as Model).name).toBe("MutatedFoo");
+  // The `item: T` property and the template argument resolve to the same object.
+  expect(mutation.mutatedType.properties.get("item")!.type).toBe(mutatedMapper.args[0]);
+  expect(instance.templateMapper!.args[0]).toBe(Foo);
+});
+
+it("leaves value template arguments alone", async () => {
+  const { Bar, program } = await runner.compile(t.code`
+      model Wrapper<T, N extends valueof int32> {
+        item: T;
+      }
+      model ${t.model("Bar")} {
+        wrapped: Wrapper<string, 3>;
+      }
+    `);
+  const instance = Bar.properties.get("wrapped")!.type as Model;
+  const engine = new SimpleMutationEngine($(program), {});
+  const mutation = engine.mutate(
+    instance,
+    new SimpleMutationOptions(),
+  ) as SimpleModelMutation<SimpleMutationOptions>;
+  expect(mutation.templateArgs.has(1)).toBe(false);
+  mutation.mutationNode.mutate();
+  expect(mutation.mutatedType.templateMapper!.args[1]).toBe(instance.templateMapper!.args[1]);
 });

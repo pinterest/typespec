@@ -20,6 +20,8 @@ export abstract class ModelMutation<
     key: MutationFor<TCustomMutations, "Scalar">;
     value: MutationFor<TCustomMutations, Type["kind"]>;
   };
+  /** Mutations of the type-valued template arguments, keyed by argument index. */
+  templateArgs = new Map<number, MutationFor<TCustomMutations, Type["kind"]>>();
 
   constructor(
     engine: TEngine,
@@ -67,14 +69,44 @@ export abstract class ModelMutation<
     }
   }
 
+  /**
+   * Mutate the type-valued template arguments of a template instance so the
+   * mutated model's `templateMapper` references mutated types. Values and
+   * indeterminate entities are left as-is.
+   */
+  protected mutateTemplateArgs(newOptions: MutationOptions = this.options) {
+    const mapper = this.sourceType.templateMapper;
+    if (!mapper) {
+      return;
+    }
+    mapper.args.forEach((arg, index) => {
+      if (isTypeEntity(arg)) {
+        this.templateArgs.set(
+          index,
+          this.engine.mutate(arg, newOptions, this.startTemplateArgEdge(index)),
+        );
+      }
+    });
+  }
+
   protected abstract startBaseEdge(): MutationHalfEdge;
   protected abstract startPropertyEdge(): MutationHalfEdge;
   protected abstract startIndexerValueEdge(): MutationHalfEdge;
   protected abstract startIndexerKeyEdge(): MutationHalfEdge;
+  protected abstract startTemplateArgEdge(index: number): MutationHalfEdge;
 
   mutate(newOptions: MutationOptions = this.options) {
     this.mutateBaseModel(newOptions);
     this.mutateProperties(newOptions);
     this.mutateIndexer(newOptions);
+    this.mutateTemplateArgs(newOptions);
   }
+}
+
+function isTypeEntity(entity: unknown): entity is Type {
+  return (
+    typeof entity === "object" &&
+    entity !== null &&
+    (entity as { entityKind?: string }).entityKind === "Type"
+  );
 }
