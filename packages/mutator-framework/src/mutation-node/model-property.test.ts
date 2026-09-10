@@ -1,4 +1,4 @@
-import type { Model } from "@typespec/compiler";
+import type { Model, ModelProperty } from "@typespec/compiler";
 import { expectTypeEquals, t, type TesterInstance } from "@typespec/compiler/testing";
 import { $ } from "@typespec/compiler/typekit";
 import { beforeEach, expect, it } from "vitest";
@@ -211,4 +211,35 @@ it("handles replacing properties that have already been mutated", async () => {
   fooNode.connectProperty(newNode as any);
   expect(fooNode.mutatedType.properties.size).toBe(1);
   expect(fooNode.mutatedType.properties.get("replacement")).toBeDefined();
+});
+
+it("rewires sourceProperty to the mutated predecessor after spread", async () => {
+  // When a model spreads another, each spread property has sourceProperty pointing
+  // at the original property. After mutation the pointer must follow the mutated graph.
+  const { Base, Derived, program } = await runner.compile(t.code`
+    model ${t.model("Base")} {
+      name: string;
+    }
+    model ${t.model("Derived")} {
+      ...Base;
+    }
+  `);
+
+  // The spread property on Derived has sourceProperty = Base.name
+  const derivedNameProp = [...(Derived as Model).properties.values()][0] as ModelProperty;
+  expect(derivedNameProp.sourceProperty).toBeDefined();
+  expect(derivedNameProp.sourceProperty).toBe([...(Base as Model).properties.values()][0]);
+
+  const engine = getEngine(program);
+  const baseNode = engine.getMutationNode(Base as Model);
+  const derivedNode = engine.getMutationNode(Derived as Model);
+  baseNode.mutate((b: Model) => { b.name = "MutatedBase"; });
+  derivedNode.mutate();
+
+  const mutatedDerivedProp = [...derivedNode.mutatedType.properties.values()][0];
+  expect(mutatedDerivedProp.sourceProperty).toBeDefined();
+  // Must point at the MUTATED predecessor, not the raw source property.
+  expect(mutatedDerivedProp.sourceProperty?.model?.name).toBe("MutatedBase");
+  // The raw source graph is untouched.
+  expect(derivedNameProp.sourceProperty?.model?.name).not.toBe("MutatedBase");
 });

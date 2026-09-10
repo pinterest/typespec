@@ -209,6 +209,14 @@ export class SimpleModelPropertyMutation<TOptions extends SimpleMutationOptions>
     });
   }
 
+  startSourcePropertyEdge(): MutationHalfEdge {
+    return new MutationHalfEdge("sourceProperty", this, (tail) =>
+      this.#mutationNode.connectSourceProperty(
+        tail.mutationNode as MutationNodeForType<ModelProperty>,
+      ),
+    );
+  }
+
   #mutationNode: ModelPropertyMutationNode;
   get mutationNode() {
     return this.#mutationNode;
