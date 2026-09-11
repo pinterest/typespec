@@ -4,6 +4,12 @@ export interface NamingContext {
   isInput: boolean;
   isInterface: boolean;
   inputQualifier?: string;
+  /**
+   * The original source name before any pipeline transforms.
+   * Used by applyInputSuffix to distinguish an inherent suffix from one added
+   * by the pipeline (e.g. AssetGroupInput → AssetGroupInputInput).
+   */
+  rawName?: string;
 }
 
 type NameTransform = (name: string, context: NamingContext) => string;
@@ -67,7 +73,12 @@ function applyInputSuffix(name: string, context: NamingContext): string {
   if (!context.isInput) return name;
   const qualifier = context.inputQualifier ?? "";
   const suffix = `${qualifier}Input`;
-  return name.endsWith(suffix) ? name : name + suffix;
+  if (!name.endsWith(suffix)) return name + suffix;
+  // name already ends in suffix — only skip if the pipeline added it.
+  // If the raw source name also ends in suffix, it was inherent in the source
+  // and the suffix must still be appended (e.g. AssetGroupInput → AssetGroupInputInput).
+  const rawProcessed = toPascalCase(context.rawName ?? "", context);
+  return rawProcessed.endsWith(suffix) ? name + suffix : name;
 }
 
 const baseNamePipeline: NameTransform[] = [stripNamespace, sanitizeForGraphQL, toPascalCase];
