@@ -216,30 +216,35 @@ it("handles replacing properties that have already been mutated", async () => {
 it("rewires sourceProperty to the mutated predecessor after spread", async () => {
   // When a model spreads another, each spread property has sourceProperty pointing
   // at the original property. After mutation the pointer must follow the mutated graph.
-  const { Base, Derived, program } = await runner.compile(t.code`
-    model ${t.model("Base")} {
-      name: string;
+  const { Derived, baseName, program } = await runner.compile(t.code`
+    model Base {
+      ${t.modelProperty("baseName")}: string;
     }
     model ${t.model("Derived")} {
       ...Base;
     }
   `);
 
-  // The spread property on Derived has sourceProperty = Base.name
-  const derivedNameProp = [...(Derived as Model).properties.values()][0] as ModelProperty;
-  expect(derivedNameProp.sourceProperty).toBeDefined();
-  expect(derivedNameProp.sourceProperty).toBe([...(Base as Model).properties.values()][0]);
+  const baseNameProp = baseName as ModelProperty;
+  const derivedProp = [...(Derived as Model).properties.values()][0] as ModelProperty;
+  expect(derivedProp.sourceProperty).toBe(baseName);
 
   const engine = getEngine(program);
-  const baseNode = engine.getMutationNode(Base as Model);
-  const derivedNode = engine.getMutationNode(Derived as Model);
-  baseNode.mutate((b: Model) => { b.name = "MutatedBase"; });
-  derivedNode.mutate();
+  const baseNameNode = engine.getMutationNode(baseNameProp);
+  const derivedPropNode = engine.getMutationNode(derivedProp);
 
-  const mutatedDerivedProp = [...derivedNode.mutatedType.properties.values()][0];
-  expect(mutatedDerivedProp.sourceProperty).toBeDefined();
-  // Must point at the MUTATED predecessor, not the raw source property.
-  expect(mutatedDerivedProp.sourceProperty?.model?.name).toBe("MutatedBase");
+  // Wire the sourceProperty edge so mutations on baseNameNode cascade to derivedPropNode.
+  derivedPropNode.connectSourceProperty(baseNameNode);
+
+  // Now mutate the source property — rename it.
+  baseNameNode.mutate((p: ModelProperty) => {
+    p.name = "renamedBaseName";
+  });
+
+  // The cascade from baseNameNode should have already mutated derivedPropNode.
+  expect(derivedPropNode.isMutated).toBe(true);
+  // sourceProperty must point at the MUTATED predecessor (renamed), not the raw one.
+  expect(derivedPropNode.mutatedType.sourceProperty?.name).toBe("renamedBaseName");
   // The raw source graph is untouched.
-  expect(derivedNameProp.sourceProperty?.model?.name).not.toBe("MutatedBase");
+  expect(derivedProp.sourceProperty?.name).toBe("baseName");
 });
