@@ -275,3 +275,36 @@ describe("GraphQL Mutation Engine - Edge Cases", () => {
     expect(mutated.members.has("123value")).toBe(false);
   });
 });
+
+describe("applyInputSuffix — source name ending in Input", () => {
+  let tester: TesterInstance;
+  beforeEach(async () => {
+    tester = await Tester.createInstance();
+  });
+
+  it("appends Input suffix to a model whose source name already ends in Input", async () => {
+    // AssetGroupInput mutated in Input context should become AssetGroupInputInput.
+    // Without the rawName fix, applyInputSuffix sees name.endsWith("Input") === true
+    // and skips the suffix, collapsing both output and input halves to AssetGroupInput.
+    const { AssetGroupInput } = await tester.compile(
+      t.code`model ${t.model("AssetGroupInput")} { id: string; }`,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateModel(AssetGroupInput, GraphQLTypeContext.Input);
+
+    expect(mutation.mutatedType.name).toBe("AssetGroupInputInput");
+  });
+
+  it("does NOT double-suffix a model that was already correctly suffixed by the pipeline", async () => {
+    // A plain model mutated as Input should get exactly one Input suffix.
+    const { Widget } = await tester.compile(
+      t.code`model ${t.model("Widget")} { id: string; }`,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateModel(Widget, GraphQLTypeContext.Input);
+
+    expect(mutation.mutatedType.name).toBe("WidgetInput");
+  });
+});

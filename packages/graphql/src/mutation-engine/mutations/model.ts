@@ -109,6 +109,7 @@ export class GraphQLModelMutation extends SimpleModelMutation<SimpleMutationOpti
         isInput: isInputContext,
         isInterface: needsInterfaceSuffix,
         inputQualifier,
+        rawName,
       });
       if (isInputContext) {
         model.decorators = model.decorators.filter(
