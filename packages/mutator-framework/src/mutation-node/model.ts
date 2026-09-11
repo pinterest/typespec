@@ -1,4 +1,13 @@
-import type { Model, ModelProperty, Scalar, Type } from "@typespec/compiler";
+import type {
+  IndeterminateEntity,
+  Model,
+  ModelProperty,
+  Scalar,
+  TemplateParameter,
+  Type,
+  TypeMapper,
+  Value,
+} from "@typespec/compiler";
 import type { ModelPropertyMutationNode } from "./model-property.js";
 import { HalfEdge } from "./mutation-edge.js";
 import { MutationNode } from "./mutation-node.js";
@@ -36,8 +45,66 @@ function removeDerivedModel(base: Model, derived: Model) {
   }
 }
 
+type MappedEntity = Type | Value | IndeterminateEntity;
+
+/**
+ * Point template argument `index` of `model.templateMapper` at `type`.
+ *
+ * `$.type.clone` copies `templateMapper` by reference, so the mapper (and the
+ * `map` its `getMappedType` closes over) is shared with the source type. Build a
+ * fresh mapper on the mutated model instead of writing into the shared one.
+ */
+function setTemplateArg(model: Model, index: number, type: Type) {
+  const mapper = model.templateMapper;
+  if (!mapper || index >= mapper.args.length) {
+    return;
+  }
+  const previous = mapper.args[index];
+  const args = [...mapper.args];
+  args[index] = type;
+  const sourceMap = (mapper as unknown as { map?: Map<TemplateParameter, MappedEntity> }).map;
+  const map = new Map<TemplateParameter, MappedEntity>(sourceMap ?? []);
+  for (const [parameter, mapped] of map) {
+    if (mapped === previous) {
+      map.set(parameter, type);
+    }
+  }
+  model.templateMapper = {
+    ...mapper,
+    args,
+    map,
+    getMappedType: (parameter: TemplateParameter) =>
+      map.get(parameter) ?? mapper.getMappedType(parameter),
+  } as TypeMapper;
+}
+
 export class ModelMutationNode extends MutationNode<Model> {
   readonly kind = "Model";
+
+  startTemplateArgEdge(index: number) {
+    return new HalfEdge<Model, Type>(this, {
+      onTailMutation: ({ tail }) => {
+        this.mutate();
+        setTemplateArg(this.mutatedType, index, tail.mutatedType);
+      },
+      onTailDeletion: () => {
+        this.mutate();
+        setTemplateArg(this.mutatedType, index, this.$.intrinsic.never);
+      },
+      onTailReplaced: ({ newTail, head, reconnect }) => {
+        head.mutate();
+        setTemplateArg(head.mutatedType, index, newTail.mutatedType);
+        if (reconnect) {
+          head.connectTemplateArg(index, newTail);
+        }
+      },
+    });
+  }
+
+  connectTemplateArg(index: number, argNode: MutationNode<Type>) {
+    this.startTemplateArgEdge(index).setTail(argNode);
+  }
+
   startBaseModelEdge() {
     return new HalfEdge<Model, Model>(this, {
       onTailMutation: ({ tail }) => {
