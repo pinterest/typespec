@@ -1,4 +1,4 @@
-import type { Model } from "@typespec/compiler";
+import type { Model, ModelProperty } from "@typespec/compiler";
 import { expectTypeEquals, t, type TesterInstance } from "@typespec/compiler/testing";
 import { $ } from "@typespec/compiler/typekit";
 import { beforeEach, expect, it } from "vitest";
@@ -211,4 +211,40 @@ it("handles replacing properties that have already been mutated", async () => {
   fooNode.connectProperty(newNode as any);
   expect(fooNode.mutatedType.properties.size).toBe(1);
   expect(fooNode.mutatedType.properties.get("replacement")).toBeDefined();
+});
+
+it("rewires sourceProperty to the mutated predecessor after spread", async () => {
+  // When a model spreads another, each spread property has sourceProperty pointing
+  // at the original property. After mutation the pointer must follow the mutated graph.
+  const { Derived, baseName, program } = await runner.compile(t.code`
+    model Base {
+      ${t.modelProperty("baseName")}: string;
+    }
+    model ${t.model("Derived")} {
+      ...Base;
+    }
+  `);
+
+  const baseNameProp = baseName as ModelProperty;
+  const derivedProp = [...(Derived as Model).properties.values()][0] as ModelProperty;
+  expect(derivedProp.sourceProperty).toBe(baseName);
+
+  const engine = getEngine(program);
+  const baseNameNode = engine.getMutationNode(baseNameProp);
+  const derivedPropNode = engine.getMutationNode(derivedProp);
+
+  // Wire the sourceProperty edge so mutations on baseNameNode cascade to derivedPropNode.
+  derivedPropNode.connectSourceProperty(baseNameNode);
+
+  // Now mutate the source property — rename it.
+  baseNameNode.mutate((p: ModelProperty) => {
+    p.name = "renamedBaseName";
+  });
+
+  // The cascade from baseNameNode should have already mutated derivedPropNode.
+  expect(derivedPropNode.isMutated).toBe(true);
+  // sourceProperty must point at the MUTATED predecessor (renamed), not the raw one.
+  expect(derivedPropNode.mutatedType.sourceProperty?.name).toBe("renamedBaseName");
+  // The raw source graph is untouched.
+  expect(derivedProp.sourceProperty?.name).toBe("baseName");
 });

@@ -63,4 +63,30 @@ export class ModelPropertyMutationNode extends MutationNode<ModelProperty> {
   connectModel(modelNode: MutationNode<Model>) {
     this.startModelEdge().setTail(modelNode);
   }
+
+  startSourcePropertyEdge() {
+    return new HalfEdge<ModelProperty, ModelProperty>(this, {
+      onTailMutation: ({ tail }) => {
+        this.mutate();
+        this.mutatedType.sourceProperty = tail.mutatedType;
+      },
+      onTailDeletion: () => {
+        this.mutate();
+        this.mutatedType.sourceProperty = undefined;
+      },
+      onTailReplaced: ({ newTail, head, reconnect }) => {
+        head.mutate();
+        head.mutatedType.sourceProperty = newTail.mutatedType as ModelProperty;
+        if (reconnect) {
+          (head as ModelPropertyMutationNode).connectSourceProperty(
+            newTail as MutationNode<ModelProperty>,
+          );
+        }
+      },
+    });
+  }
+
+  connectSourceProperty(propNode: MutationNode<ModelProperty>) {
+    this.startSourcePropertyEdge().setTail(propNode);
+  }
 }
