@@ -177,6 +177,81 @@ describe("GraphQL Mutation Engine - Unions", () => {
     expect((petProp.type as Union).name).toBe("FooPetUnion");
   });
 
+  it("names anonymous union passed as a model template argument after the enclosing property", async () => {
+    const { Foo } = await tester.compile(
+      t.code`
+        model Wrapper<T> { item: T; }
+        model ${t.model("Cat")} { name: string; }
+        model ${t.model("Dog")} { breed: string; }
+        model ${t.model("Foo")} { pet: Wrapper<Cat | Dog>; }
+      `,
+    );
+
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateModel(Foo, GraphQLTypeContext.Output);
+
+    const wrapper = mutation.mutatedType.properties.get("pet")!.type as Model;
+    const arg = wrapper.templateMapper!.args[0] as Union;
+    expect(arg.kind).toBe("Union");
+    expect(arg.name).toBe("FooPetUnion");
+    // The template argument and the `item: T` property resolve to the same mutated union.
+    expect(wrapper.properties.get("item")!.type).toBe(arg);
+    expect(unrecognizedUnionDiagnostics()).toHaveLength(0);
+  });
+
+  it("names anonymous union passed as an operation template argument after the operation", async () => {
+    await tester.compile(`
+      model Cat { name: string; }
+      model Dog { breed: string; }
+      op base<Body extends {}, Result extends {}>(body: Body): Result;
+      interface Pets {
+        adopt is base<Cat, Cat | Dog>;
+      }
+    `);
+
+    const adopt = tester.program
+      .getGlobalNamespaceType()
+      .interfaces.get("Pets")!
+      .operations.get("adopt")!;
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateOperation(adopt);
+
+    // The parameters model carries every operation template argument, including the
+    // union no parameter uses. In input context it becomes a @oneOf input model.
+    const paramsArg = mutation.mutatedType.parameters.templateMapper!.args[1] as Model;
+    expect(paramsArg.kind).toBe("Model");
+    expect(paramsArg.name).toBe("AdoptUnionInput");
+    expect((mutation.mutatedType.returnType as Union).name).toBe("AdoptUnion");
+    expect(unrecognizedUnionDiagnostics()).toHaveLength(0);
+  });
+
+  it("disambiguates sibling anonymous unions in one template argument list", async () => {
+    await tester.compile(`
+      model Cat { name: string; }
+      model Dog { breed: string; }
+      op base<Body extends {}, Result extends {}>(body: Body): Result;
+      interface Pets {
+        adopt is base<Cat | Dog, Dog | Cat>;
+      }
+    `);
+
+    const adopt = tester.program
+      .getGlobalNamespaceType()
+      .interfaces.get("Pets")!
+      .operations.get("adopt")!;
+    const engine = createTestEngine(tester.program);
+    const mutation = engine.mutateOperation(adopt);
+
+    const bodyArg = mutation.mutatedType.parameters.templateMapper!.args[0] as Model;
+    expect(bodyArg.name).toBe("Adopt1UnionInput");
+    expect((mutation.mutatedType.returnType as Union).name).toBe("Adopt2Union");
+    expect(unrecognizedUnionDiagnostics()).toHaveLength(0);
+  });
+
+  function unrecognizedUnionDiagnostics() {
+    return tester.program.diagnostics.filter((d) => d.code.endsWith("unrecognized-union"));
+  }
+
   it("collapses union to single type after flattening deduplicates to one variant", async () => {
     const { Outer } = await tester.compile(
       t.code`

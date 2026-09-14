@@ -24,6 +24,8 @@ import {
   type ModelStatementNode,
   type Node,
   SyntaxKind,
+  type TemplateArgumentNode,
+  type TypeReferenceNode,
 } from "@typespec/compiler/ast";
 import { camelCase, constantCase, pascalCase, split, splitSeparateNumbers } from "change-case";
 import { reportDiagnostic } from "../lib.js";
@@ -160,7 +162,15 @@ function getNameWithoutNamespace(name: string): string {
   return parts[parts.length - 1];
 }
 
-/** Generate a GraphQL type name for a union, including anonymous unions. */
+/**
+ * Generate a GraphQL type name for a union, including anonymous unions.
+ *
+ * An anonymous union is named after the declaration that contains it. When the
+ * union is written as a template argument (`Foo<Bar | Baz>`), the enclosing
+ * declaration is found by climbing out of the template argument list first, so
+ * the same rules apply whether the union is the property type itself or an
+ * argument of it.
+ */
 export function getUnionName(union: Union, program: Program): string {
   // Named union — use its name directly
   if (union.name) {
@@ -170,28 +180,37 @@ export function getUnionName(union: Union, program: Program): string {
   const ts = getTemplateString(union);
   const templateString = ts ? "Of" + ts : "";
 
+  const anchor = union.node ? escapeTemplateArguments(union.node) : undefined;
+  const ordinal = anchor && anchor !== union.node ? getTemplateArgumentOrdinal(union.node!) : "";
+
   // Anonymous return type — name after the operation
   // e.g. op getBaz(): Foo | Bar => GetBazUnion
-  if (isReturnType(union)) {
-    return `${getUnionNameForOperation(program, union)}${templateString}Union`;
+  if (anchor && isReturnType(anchor)) {
+    return `${getUnionNameForOperation(program, anchor.parent!.parent!)}${ordinal}${templateString}Union`;
+  }
+
+  // Anonymous argument of an operation template — name after the operation
+  // e.g. op getBaz is base<Foo | Bar> => GetBazUnion
+  if (anchor && isOperationSignatureReference(anchor)) {
+    return `${getUnionNameForOperation(program, anchor.parent!.parent!)}${ordinal}${templateString}Union`;
   }
 
   // Anonymous model property — name after model + property
   // e.g. model Foo { bar: Bar | Baz } => FooBarUnion
-  const modelProperty = getModelProperty(union);
+  const modelProperty = anchor ? getModelProperty(anchor) : undefined;
   if (modelProperty) {
     const propName = toTypeName(getNameForNode(modelProperty));
-    const unionModel = union.node?.parent?.parent as ModelStatementNode;
+    const unionModel = modelProperty.parent as ModelStatementNode | undefined;
     const modelName = unionModel ? getNameForNode(unionModel) : "";
-    return `${modelName}${propName}${templateString}Union`;
+    return `${modelName}${propName}${ordinal}${templateString}Union`;
   }
 
   // Alias — name after the alias
   // e.g. alias Baz = Foo<string> | Bar => Baz
-  const alias = getAlias(union);
+  const alias = anchor ? getAlias(anchor) : undefined;
   if (alias) {
     const aliasName = getNameForNode(alias);
-    return `${aliasName}${templateString}`;
+    return `${aliasName}${ordinal}${templateString}`;
   }
 
   reportDiagnostic(program, {
@@ -205,27 +224,60 @@ function isNamedType(type: Type | Value | IndeterminateEntity): type is { name: 
   return "name" in type && typeof (type as { name: unknown }).name === "string";
 }
 
-function isAliased(union: Union): boolean {
-  return union.node?.parent?.kind === SyntaxKind.AliasStatement;
+/**
+ * Climb out of any enclosing template argument lists. For the union in
+ * `bar: Wrapper<Other<Bar | Baz>>` this returns the outermost `TypeReference`
+ * node, whose parent is the model property.
+ */
+function escapeTemplateArguments(node: Node): Node {
+  let current = node;
+  while (
+    current.parent?.kind === SyntaxKind.TemplateArgument &&
+    current.parent.parent?.kind === SyntaxKind.TypeReference
+  ) {
+    current = current.parent.parent;
+  }
+  return current;
 }
 
-function getAlias(union: Union): AliasStatementNode | undefined {
-  return isAliased(union) ? (union.node?.parent as AliasStatementNode) : undefined;
+/**
+ * Disambiguate sibling anonymous unions in one template argument list. Returns
+ * the 1-based position among the reference's anonymous-union arguments, or ""
+ * when the union is the only one.
+ */
+function getTemplateArgumentOrdinal(unionNode: Node): string {
+  const argument = unionNode.parent as TemplateArgumentNode | undefined;
+  const reference = argument?.parent as TypeReferenceNode | undefined;
+  if (!argument || !reference || reference.kind !== SyntaxKind.TypeReference) return "";
+  const unionArguments = reference.arguments.filter(
+    (arg) => arg.argument.kind === SyntaxKind.UnionExpression,
+  );
+  return unionArguments.length > 1 ? String(unionArguments.indexOf(argument) + 1) : "";
 }
 
-function isModelProperty(union: Union): boolean {
-  return union.node?.parent?.kind === SyntaxKind.ModelProperty;
+function getAlias(node: Node): AliasStatementNode | undefined {
+  return node.parent?.kind === SyntaxKind.AliasStatement
+    ? (node.parent as AliasStatementNode)
+    : undefined;
 }
 
-function getModelProperty(union: Union): ModelPropertyNode | undefined {
-  return isModelProperty(union) ? (union.node?.parent as ModelPropertyNode) : undefined;
+function getModelProperty(node: Node): ModelPropertyNode | undefined {
+  return node.parent?.kind === SyntaxKind.ModelProperty
+    ? (node.parent as ModelPropertyNode)
+    : undefined;
 }
 
-function isReturnType(type: Type): boolean {
-  return !!(
-    type.node &&
-    type.node.parent?.kind === SyntaxKind.OperationSignatureDeclaration &&
-    type.node.parent?.parent?.kind === SyntaxKind.OperationStatement
+function isReturnType(node: Node): boolean {
+  return (
+    node.parent?.kind === SyntaxKind.OperationSignatureDeclaration &&
+    node.parent.parent?.kind === SyntaxKind.OperationStatement
+  );
+}
+
+function isOperationSignatureReference(node: Node): boolean {
+  return (
+    node.parent?.kind === SyntaxKind.OperationSignatureReference &&
+    node.parent.parent?.kind === SyntaxKind.OperationStatement
   );
 }
 
@@ -235,9 +287,7 @@ function getNameForNode(node: NamedNode): string {
   return "id" in node && node.id?.kind === SyntaxKind.Identifier ? node.id.sv : "";
 }
 
-function getUnionNameForOperation(program: Program, union: Union): string {
-  const operationNode = union.node?.parent?.parent;
-  if (!operationNode) return "Unknown";
+function getUnionNameForOperation(program: Program, operationNode: Node): string {
   const operation = program.checker.getTypeForNode(operationNode);
 
   return toTypeName(getTypeName(operation));
