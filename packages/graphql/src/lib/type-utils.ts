@@ -23,6 +23,7 @@ import {
   type ModelPropertyNode,
   type ModelStatementNode,
   type Node,
+  type OperationStatementNode,
   SyntaxKind,
   type TemplateArgumentNode,
   type TypeReferenceNode,
@@ -181,18 +182,14 @@ export function getUnionName(union: Union, program: Program): string {
   const templateString = ts ? "Of" + ts : "";
 
   const anchor = union.node ? escapeTemplateArguments(union.node) : undefined;
-  const ordinal = anchor && anchor !== union.node ? getTemplateArgumentOrdinal(union.node!) : "";
+  const ordinal = union.node && anchor !== union.node ? getTemplateArgumentOrdinal(union.node) : "";
 
-  // Anonymous return type — name after the operation
+  // Anonymous return type, or anonymous argument of an operation template — name after the operation
   // e.g. op getBaz(): Foo | Bar => GetBazUnion
-  if (anchor && isReturnType(anchor)) {
-    return `${getUnionNameForOperation(program, anchor.parent!.parent!)}${ordinal}${templateString}Union`;
-  }
-
-  // Anonymous argument of an operation template — name after the operation
-  // e.g. op getBaz is base<Foo | Bar> => GetBazUnion
-  if (anchor && isOperationSignatureReference(anchor)) {
-    return `${getUnionNameForOperation(program, anchor.parent!.parent!)}${ordinal}${templateString}Union`;
+  //      op getBaz is base<Foo | Bar> => GetBazUnion
+  const operation = anchor ? getEnclosingOperation(anchor) : undefined;
+  if (operation) {
+    return `${getUnionNameForOperation(program, operation)}${ordinal}${templateString}Union`;
   }
 
   // Anonymous model property — name after model + property
@@ -267,18 +264,20 @@ function getModelProperty(node: Node): ModelPropertyNode | undefined {
     : undefined;
 }
 
-function isReturnType(node: Node): boolean {
-  return (
-    node.parent?.kind === SyntaxKind.OperationSignatureDeclaration &&
-    node.parent.parent?.kind === SyntaxKind.OperationStatement
-  );
-}
-
-function isOperationSignatureReference(node: Node): boolean {
-  return (
-    node.parent?.kind === SyntaxKind.OperationSignatureReference &&
-    node.parent.parent?.kind === SyntaxKind.OperationStatement
-  );
+/**
+ * The operation whose signature directly contains `node`, either as the declared
+ * return type (`op x(): A | B`) or as an argument of the referenced signature
+ * (`op x is base<A | B>`).
+ */
+function getEnclosingOperation(node: Node): OperationStatementNode | undefined {
+  const signature = node.parent;
+  if (
+    signature?.kind !== SyntaxKind.OperationSignatureDeclaration &&
+    signature?.kind !== SyntaxKind.OperationSignatureReference
+  ) {
+    return undefined;
+  }
+  return signature.parent?.kind === SyntaxKind.OperationStatement ? signature.parent : undefined;
 }
 
 type NamedNode = Node & { id: IdentifierNode };
@@ -287,7 +286,7 @@ function getNameForNode(node: NamedNode): string {
   return "id" in node && node.id?.kind === SyntaxKind.Identifier ? node.id.sv : "";
 }
 
-function getUnionNameForOperation(program: Program, operationNode: Node): string {
+function getUnionNameForOperation(program: Program, operationNode: OperationStatementNode): string {
   const operation = program.checker.getTypeForNode(operationNode);
 
   return toTypeName(getTypeName(operation));
